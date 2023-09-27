@@ -84,17 +84,8 @@ if(1){
   emdat_base <- emdat_base %>% 
     mutate(End.Month=replace_na(End.Month,12))
   # Realizamos el mismo procedimieto que cuando habian dias de inicio faltantes
-  # Creacion de la variable <na_end>
-  emdat_base <- emdat_base %>%
-    mutate(na_end = ifelse(is.na(End.Day),1,0))
-  # Cambiar valores <NA> por el ultimo dia del mes
-  emdat_base <- emdat_base %>% 
-    mutate(End.Day = ifelse(is.na(End.Day), 
-                            make_date(End.Year, End.Month, 1) %>% ceiling_date(unit = "month") - lubridate::days(1),
-                            End.Day))
-  emdat_base$End.Day <- ifelse(emdat_base$End.Day > 31, day(as.Date(emdat_base$End.Day)), emdat_base$End.Day)
-  # <replace_na> se utiliza para reemplazar los valores <NA> por elultimo dia del mes
-  # Ahora que se asumieron los dias finales y los meses finales, se procede a crear la fecha de fin del desastre
+  
+  # Crear una variable del fin del desastre
   emdat_base <- emdat_base %>% 
     unite(End.Date, c(End.Year, End.Month, End.Day), sep = "-",remove=FALSE) %>% 
     mutate(End.Date = as.Date(End.Date))
@@ -102,10 +93,25 @@ if(1){
   # Ahora se crea una columna de duracion del evento, que sera la diferencia entre <End.Date> y <Start.Date>
   emdat_base <- emdat_base %>% 
     mutate(Duracion = as.numeric(End.Date - Start.Date))
-  quantile(emdat_base$Duracion, probs = c(seq(from=0.1, to= 0.9, by=0.1),0.95,0.99))
-  # Es posible que la duracion en realidad sea menor, ya que se esta asumiendo el ultimo dia del mes para aquellos de los 
-  # que no se posee informacion
-    
+  
+  # Creacion de la variable <na_end>
+  emdat_base <- emdat_base %>%
+    mutate(na_end = ifelse(is.na(End.Day),1,0))
+  
+  # Creacion de duracion media por tipo de desastre
+  duracion.media <- emdat_base %>% group_by(Disaster.Subgroup) %>% 
+    summarise('Media Duracion' = round(mean(Duracion, na.rm=T)))
+  
+  # Cambiar valores <NA> por la duracion media del tipo de desastre
+  emdat_base <- emdat_base %>% 
+    dplyr::mutate(Duracion = ifelse(is.na(Duracion),unlist(duracion.media[match(Disaster.Subgroup,duracion.media$Disaster.Subgroup), 'Media Duracion']),
+                            Duracion))
+  
+  # Por ultimo, con la duracion ya se puede completar la columna <End.Date>
+  emdat_base <- emdat_base %>% 
+    dplyr::mutate(End.Date = ifelse(is.na(End.Date), Start.Date + Duracion , 
+                                    End.Date))
+
   # Vector con los nombres de paises usados para la generacion de la base de eventos
   if(is.null(unico_pais)){
     paises.usados <- countries 
@@ -121,10 +127,6 @@ if(1){
 # El codigo anterior genera una base de datos con variables:
 #    <Country>    : pais donde sucede el evento
 #    <Start.Date> : fecha de inicio del evento
-
-# Descriptivo base de desastres--------------------------------------------
-emdat_base %>% group_by(Disaster.Subgroup) %>% 
-  summarise('Media Duracion' = mean(Duracion))
 
 # Filtrar la base de eventos para buscar eventos mas significativos -------
 emdat_base <- emdat_base %>% 
@@ -143,7 +145,7 @@ number_lags <- NULL
 base_lagged <- create.lags(base = base_Tommaso,interest.vars = indexes,no.lags = number_lags,AR.m = 20)
 # Parametros event study --------------------------------------------------------------
 
-estimation_windows <- c(200,300,500) #<<<--- No. de dias antes del evento para comenzar la estimacion
+estimation_windows <- c(250,350,500) #<<<--- No. de dias antes del evento para comenzar la estimacion
 for(estimation_start in estimation_windows){
   estimation_end           <- 1    #<<<--- No. dias antes del evento para finalizar la estimacion
   max_abnormal_returns     <- 15   #<<<--- No. dias maximos despues del evento para calcular retorno anormal
@@ -165,33 +167,36 @@ for(estimation_start in estimation_windows){
   
   # Filtrar la base de datos para solamente dejar los eventos mas significativos, y tambien asegurar que dentro de la 
   # ventana de estimacion no hayan otros eventos.
-  umbral.evento   <- 50 #<<<--- Numero de dias minimo entre cada evento. Lo anterior para que no se traslapen los eventos
-  columna.filtrar <- 'Total.Affected' #<<<--- Columna para filtrar la base de eventos 'Total.Affected' o 'Damages'
-  eventos.final <- reducir.eventos(umbral = umbral.evento,base=base_lagged,eventos = eventos_filtrado,
-                                   col.fecha='Start.Date',col.grupo = 'Country',col.filtro = columna.filtrar)
-  
-  # -------------------------- Regresion estimation window ---------------------------------------------
-  
-  # <estimation.event.study> realiza la estimacion por OLS para cada evento en <data.events>. Retorna una lista para cada evento que incluye:
-  #     Dataframe      : retornos observados, estimados y anormales para la ventana de estimacion y ventana de evento. 
-  #     Standard_error : error estandar de los errores de la estimacion por OLS
-  # El objeto de salida de esta funcion sera la base para las pruebas de Wilcoxon y bootstrap
-  
-  # Otras variables exogenas de una base de datos que se quieren incluir. 
-  var_exo <- c("gdp_","fdi_")
-  
-  load.eventslist <- 0     #<<<<-- 1 si se cargan los datos, 0 si se corre la funcion para estimar 
-  if(!load.eventslist){
-    all_events_list <- estimation.event.study(bool.paper = bool_paper, bool.cds=bool_cds,base = base_lagged,data.events = eventos.final,market.returns = "market.returns",
-                                              max.ar = 15,es.start = estimation_start,es.end = estimation_end,add.exo = TRUE,vars.exo = var_exo,GARCH = "sGARCH",
-                                              overlap.events = eventos_filtrado, no.overlap = 4)
-    if(bool_cds){serie <- 'CDS'}else{serie <- 'Indices'}
-    if(promedio.movil){regresor.mercado <- 'PM'}else{regresor.mercado <- 'benchmark'}
-    save(all_events_list, 
-         file=paste0(getwd(),'/Resultados_regresion/',serie,'_tra',umbral.evento,'_est',estimation_start,'_media_',regresor.mercado,'.RData'))
-  }else{
-    load(paste0(getwd(),'/Resultados_regresion/',serie,'_tra',umbral.evento,'_est',estimation_start,'_media_',regresor.mercado,'.RData'))
-  } 
+  umbrales.evento <- c(50,100,200)
+  for(umbral.evento in umbrales.evento){
+    # umbral.evento   <- 50 #<<<--- Numero de dias minimo entre cada evento. Lo anterior para que no se traslapen los eventos
+    columna.filtrar <- 'Total.Affected' #<<<--- Columna para filtrar la base de eventos 'Total.Affected' o 'Damages'
+    eventos.final <- reducir.eventos(umbral = umbral.evento,base=base_lagged,eventos = eventos_filtrado,
+                                     col.fecha='Start.Date',col.grupo = 'Country',col.filtro = columna.filtrar)
+    
+    # -------------------------- Regresion estimation window ---------------------------------------------
+    
+    # <estimation.event.study> realiza la estimacion por OLS para cada evento en <data.events>. Retorna una lista para cada evento que incluye:
+    #     Dataframe      : retornos observados, estimados y anormales para la ventana de estimacion y ventana de evento. 
+    #     Standard_error : error estandar de los errores de la estimacion por OLS
+    # El objeto de salida de esta funcion sera la base para las pruebas de Wilcoxon y bootstrap
+    
+    # Otras variables exogenas de una base de datos que se quieren incluir. 
+    var_exo <- c("gdp_","fdi_")
+    
+    load.eventslist <- 0     #<<<<-- 1 si se cargan los datos, 0 si se corre la funcion para estimar 
+    if(!load.eventslist){
+      all_events_list <- estimation.event.study(bool.paper = bool_paper, bool.cds=bool_cds,base = base_lagged,data.events = eventos.final,market.returns = "market.returns",
+                                                max.ar = 15,es.start = estimation_start,es.end = estimation_end,add.exo = TRUE,vars.exo = var_exo,GARCH = "sGARCH",
+                                                overlap.events = eventos_filtrado, no.overlap = 4)
+      if(bool_cds){serie <- 'CDS'}else{serie <- 'Indices'}
+      if(promedio.movil){regresor.mercado <- 'PM'}else{regresor.mercado <- 'benchmark'}
+      save(all_events_list, 
+           file=paste0(getwd(),'/Resultados_regresion/',serie,'_tra',umbral.evento,'_est',estimation_start,'_media_',regresor.mercado,'.RData'))
+    }else{
+      load(paste0(getwd(),'/Resultados_regresion/',serie,'_tra',umbral.evento,'_est',estimation_start,'_media_',regresor.mercado,'.RData'))
+    } 
+  }
 }
 
 # Hay elementos en <all_events_list> que son <NA> dado que la estimacion no convergio, por lo que es necesario

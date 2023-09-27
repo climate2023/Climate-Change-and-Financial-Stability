@@ -1592,7 +1592,7 @@ estimation.event.study <- function(bool.paper,bool.cds,base, data.events, market
           subset_data_list <- split(subset_data, subset_data$Disaster.Subgroup)
           # Recordemos que del analisis descriptivo, la media de duracion de los desastres geofisicos es 3, mientras que de los hidrologicos es 9
           # y de los meteorologicos es 7
-          df.mediaduracion <- data.frame(c('Geophysical','Hydrological','Meteorological'), c(3,9,7))
+          df.mediaduracion <- data.frame(c('Geophysical','Hydrological','Meteorological'), c(2,8,4))
           colnames(df.mediaduracion) <- c('Tipo.desastre','Media.duracion')
           for(df.m in seq_along(subset_data_list)) {
             for(num in subset_data_list[[df.m]]$indices2) overlap.dummy[num:(num+df.mediaduracion$Media.duracion[df.mediaduracion == names(subset_data_list)[df.m]])] <- 1 
@@ -1606,18 +1606,41 @@ estimation.event.study <- function(bool.paper,bool.cds,base, data.events, market
           tryCatch({
             # Especificacion GARCH
             if(!is.null(overlap.events)) {
-              spec <- ugarchspec(
-                variance.model = list(model = GARCH, garchOrder = c(1, 1)),
-                mean.model = list(
-                  armaOrder = c(p, 0),
-                  # Para la primera iteracion del loop <While> se utilizan los datos de la ventana de estimacion
-                  external.regressors = as.matrix(cbind(base[(inicio_estimacion:fin_estimacion),c(variables_pais,market.returns)], 
-                                                        overlap.dummy[inicio_estimacion:fin_estimacion]))
-                ),
-                distribution.model = "std"
-              )
+              
+              # Asegurar que la dummy tenga valores de 1 y 0, porque si solamente tiene valores de 1 , no va a converger y 
+              # sera necesario rezagarla
+              if(mean(overlap.dummy[inicio_estimacion:fin_estimacion]) == 1){
+                warning('La ventana de estimacion tiene traslape completo con otros eventos')
+              }
+              # El warning va a forzar a la funcion <tryCatch> a rezagar la dummy y correr la siguiente iteracion
+              
+              # Se formula una especificacion de garch teniendo en cuenta que la dummy <overlap.dummy>
+              # tiene datos 0 y 1, ya que si fuese solamente 0, no habría necesidad de la dummy
+              if(mean(overlap.dummy[inicio_estimacion:fin_estimacion])>0){
+                spec <- ugarchspec(
+                  variance.model = list(model = GARCH, garchOrder = c(1, 1)),
+                  mean.model = list(
+                    armaOrder = c(p, 0),
+                    # Para la primera iteracion del loop <While> se utilizan los datos de la ventana de estimacion
+                    external.regressors = as.matrix(cbind(base[(inicio_estimacion:fin_estimacion),c(variables_pais,market.returns)], 
+                                                          overlap.dummy[inicio_estimacion:fin_estimacion]))
+                  ),
+                  distribution.model = "std"
+                )
+              }else{
+                # Creamos una especificacion para el garch sin dummy (en el caso que <dummy.overlap> sea completamente 0)
+                spec <- ugarchspec(
+                  variance.model = list(model = GARCH, garchOrder = c(1, 1)),
+                  mean.model = list(
+                    armaOrder = c(p, 0),
+                    # Para la primera iteracion del loop <While> se utilizan los datos de la ventana de estimacion
+                    external.regressors = as.matrix(cbind(base[(inicio_estimacion:fin_estimacion),c(variables_pais,market.returns)]))
+                  ),
+                  distribution.model = "std"
+                )
+              }
             } else {
-              # sin overlap.dummy
+              # el caso cuando <overlap.dummy> es NULL
               spec <- ugarchspec(
                 variance.model = list(model = GARCH, garchOrder = c(1, 1)),
                 mean.model = list(
@@ -1712,8 +1735,11 @@ estimation.event.study <- function(bool.paper,bool.cds,base, data.events, market
         # Primero comenzamos con el dataframe de retornos, el cual es un objeto xts con los retornos observados, estimados y anormales
         # tanto para la ventana de estimacion como para la ventana de evento
         
-        # La base de datos de variables exogenas durante la ventana de evento en caso que <overlap.events> no sea nula es
-        if(!is.null(overlap.events)) base_ev_window <- cbind(base[(window_event_dates), c(variables_pais, market.returns)],0)
+        # La base de datos de variables exogenas durante la ventana de evento en caso que <overlap.events> no sea nula, y en el caso en que
+        # <overlap.dummy> efectivamente haya entrado como regresora es:
+        if(!is.null(overlap.events) & ncol(spec@model$modeldata$mexdata) == 4) base_ev_window <- cbind(base[(window_event_dates), c(variables_pais, market.returns)],0)
+        # Para el caso en que <overlap.events> no sea nula, pero la dummy no haya entrado como regresora es
+        if(!is.null(overlap.events) & ncol(spec@model$modeldata$mexdata) == 3) base_ev_window <- base[(window_event_dates), c(variables_pais, market.returns)]
         # Lo anterior porque el cuarto regresor es siempre 0 en la ventana de evento. Si hubiese un 1 estaríamos diciendo que se va a pronosticar
         # el efecto de un desastre durante la ventana de evento
         # Por otro lado, si no hay <overlap.events> la base de exogenas durante la ventana de evento seria
