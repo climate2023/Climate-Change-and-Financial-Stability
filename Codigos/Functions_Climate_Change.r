@@ -1268,14 +1268,14 @@ create.lags <- function(base, interest.vars,no.lags=NULL, AR.m, MA.m=0,d=0,bool=
   }
   
   # Reducir la muestra de <base> y <lags_df> para que no contengan valores faltantes
-  base    <- base[complete.cases(base),]
-  lags_df <- lags_df[complete.cases(lags_df),]
+  base.completa <- base[complete.cases(base),]
+  lags_df       <- lags_df[complete.cases(lags_df),]
   
   # Asegurar que las bases tengan el mismo indice
-  base    <- base[index(lags_df),]
-  lags_df <- lags_df[index(base),]
+  base.completa <- base.completa[index(lags_df),]
+  lags_df       <- lags_df[index(base.completa),]
   
-  base_final <- merge(base,lags_df)
+  base_final <- merge(base.completa,lags_df)
   return(base_final)
 }
 
