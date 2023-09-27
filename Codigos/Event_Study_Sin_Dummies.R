@@ -130,9 +130,10 @@ if(1){
 
 # Filtrar la base de eventos para buscar eventos mas significativos -------
 emdat_base <- emdat_base %>% 
-  dplyr::filter(Total.Deaths >= 1000 | No.Injured >= 1000 | Total.Affected >= 50000 | Damages >= 1000000) %>% 
+  dplyr::filter(Total.Deaths >= 1000 | No.Injured >= 1000 | Total.Affected >= 10000 | Damages >= 1000000) %>% 
   dplyr::filter(Disaster.Subgroup %in% c('Geophysical','Hydrological','Meteorological'))
-# Lo anterior siguiendo a Gassebner, Keck, Teh
+# Lo anterior siguiendo a Gassebner, Keck, Teh. No se puede seleccionar 100.000 de total de afectados porque 
+# de ese modo se pierden muchos eventos 
 
 # Agregar rezagos a base de datos -----------------------------------------
 
