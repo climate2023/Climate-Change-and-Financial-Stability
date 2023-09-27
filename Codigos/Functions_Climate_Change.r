@@ -349,7 +349,7 @@ lag_function <- function(base_niveles,ind,AR.m,MA.m,d,bool=TRUE,metodo="CSS",dia
     #Lo colocamos desde <dia_inicial> para cuadrar con el indice de la base de datos principal
     lags_df <- lags_df[paste0(dia_inicial,"/"),]
   }
-
+  
   #Nombres del dataframe de rezagos
   colnames(lags_df) <- paste0(ind,'.l',1:p) 
   
@@ -1033,7 +1033,7 @@ drop.events <- function(data.events,base,estimation.start,max.ar,date.col.name, 
   if(!inherits(data.events$Start.Date,"Date")) {
     stop(paste0(paste0("La columna ",date.col.name)," no es formato fecha."))
   }
-
+  
   # Fecha minima para que la estimacion pueda empezar desde <estimation.start> dias previos al evento
   Fecha_minima_estimacion <- index(base)[estimation.start+1]
   # Fecha minima para que se pueda realizar el calculo de retornos anormales para <max.ar>+1 dias
@@ -1438,7 +1438,7 @@ if(0){
 #---------------------------------------------------------------------------------------#
 
 estimation.event.study <- function(bool.paper,bool.cds,base, data.events, market.returns, max.ar, es.start, es.end, add.exo =FALSE,
-                                    vars.exo=NULL, GARCH=NULL, overlap.events = NULL, no.overlap = 0){
+                                   vars.exo=NULL, GARCH=NULL, overlap.events = NULL, no.overlap = 0){
   
   events.list <- list() # lista que contendra todas la informacion del modelo
   
@@ -1478,7 +1478,7 @@ estimation.event.study <- function(bool.paper,bool.cds,base, data.events, market
     }
     overlap.events$indices2 <- indices2
   }
-
+  
   for(i in 1:nrow(data.events)){
     # Primero se encuentra a que dato le corresponde el dia del evento, y el dia final de la ventana de evento es el dia del evento
     # mas <max.ar>
@@ -1586,10 +1586,17 @@ estimation.event.study <- function(bool.paper,bool.cds,base, data.events, market
           # <subset_data> es un data.frame que contiene todos los desastres de <overlap.events> que se encuentran anterior a nuestro desastre
           # de interes. La idea entonces es generar una variable dummy donde 1 sea en los dias que hubo uno de estos eventos
           # con el fin de controlar el posible confounding effect. 
-          # Tambien seria interesante agregar a la dummy ciertos dias despues de cada desastre en <subset_data>, para lo cual se utiliza
-          # el parametro no.overlap
+          # Tambien seria interesante agregar a la dummy ciertos dias despues de cada desastre en <subset_data>, para lo cual se utilizara
+          # la media de duracion por el tipo de desastre
           overlap.dummy <- rep(0, fin_estimacion)
-          for(num in subset_data$indices2) overlap.dummy[num:(num+no.overlap)] <- 1 
+          subset_data_list <- split(subset_data, subset_data$Disaster.Subgroup)
+          # Recordemos que del analisis descriptivo, la media de duracion de los desastres geofisicos es 3, mientras que de los hidrologicos es 9
+          # y de los meteorologicos es 7
+          df.mediaduracion <- data.frame(c('Geophysical','Hydrological','Meteorological'), c(3,9,7))
+          colnames(df.mediaduracion) <- c('Tipo.desastre','Media.duracion')
+          for(df.m in seq_along(subset_data_list)) {
+            for(num in subset_data_list[[df.m]]$indices2) overlap.dummy[num:(num+df.mediaduracion$Media.duracion[df.mediaduracion == names(subset_data_list)[df.m]])] <- 1 
+          }
           # <overlap.dummy> es del tamaño de <fin_estimacion>, por lo que en la estimacion se restringira a <inicio_estimacion>- <fin_estimacion>
         }
         
@@ -1870,7 +1877,7 @@ wilcoxon.jp.test <- function(data.list,es.window.length,ev.window.length,ev.wind
 #---------------------------------------------------------------------------------------#
 
 bootstrap_CT <- function(data.list,market.returns,es.window.length,ev.window.length,no.simul){ 
- standardized_cars <- c()
+  standardized_cars <- c()
   for(element in data.list){
     # Calculo de las fechas de ventana de estimacion y de evento para el evento relacionado con <element>
     # Como el objeto <data.list> viene de la funcion <estimation.event.study>, tiene el objeto $Dataframe$Abnormal
@@ -1888,7 +1895,7 @@ bootstrap_CT <- function(data.list,market.returns,es.window.length,ev.window.len
     market_event      <- market.returns[event_dates]
     # Error estandar siguiendo C&T (2008)
     prediction_error  <- (element@error_estandar/sqrt(ev.window.length))*(sqrt((1) + (ev.window.length/es.window.length) + 
-                         (((ev.window.length*((mean(market_event)-mean(market_estimation))^2))/(sum((market_estimation-mean(market_estimation))^2))))))
+                                                                                 (((ev.window.length*((mean(market_event)-mean(market_estimation))^2))/(sum((market_estimation-mean(market_estimation))^2))))))
     
     # Generar el car promedio estandarizado al dividir entre el error estandar estimado
     standardized_car  <- averaged_car/prediction_error
@@ -2168,7 +2175,7 @@ car_pagnottoni = function(coeffs,indices,interest.vars,average){
   rownames(car_matrix) <- 0:(nrow(car_matrix)-1)
   if(average == FALSE){
     base::plot(x=rownames(car_matrix),y=car_matrix[,1],type="l",main=plot_title,xlab="Dia relativo al evento",ylab="Retorno Anormal Acumulado (CAR)",
-                           ylim=c(min(car_matrix),max(car_matrix)))
+               ylim=c(min(car_matrix),max(car_matrix)))
     for(i in 2:ncol(car_matrix)){
       lines(x=rownames(car_matrix), y = car_matrix[,i],type="l")
     }
@@ -2455,7 +2462,7 @@ volatility_event_study = function(base.evento, date.col.name, geo.col.name, base
     }else{
       cat('Las fechas del modelo GARCH corresponden con la ventana de estimacion','\n')
     }
-
+    
     gof_p_values        <- gof(fit,c(20,30,40,50))[,"p-value(g-1)"]
     names(gof_p_values) <- c("20 bins","30 bins","40 bins","50 bins")
     if(any(as.logical(gof_p_values < 0.05))) warning("Los residuales estandarizados no siguen la distribucion seleccionada.")
@@ -2534,7 +2541,7 @@ bootstrap.volatility <- function(volatility.list,es.window.length,ev.window.leng
     stop('La lista contiene elementos que no fueron creados con la funcion estimation.event.study.')
   }
   
- # Calculo Mt y CAV --------------------------------------------------------
+  # Calculo Mt y CAV --------------------------------------------------------
   # El calculo de tanto Mt como CAV sale de Bourdeau (2017)
   # Por simplicidad de calculos, guardar los residuales observados (epsilon) y los pronosticos de la varianza condicional
   epsilon      <- data.frame(purrr::map(volatility.list, ~ coredata(.x@residuales_evento)))[1:ev.window.length,]
