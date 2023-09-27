@@ -1438,7 +1438,7 @@ if(0){
 #---------------------------------------------------------------------------------------#
 
 estimation.event.study <- function(bool.paper,bool.cds,base, data.events, market.returns, max.ar, es.start, es.end, add.exo =FALSE,
-                                    vars.exo=NULL, GARCH=NULL){
+                                    vars.exo=NULL, GARCH=NULL, overlap.events = NULL, no.overlap = 0){
   
   events.list <- list() # lista que contendra todas la informacion del modelo
   
@@ -1450,29 +1450,45 @@ estimation.event.study <- function(bool.paper,bool.cds,base, data.events, market
   # Si GARCH = FALSE: Por cada evento se hace una regresion OLS con la muestra [-<es.start>,-<es.end>] dias antes del evento para estimar alfa, beta 
   # Si GARCH = TRUE:  Por cada evento se hace una regresion con ML para estimar la media y el GARCH con la muestra [-<es.start>,-<es.end>] dias 
   # antes del evento para estimar alfa, beta
+  
+  # Primero se crea una columna de los indices del <Start.Date> de cada desastre respectivo a <base>
+  indices2 <- c()
+  for (i in 1:nrow(data.events)) {
+    indices2[i] <- match(data.events[i,'Start.Date'],index(base))
+    if(is.na(indices2[i])){
+      for(j in 1:nrow(base)){
+        indices2[i] <- match(data.events[i,'Start.Date'] + j, index(base))
+        if(!is.na(indices2[i])) break
+      }
+    }
+  }
+  data.events$indices2 <- indices2
+  
+  # Realizar lo mismo para <overlap.events> , si no es <NULL>
+  if(!is.null(overlap.events)){
+    indices2 <- c()
+    for (i in 1:nrow(overlap.events)) {
+      indices2[i] <- match(overlap.events[i,'Start.Date'],index(base))
+      if(is.na(indices2[i])){
+        for(j in 1:nrow(base)){
+          indices2[i] <- match(overlap.events[i,'Start.Date'] + j, index(base))
+          if(!is.na(indices2[i])) break
+        }
+      }
+    }
+    overlap.events$indices2 <- indices2
+  }
+
   for(i in 1:nrow(data.events)){
     # Primero se encuentra a que dato le corresponde el dia del evento, y el dia final de la ventana de evento es el dia del evento
     # mas <max.ar>
-    
     pais        <- as.character(data.events[i,'Country']) # Establece el pais donde sucedio el evento
     index_names <- matching(pais,bool.cds,bool.paper) # Nombre de la variable del <pais> con la que se calculan retornos anormales (ej: stock-index del pais)
     # Detener la funcion si no se tiene indice para el pais especificado
     if(is.null(index_names)) stop(paste0("No hay indice para el pais: ", pais))
-    suppressWarnings({
-      # Loop que genera la posicion de desastre respecto al indice de <asset.returns>. Si la fecha del evento no esta en el indice de 
-      # <asset.returns>,se revisara hasta <nrow(base)> dias despues del desastre para ser considerado como el inicio del evento
-      for(j in 0:nrow(base)){
-        if((data.events[i,'Start.Date']+j) %in% index(base[,index_names])){ 
-          # Generacion del dia del desastre (o j dias despues del desastre, si el dia del desastre no esta en el indice de 
-          # <asset.returns>)
-          event_start_date  <- data.events[i,'Start.Date']+j
-          # Generacion de la posicion del dia de desastre en el indice de fechas de <asset.returns>
-          # (o j dias despues del desastre, si el dia del desastre no esta en el indice de <asset.returns>)
-          event_start_index <- which(index(base[,index_names])==event_start_date)
-          break
-        }
-      }
-    })
+    # Seleccionar indice y fecha del desastre
+    event_start_index <- data.events[i,'indices2']
+    event_start_date  <- data.events[i,'Start.Date']
     
     if(is.null(GARCH)){
       # Regresion por OLS del modelo de mercado
@@ -1561,20 +1577,51 @@ estimation.event.study <- function(bool.paper,bool.cds,base, data.events, market
         fin_estimacion      <- event_start_index - 1
         inicio_estimacion   <- event_start_index - es.start
         
+        if(!is.null(overlap.events)) {
+          # Ver si hay eventos en la base completa, es decir <overlap.events> por dentro de la ventana de estimacion del desastre
+          subset_data <- subset(overlap.events, indices2 <= fin_estimacion)
+          # Una anotacion importante es que es posible que el desastre de interes este dentro de <subset_data>, dependiendo del fin
+          # de la ventana de estimacion, por lo cual se realiza <anti_join> solo para asegurar que no este dentro de <subset_data>
+          subset_data <- suppressMessages(anti_join(subset_data, data.events[i,]))
+          # <subset_data> es un data.frame que contiene todos los desastres de <overlap.events> que se encuentran anterior a nuestro desastre
+          # de interes. La idea entonces es generar una variable dummy donde 1 sea en los dias que hubo uno de estos eventos
+          # con el fin de controlar el posible confounding effect. 
+          # Tambien seria interesante agregar a la dummy ciertos dias despues de cada desastre en <subset_data>, para lo cual se utiliza
+          # el parametro no.overlap
+          overlap.dummy <- rep(0, fin_estimacion)
+          for(num in subset_data$indices2) overlap.dummy[num:(num+no.overlap)] <- 1 
+          # <overlap.dummy> es del tamaño de <fin_estimacion>, por lo que en la estimacion se restringira a <inicio_estimacion>- <fin_estimacion>
+        }
+        
         while (TRUE) {
           warning_dummy <- FALSE
           # <tryCatch> corre el codigo, pero si encuentra algun warning o error, realiza un codigo especifico.
           tryCatch({
-            # Especificacion apARCH
-            spec <- ugarchspec(
-              variance.model = list(model = GARCH, garchOrder = c(1, 1)),
-              mean.model = list(
-                armaOrder = c(p, 0),
-                # Para la primera iteracion del loop <While> se utilizan los datos de la ventana de estimacion
-                external.regressors = as.matrix(base[(inicio_estimacion:fin_estimacion),c(variables_pais,market.returns)])
-              ),
-              distribution.model = "std"
-            )
+            # Especificacion GARCH
+            if(!is.null(overlap.events)) {
+              spec <- ugarchspec(
+                variance.model = list(model = GARCH, garchOrder = c(1, 1)),
+                mean.model = list(
+                  armaOrder = c(p, 0),
+                  # Para la primera iteracion del loop <While> se utilizan los datos de la ventana de estimacion
+                  external.regressors = as.matrix(cbind(base[(inicio_estimacion:fin_estimacion),c(variables_pais,market.returns)], 
+                                                        overlap.dummy[inicio_estimacion:fin_estimacion]))
+                ),
+                distribution.model = "std"
+              )
+            } else {
+              # sin overlap.dummy
+              spec <- ugarchspec(
+                variance.model = list(model = GARCH, garchOrder = c(1, 1)),
+                mean.model = list(
+                  armaOrder = c(p, 0),
+                  # Para la primera iteracion del loop <While> se utilizan los datos de la ventana de estimacion
+                  external.regressors = as.matrix(base[(inicio_estimacion:fin_estimacion),c(variables_pais,market.returns)])
+                ),
+                distribution.model = "std"
+              )
+              
+            }
             fit <- ugarchfit(spec, data = base[(inicio_estimacion:fin_estimacion), name], solver = "hybrid")
             if(is.na(persistence(fit)) | persistence(fit)>=1) warning('El GARCH no es estacionario') # Lo anterior porque con un evento la persistencia era 11, 
             # y el forecast de la volatilidad daba numeros muy grandes
@@ -1658,8 +1705,12 @@ estimation.event.study <- function(bool.paper,bool.cds,base, data.events, market
         # Primero comenzamos con el dataframe de retornos, el cual es un objeto xts con los retornos observados, estimados y anormales
         # tanto para la ventana de estimacion como para la ventana de evento
         
-        # La base de datos de variables exogenas durante la ventana de evento es
-        base_ev_window <- base[(window_event_dates), c(variables_pais, market.returns)]
+        # La base de datos de variables exogenas durante la ventana de evento en caso que <overlap.events> no sea nula es
+        if(!is.null(overlap.events)) base_ev_window <- cbind(base[(window_event_dates), c(variables_pais, market.returns)],0)
+        # Lo anterior porque el cuarto regresor es siempre 0 en la ventana de evento. Si hubiese un 1 estaríamos diciendo que se va a pronosticar
+        # el efecto de un desastre durante la ventana de evento
+        # Por otro lado, si no hay <overlap.events> la base de exogenas durante la ventana de evento seria
+        if(is.null(overlap.events)) base_ev_window <- base[(window_event_dates), c(variables_pais, market.returns)]
         
         # Creacion series <observed>, <predicted> y <abnormal> solamente para la ventana de estimacion y la ventana de evento
         observed <- rbind(base[((inicio_estimacion+warning_count):(fin_estimacion+warning_count)),name],base[window_event_dates,name])
@@ -2781,6 +2832,7 @@ reducir.eventos <- function(umbral, base, eventos, col.fecha, col.grupo, col.fil
   eventos.separado <- lapply(eventos.separado, function(df) {
     df <- df[!is.na(df[[col.filtro]]), ]
     df <- df[order(df[[col.filtro]], decreasing = TRUE), ]
+    return(df)
   })
   
   # Guardar solamente los df que contegan al menos un evento

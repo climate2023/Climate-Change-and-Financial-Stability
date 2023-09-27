@@ -122,35 +122,16 @@ if(1){
 #    <Country>    : pais donde sucede el evento
 #    <Start.Date> : fecha de inicio del evento
 
+# Descriptivo base de desastres--------------------------------------------
+emdat_base %>% group_by(Disaster.Subgroup) %>% 
+  summarise('Media Duracion' = mean(Duracion))
 
 # Filtrar la base de eventos para buscar eventos mas significativos -------
+emdat_base <- emdat_base %>% 
+  dplyr::filter(Total.Deaths >= 1000 | No.Injured >= 1000 | Total.Affected >= 50000 | Damages >= 1000000) %>% 
+  dplyr::filter(Disaster.Subgroup %in% c('Geophysical','Hydrological','Meteorological'))
+# Lo anterior siguiendo a Gassebner, Keck, Teh
 
-# Mas adelante se muestra que la variable con menos observaciones faltantes es <Total.Affected> por lo cual
-# sera utilizada para medir la signifcancia. Se remueven valores <NA> y menores a 10000
-filtro.significancia <- T # <T> cuando se quiere filtrar apriori por aquellos eventos con mas de 10000 afectados, <F> si no se desea
-if(filtro.significancia){
-  emdat_base <- emdat_base %>% 
-    dplyr::filter(!is.na(Total.Affected)) %>% 
-    dplyr::filter(Total.Affected>=10000)
-}
-# Este filtrado se realiza post estimacion
-if(0){
-  # Siguiendo el paper de (Cavallo, Becerra y Acevedo. p 163) se divide la base de datos de desastres
-  # Generando una para incluir solamente los desastres hidrologicos, meteorologicos y geofisicos
-  emdat_filtrado1 <- emdat_base %>% 
-    dplyr::filter(Disaster.Subgroup%in% c('Meteorological', 'Hydrological','Geophysical')) %>% 
-    dplyr::filter(na_start==0)
-  sort(apply(emdat_filtrado1,MARGIN = 2,function(x) round((((sum(is.na(x))))/length(x))*100,1)),decreasing=T)
-  # La variable con menos datos faltantes de <emdat_filtrado1> con la que podemos medir la significancia del 
-  # desastre es <Total.Affected>, a la que solo le falta 12.2% de los datos 
-  # Aparte, en el mismo paper, realizan los procedimientos solamente para tres eventos en especifico: tormentas, 
-  # terremotos e inundaciones
-  emdat_filtrado2 <- emdat_base %>% 
-    dplyr::filter(Disaster.Type %in% c('Storm','Earthquake','Flood')) %>% 
-    dplyr::filter(na_start==0)
-  sort(apply(emdat_filtrado2,MARGIN = 2,function(x) round((((sum(is.na(x))))/length(x))*100,1)),decreasing=T)
-  # Para <emdat_filtrado2> tambien es <Total.Affected> de la cual solamente falta el 8.7% de los datos
-}
 # Agregar rezagos a base de datos -----------------------------------------
 
 # Se usa la funcion <create.lags>, que toma una base de datos junto a unas variables de interes. Retorna la base de datos inicial junto con 
@@ -199,22 +180,17 @@ for(estimation_start in estimation_windows){
   # Otras variables exogenas de una base de datos que se quieren incluir. 
   var_exo <- c("gdp_","fdi_")
   
-  load.eventslist <- 1     #<<<<-- 1 si se cargan los datos, 0 si se corre la funcion para estimar 
-  saved.day = "2023-08-10" #<<<--- fecha del save() en formato yyyy-mm-dd
-  # saved.day = '2023-07-25' tiene los resultados al establecer <umbral.evento>=250 y <columna.filtrar> = 'Total.Affected'
-  # saved.day = '2023-08-01' tiene los resultados al establecer <umbral.evento>=200 y <columna.filtrar> = 'Damages'
-  # saved.day = '2023-08-08' tiene los resultados al establecer <umbral.evento>=50 y <columna.filtrar>='Total.Affected'
-  # saved.day = '2023-08-10' tiene los resultados con stocks
+  load.eventslist <- 0     #<<<<-- 1 si se cargan los datos, 0 si se corre la funcion para estimar 
   if(!load.eventslist){
     all_events_list <- estimation.event.study(bool.paper = bool_paper, bool.cds=bool_cds,base = base_lagged,data.events = eventos.final,market.returns = "market.returns",
-                                              max.ar = 15,es.start = estimation_start,es.end = estimation_end,add.exo = TRUE,vars.exo = var_exo,GARCH = "sGARCH")
+                                              max.ar = 15,es.start = estimation_start,es.end = estimation_end,add.exo = TRUE,vars.exo = var_exo,GARCH = "sGARCH",
+                                              overlap.events = eventos_filtrado, no.overlap = 4)
     if(bool_cds){serie <- 'CDS'}else{serie <- 'Indices'}
     if(promedio.movil){regresor.mercado <- 'PM'}else{regresor.mercado <- 'benchmark'}
     save(all_events_list, 
          file=paste0(getwd(),'/Resultados_regresion/',serie,'_tra',umbral.evento,'_est',estimation_start,'_media_',regresor.mercado,'.RData'))
-    # save(all_events_list,file=paste0(paste0('Resultados_sin_dummies_',saved.day),'.RData'))
   }else{
-    load(paste0(paste0('Resultados_sin_dummies_',saved.day),'.RData'))
+    load(paste0(getwd(),'/Resultados_regresion/',serie,'_tra',umbral.evento,'_est',estimation_start,'_media_',regresor.mercado,'.RData'))
   } 
 }
 
@@ -368,18 +344,16 @@ for(estimation_vol_start in estimation_windows){
                                    col.fecha='Start.Date',col.grupo = 'Country',col.filtro = columna.filtrar.vol)
   
   load.volatility <- 1           #<<<<-- 1 si se cargan los resultados de volatilidad, 0 si es necesario correr el codigo
-  last.saved.day  <-"2023-07-24" #<<<--- fecha del save() en formato yyyy-mm-dd (resultados con CDS estan el 8 de agosto. el 10 de agosto esta con indices)
   if(!load.volatility){
       volatility_results <- volatility_event_study(base.evento = eventos.volatilidad,date.col.name = "Start.Date",geo.col.name = "Country",
                                         base.vol = base_Tommaso,interest.vars = indexes,num_lags = NULL,es.start=estimation_vol_start,
                                         len.ev.window = vol_ev_window,var.exo="market.returns",var.exo.pais = c("gdp","fdi"),
                                         bool.cds = bool_cds,bool.paper = bool_paper,garch = 'sGARCH')
-      # save(volatility_results,file=paste0(paste0('Resultados_Volatilidad_',last.saved.day),'.RData'))
       if(bool_cds){serie <- 'CDS'}else{serie <- 'Indices'}
       if(promedio.movil){regresor.mercado <- 'PM'}else{regresor.mercado <- 'benchmark'}
       save(volatility_results, 
            file=paste0(getwd(),'/Resultados_regresion/',serie,'_tra',umbral.evento.vol,'_est',estimation_vol_start,'_varianza_',regresor.mercado,'.RData'))
-  }else load(paste0(paste0('Resultados_Volatilidad_',last.saved.day),'.RData'))
+  }else load(paste0(getwd(),'/Resultados_regresion/',serie,'_tra',umbral.evento.vol,'_est',estimation_vol_start,'_varianza_',regresor.mercado,'.RData'))
 }
 # Eliminar objetos NA
 volatility_results <- purrr::discard(volatility_results,is.na)

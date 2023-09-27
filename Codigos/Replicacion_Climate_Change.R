@@ -575,13 +575,7 @@ base_datos <- merge(base_datos, Crecimiento_PIB, Crecimiento_FDI)
 # if(0) dado que se utilizo el comando <save> para guardar los modelos. Los elementos guardados seran <models_disasters_list> y 
 # <resid_disasters_list>, que incluyen por un lado los modelos estimados y por el otro los residuales.
 # ----COLOCAR <if(1)> SI SE DESEA ESTIMAR EL MODELO ----#
-load.SUR  = 1            #<<<<-- 1 si se carga el SUR inicial, 0 si se corre y salva el SUR inicial
-# if(0) porque se va a guardar de modo distinto de ahora en adelante, no por el dia en que se corrio el SUR
-if(0){if(bool_cds){
-  saved.day = "2023-08-01" #<<<--- fecha del save() en formato yyyy-mm-dd
-}else{
-  saved.day = "2023-08-09"
-}}
+load.SUR  = 1           #<<<<-- 1 si se carga el SUR inicial, 0 si se corre y salva el SUR inicial
 if(bool_cds){tipo.serie <- 'cds'}else{tipo.serie <- 'indices'}
 if(promedio.movil){market <- 'PM' }else{market <- 'benchmark'}
 if(!load.SUR){
@@ -609,9 +603,8 @@ if(!load.SUR){
   # 1. En el objeto <Resultados_Desastres_today()> se guardan elementos claves para poder graficar, incluyendo
   # los resultados de las regresion SUR
   save(coefficients_disasters_list, resid_disasters_list, fitted_models, Retornos,
-       file=paste0('Resultados_Desastres_',tipo.serie,'_',market,'.RData')) 
-} else load(paste0('Resultados_Desastres_',tipo.serie,'_',market,'.RData')) #del save 1.
-# "2023-08-09" tiene los datos de los stocks mientras que "2023-08-01" tiene datos de CDS
+       file=paste0('Resultados_SUR/Resultados_Desastres_',tipo.serie,'_',market,'.RData')) 
+} else load(paste0('Resultados_SUR/Resultados_Desastres_',tipo.serie,'_',market,'.RData')) #del save 1.
 
 # Segunda regresion, por paises en vez de por tipo de desastre ------------
 
@@ -658,13 +651,6 @@ for (pais in 1:length(paises)){
 #  save() con el fin de no tener que correr siempre esta estimacion, por lo cual se usa el if(0).
 # ----COLOCAR <if(1)> SI SE DESEA ESTIMAR EL MODELO por paises ----#
 load.SURpaises = 1       #<<<--- 1 si se carga el SUR paises, 0 si se corre y salva el SUR paises 
-# if(0) porque ahora se guardan de una manera distinta
-if(0){if(bool_cds){
-  saved.day = "2023-08-01" #<<<--- fecha del save() en formato yyyy-mm-dd
-}else{
-  saved.day = "2023-08-09"
-}}
-
 if(!load.SURpaises){
   ## Regresion con las dummies por pais. Es importante resaltar que en este caso <paises> indica el pais en el que sucedio el desastre, 
   #  mientras que <countries> indica el pais donde esta el indice (Ejemplo de <countries>: 'Brazil' que corresponde a 'Bovespa') 
@@ -695,15 +681,15 @@ if(!load.SURpaises){
   saved.day = today()  #<<<--- dia del <save>, formato yyyy-mm-dd
   # 1. En el objeto Resultados_Desastres_today() se guardan elementos claves para poder graficar, incluyendo
   # los resultados de las dos regresiones SUR
-  save(coefficients_countries_list,file=paste0('Resultados_Desastres_Paises_',tipo.serie,'_',market,'.RData')) 
+  save(coefficients_countries_list,file=paste0('Resultados_SUR/Resultados_Desastres_Paises_',tipo.serie,'_',market,'.RData')) 
   # 2. En el objeto Residuos_paises_today() se guardan los residuos de la segunda regresion (por pais), los cuales son muy 
   # pesados y no se pueden cargar
-  save(resid_countries_list, file=paste0('Residuos_paises_',tipo.serie,'_',market,'.RData'))
+  save(resid_countries_list, file=paste0('Resultados_SUR/Residuos/Residuos_paises_',tipo.serie,'_',market,'.RData'))
 } else{
-  load(paste0('Resultados_Desastres_Paises_',tipo.serie,'_',market,'.RData')) #del save 1. 
-  #load(paste0('Residuos_paises_',tipo.serie,'_',market,'.RData'))  ## del save 2. Solo puede correrlo JP, ya que los residuos estsn en su PC y  pesan demasiado para mandarlos por github
+  load(paste0('Resultados_SUR/Resultados_Desastres_Paises_',tipo.serie,'_',market,'.RData')) #del save 1. 
+  # load(paste0('Resultados_SUR/Residuos/Residuos_paises_',tipo.serie,'_',market,'.RData'))  ## del save 2. 
+  # Solo puede correrlo JP, ya que los residuos estsn en su PC y  pesan demasiado para mandarlos por github
 }
-# "2023-08-09" tiene los datos de los stocks mientras que "2023-08-01" tiene datos de CDS
 
 # Test de Wilcoxon --------------------------------------------------------
 

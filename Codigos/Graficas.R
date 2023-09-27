@@ -1,3 +1,77 @@
+############# FALTA ARREGLAR EL CODIGO PARA QUE GRAFIQUE CDS / INDICES MSCI /INDICES PM
+if(1){
+  if(Sys.info()["sysname"]=='Windows') Sys.setlocale("LC_TIME","English")
+  
+  rm(list = ls())
+  if (Sys.info()["sysname"]=='Windows')  setwd('C:/Users/jpber/OneDrive/Documents/Codigo_compartido_Melo/Climate_Change_and_Financial_Stability/Climate-Change-and-Financial-Stability')
+  if (Sys.info()["sysname"]!='Windows')  setwd('/Users/lumelo/archivos/Climate-Change-and-Financial-Stability/Github/Climate-Change-and-Financial-Stability')
+  
+  cat("\014")
+  #
+  # Cargar librerias --------------------------------------------------------
+  
+  library(tidyverse)
+  library(xts)
+  library(timeDate)
+  library(zoo)
+  library(tempdisagg)
+  library(tsbox)
+  library(quantmod)
+  library(timeSeries)
+  library(forecast)
+  library(nlme)
+  library(seasonal)   
+  library(openxlsx)
+  library(urca)
+  library(fable)
+  library(lmtest)
+  library(moments)
+  library(stargazer)
+  library(Hmisc)
+  library(scales)
+  library(vars)
+  library(smoots)
+  library(dynlm)
+  library(systemfit)
+  library(ks)
+  library(knitr)
+  library(gridExtra)
+  library(stringr)
+  library(maps)
+  library(mapproj)
+  library(ggthemes)
+  library(tmap)
+  library(sf)
+  library(ggsci)
+  library(classInt)
+  library(gnFit)
+  library(rugarch)
+  library(knitr)
+  library(kableExtra)
+  library(janitor) # Para manejo de tablas descriptivas
+  library(xtable)  # Para exportar tablas a latex 
+  library(RColorBrewer)
+  library(tools)
+  library(writexl)  # Para crear excel
+  library(readxl)
+  library(bizdays);library('RQuantLib') # Revisar si las series contienen dias festivos
+  
+  # Cargar funciones --------------------------------------------------------
+  
+  source(paste0(getwd(),'/Codigos/Functions_Climate_Change.r')) # Source de las funciones
+}
+
+## Parametros
+no.rezagos.de.desastres <- 15     #<<<--- Numero de rezagos de los desastres <w> (i.e. t0, t1, ..., tw)
+tipo.serie              <- 'cds'  #<<<--- Puede ser 'cds' o 'indices
+market                  <- 'PM'   #<<<--- Puede ser 'PM' o 'benchmark', pero si tenemos CDS solamente puede ser PM
+
+if(tipo.serie == 'cds') indexes     <- c('CDS_Brazil','CDS_Chile','CDS_China','CDS_Colombia','CDS_Indonesia','CDS_Korea',
+                                      'CDS_Malaysia','CDS_Mexico','CDS_Peru','CDS_SouthAfrica','CDS_Turkey') #<<<--- Lista de los indices analizados. 
+if(tipo.serie == 'indices') indexes <- c('BIST100','Bovespa','ChinaA50','JSX','KOSPI','S.PBMVIPC','S.PCLXIPSA','SouthAfricaTop40',
+                                                 'IGBVL','KLCI','COLCAP') # Nombre indices para el paper. JSX es el de Jakarta
+# Cargar resultados
+load(paste0('Resultados_SUR/Resultados_Desastres_',tipo.serie,'_',market,'.RData'))
 
 ### CODIGO PARA GRAFICAS
 
@@ -47,7 +121,6 @@ densidad_CAR_met <- densidad_CAR(coef_vec_fitsur_Meteorological,indexes)
 ### =============================== Graficas de retornos anormales ==================================
 
 #Ya con las densidades de los retornos acumulados y de las dummies t_0, t_1, ..., t_4 podemos graficarlas
-
 
 labels <- c("Biological","Climatological","Geophysical","Hydrological","Meteorological")  #<<<--- leyendas del grafico
 colors <- c("blue", "tomato", "orange", "darkorchid4", "green")   #<<<--- colores que usara la grafica
