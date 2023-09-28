@@ -80,7 +80,7 @@ directorio.saved        <- paste0(getwd(),'/Resultados_regresion/')
 directorio.guardar      <- paste0(directorio.saved,'Tablas/')
 tipo.serie              <- 'Indices'   #<<<--- Puede ser 'CDS' o 'Indices'  
 tipo.estudio            <- 'media' #<<<--- Puede ser de 'media' o 'varianza'
-regresor.mercado        <- 'PM'    #<<<--- Retornos de mercado 'PM' es promedio movil y 'benchmark' es el retorno MSCI Emerging Markets
+regresor.mercado        <- 'benchmark'    #<<<--- Retornos de mercado 'PM' es promedio movil y 'benchmark' es el retorno MSCI Emerging Markets
 tipos.desastre.eliminar <- c('Biological','Climatological') #<<<--- NULL si no se desea eliminar ningun tipo de desastre 
 paises.resultados       <- countries # Seleccionar los paises sobre los cuales se quiere hacer el analisis de resultados. <countries> si se desea
 # de todos los paises de los que se tiene informacion
@@ -94,8 +94,8 @@ max_abnormal_returns     <- 15   #<<<--- No. dias maximos despues del evento par
 length_car_window        <- 15   #<<<--- Ventana para calcular el CAR (por ejemplo 5 significa [0,+5], donde 0 es el dia del evento)
 length_event_window      <- length_car_window + 1 # Longitud ventana de evento es 1 mas <length_car_window>
 
-ventanas.estimacion      <- c('200','300','500')   #<<<--- Puede ser 200, 300 o 500   (Importante que sea string)
-ventanas.traslape        <- c('50','100','200')   #<<<--- Puede ser 50, 100 o 200   (Importante que sea string)
+ventanas.estimacion      <- c('250','350','500')   #<<<--- Puede ser 250, 350 o 500   (Importante que sea string)
+ventanas.traslape        <- c('50','100','150')   #<<<--- Puede ser 50, 100 o 150   (Importante que sea string)
 
 for(ventana.estimacion in ventanas.estimacion){
   for(ventana.traslape in ventanas.traslape){

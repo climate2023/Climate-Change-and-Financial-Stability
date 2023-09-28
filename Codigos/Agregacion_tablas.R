@@ -70,9 +70,9 @@ if(1){
 serie             <- 'Indices'      #<<<--- puede ser 'Indices' o 'CDS'
 tipo.estudio      <- 'media'     #<<<--- puede ser 'media' o 'varianza'
 regresor.mercado  <- 'benchmark'    #<<<--- puede ser 'PM' o 'benchmark', para CDS todavia no hay benchmark
-umbrales.evento   <- c(50,100,200)  #<<<--- puede ser 50 100 o 200
-if(tipo.estudio=='media') es.windows <- c(200,300,500) #<<<--- Para media puede ser 200, 300 o 500. Para varianza solamente 500
-if(tipo.estudio=='varianza') es.windows <- c(500,750,1000)
+umbrales.evento   <- c(50,100,150)  #<<<--- puede ser 50 100 o 150
+if(tipo.estudio=='media') es.windows <- c(250,350,500) #<<<--- Para media puede ser 250, 350 o 500.
+if(tipo.estudio=='varianza') es.windows <- c(500,750,1000) #<<<--- Para media puede ser 500, 750 o 1000.
 columnas.tabla    <- 'paistipodesastre' #<<<--- Las tablas de la media estan guardadas tanto por tipo de desastre como por pais
 # <columnas.tabla> toma el valor de 'tipodesastre' o 'pais'. Tambien estan guardadas por 'ambas, en cuyo caso <columnas.tabla> toma el valor
 # de 'paistipodesastre'
@@ -83,7 +83,7 @@ lista.wilcoxon  <- list()
 numero.eventos.wilcoxon <- list()
 lista.bmp       <- list()
 lista.bootstrap <- list()
-indice.lista   <- 0
+indice.lista    <- 0
 for(i in seq_along(umbrales.evento)){
   umbral.del.evento <- umbrales.evento[i]
   for(j in seq_along(es.windows)){
@@ -146,14 +146,14 @@ if(tipo.estudio == 'media'){
     dataframe.wil     <- purrr::map_dfc(lista.interes, ~.x[,nombre.columna])
     numero.eventos    <- purrr::map(numero.eventos.wilcoxon, ~.x[nombre.columna])
     numero.eventos    <- unlist(lapply(numero.eventos, function(x) as.character(ifelse(is.na(x), '', x))))
-    dataframe.wil200  <- dataframe.wil[,grep('Estimacion_200',colnames(dataframe.wil))] # Escoger los datos que se tienen para estimacion con 200 dias
-    dataframe.wil300  <- dataframe.wil[,grep('Estimacion_300',colnames(dataframe.wil))] # Escoger los datos que se tienen para estimacion con 300 dias
-    dataframe.wil500  <- dataframe.wil[,grep('Estimacion_500',colnames(dataframe.wil))] # Escoger los datos que se tienen para estimacion con 500 dias
+    dataframe.wil200  <- dataframe.wil[,grep(paste0('Estimacion_', es.windows[1]),colnames(dataframe.wil))] # Escoger los datos que se tienen para estimacion con 250 dias
+    dataframe.wil300  <- dataframe.wil[,grep(paste0('Estimacion_', es.windows[2]),colnames(dataframe.wil))] # Escoger los datos que se tienen para estimacion con 350 dias
+    dataframe.wil500  <- dataframe.wil[,grep(paste0('Estimacion_', es.windows[3]),colnames(dataframe.wil))] # Escoger los datos que se tienen para estimacion con 500 dias
     
     # Eventos para cada dataframe
-    eventos.wil200 <- paste('Eventos: ', numero.eventos[grep('Estimacion_200', names(numero.eventos))])
-    eventos.wil300 <- paste('Eventos: ', numero.eventos[grep('Estimacion_300', names(numero.eventos))])
-    eventos.wil500 <- paste('Eventos: ', numero.eventos[grep('Estimacion_500', names(numero.eventos))])
+    eventos.wil200 <- paste('Eventos: ', numero.eventos[grep(paste0('Estimacion_', es.windows[1]), names(numero.eventos))])
+    eventos.wil300 <- paste('Eventos: ', numero.eventos[grep(paste0('Estimacion_', es.windows[2]), names(numero.eventos))])
+    eventos.wil500 <- paste('Eventos: ', numero.eventos[grep(paste0('Estimacion_', es.windows[3]), names(numero.eventos))])
     # Retirar nombres de columnas para hacer rbind 
     colnames(dataframe.wil200) <- NA
     colnames(dataframe.wil300) <- NA
@@ -167,14 +167,14 @@ if(tipo.estudio == 'media'){
     # Juntarlos en un gran dataframe
     dataframe.wil.organizado <- rbind(dataframe.wil200,dataframe.wil300, dataframe.wil500)
     # Nombres de columnas
-    colnames(dataframe.wil.organizado) <- c('est50','est100','est200')
+    colnames(dataframe.wil.organizado) <- c(paste0('est',umbrales.evento[1]),paste0('est',umbrales.evento[2]),paste0('est',umbrales.evento[3]))
     # Añadir columna de dias de estimacion
     dataframe.wil.organizado$`Estimacion` <- c(rep('',8),200,rep('',15),300,rep('',15),500,rep('',7))
     # Mutar las columnas <50>, <100> y <200> para agregar un '/', para poder colocar la significancia de BMP en la misma tabla
     dataframe.wil.organizado <- dataframe.wil.organizado %>% 
-      mutate('50' = paste(est50,'/'), '100' = paste(est100,'/'),'200' = paste(est200,'/'))
+      mutate('50' = paste(est50,'/'), '100' = paste(est100,'/'),'150' = paste(est150,'/'))
     # Seleccionar solamente las columnas de interes
-    dataframe.wil.organizado <- dataframe.wil.organizado %>% dplyr::select(Estimacion,`50`,`100`,`200`)
+    dataframe.wil.organizado <- dataframe.wil.organizado %>% dplyr::select(Estimacion,`50`,`100`,`150`)
     
     lista.interes <- lista.bmp 
     # Se realiza el mismo procedimiento que para lista.wilcoxon
@@ -190,9 +190,9 @@ if(tipo.estudio == 'media'){
       }
     }
     data.bmp         <- purrr::map_dfc(lista.interes, ~.x[,nombre.columna])
-    data.bmp200      <- data.bmp[,grep('Estimacion_200',colnames(data.bmp))] # Escoger los datos que se tienen para estimacion con 200 dias
-    data.bmp300      <- data.bmp[,grep('Estimacion_300',colnames(data.bmp))] # Escoger los datos que se tienen para estimacion con 300 dias
-    data.bmp500      <- data.bmp[,grep('Estimacion_500',colnames(data.bmp))] # Escoger los datos que se tienen para estimacion con 500 dias
+    data.bmp200      <- data.bmp[,grep(paste0('Estimacion_', es.windows[1]),colnames(data.bmp))] # Escoger los datos que se tienen para estimacion con 200 dias
+    data.bmp300      <- data.bmp[,grep(paste0('Estimacion_', es.windows[2]),colnames(data.bmp))] # Escoger los datos que se tienen para estimacion con 300 dias
+    data.bmp500      <- data.bmp[,grep(paste0('Estimacion_', es.windows[3]),colnames(data.bmp))] # Escoger los datos que se tienen para estimacion con 500 dias
     
     # Retirar nombres de columnas para hacer rbind 
     colnames(data.bmp200) <- NA
@@ -206,18 +206,18 @@ if(tipo.estudio == 'media'){
     # Juntarlos en un gran dataframe
     data.bmp.organizado <- rbind(data.bmp200,data.bmp300, data.bmp500)
     # Nombres de filas
-    colnames(data.bmp.organizado) <- c('est50','est100','est200')
+    colnames(data.bmp.organizado) <- c('est50','est100','est150')
     # Mutar para solamente tener los * de significancia
     data.bmp.organizado <- data.bmp.organizado %>% 
-      mutate('50bmp' = gsub("[^*]","",est50),'100bmp'=gsub("[^*]","",est100),'200bmp' = gsub("[^*]","",est200))
+      mutate('50bmp' = gsub("[^*]","",est50),'100bmp'=gsub("[^*]","",est100),'150bmp' = gsub("[^*]","",est150))
     
     # Lo unico que falta es juntar los dos dataframe: <dataframe.wil.organizado> y <data.bmp.organizado> para tener un solo dataframe con la significancia de 
     # ambos tests
     dataframe.final <- cbind(dataframe.wil.organizado,data.bmp.organizado)
     dataframe.final <- dataframe.final %>% 
       mutate('50' = paste((rep(c('', paste0('[1,',1:15,']')),3)),`50`,`50bmp`),'100'=paste((rep(c('', paste0('[1,',1:15,']')),3)),`100`,`100bmp`),
-             '200'=paste((rep(c('', paste0('[1,',1:15,']')),3)),`200`,`200bmp`)) %>% 
-      dplyr::select(Estimacion,`50`,`100`,`200`)
+             '150'=paste((rep(c('', paste0('[1,',1:15,']')),3)),`150`,`150bmp`)) %>% 
+      dplyr::select(Estimacion,`50`,`100`,`150`)
     
     # Exportar a latex
     kable.final <- kable(dataframe.final,format='latex', booktabs=T, caption = paste0('Significancia para eventos ', nombre.columna,'. Nota: para ', serie, 
