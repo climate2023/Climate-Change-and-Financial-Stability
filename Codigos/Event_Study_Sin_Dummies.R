@@ -130,8 +130,9 @@ if(1){
 
 # Filtrar la base de eventos para buscar eventos mas significativos -------
 emdat_base <- emdat_base %>% 
-  dplyr::filter(Total.Deaths >= 1000 | No.Injured >= 1000 | Total.Affected >= 10000 | Damages >= 1000000) %>% 
-  dplyr::filter(Disaster.Subgroup %in% c('Geophysical','Hydrological','Meteorological'))
+  dplyr::filter(Total.Deaths >= 1000 | No.Injured >= 1000 | Total.Affected >= 25000 | Damages >= 1000000) %>% 
+  dplyr::filter(Disaster.Subgroup %in% c('Geophysical','Hydrological','Meteorological')) %>% 
+  dplyr::filter(na_start == 0)
 # Lo anterior siguiendo a Gassebner, Keck, Teh. No se puede seleccionar 100.000 de total de afectados porque 
 # de ese modo se pierden muchos eventos 
 
@@ -168,7 +169,7 @@ for(estimation_start in estimation_windows){
   
   # Filtrar la base de datos para solamente dejar los eventos mas significativos, y tambien asegurar que dentro de la 
   # ventana de estimacion no hayan otros eventos.
-  umbrales.evento <- c(50,100,200)
+  umbrales.evento <- c(50,100,150)
   for(umbral.evento in umbrales.evento){
     # umbral.evento   <- 50 #<<<--- Numero de dias minimo entre cada evento. Lo anterior para que no se traslapen los eventos
     columna.filtrar <- 'Total.Affected' #<<<--- Columna para filtrar la base de eventos 'Total.Affected' o 'Damages'
@@ -200,141 +201,146 @@ for(estimation_start in estimation_windows){
   }
 }
 
-# Hay elementos en <all_events_list> que son <NA> dado que la estimacion no convergio, por lo que es necesario
-# eliminarlos
-suppressWarnings(all.events.list <- purrr::discard(all_events_list,is.na))
-
-# Ver cuantos eventos tienen fecha exacta
-fecha.exacta        <- round(table(unlist(purrr::map(all.events.list, ~.x@evento$na_start)))/length(all.events.list)*100,2)
-names(fecha.exacta) <- c('Tiene fecha exacta','No tiene fecha exacta'); fecha.exacta
-# Dejar solamente los eventos que tengan fecha exacta
-all.events.list.true <- purrr::keep(all.events.list, ~ .x@evento$na_start == 0)
-
-columna.agrupar <- 'Country' #<<<--- Columna del evento con la cual se quiere separar la lista <all.events.list.true>
-                                       # 'Country' la separa por pais donde sucedio el desastre y 'Disaster.Subgroup' por el tipo de desastre
-# Separar la lista dependiendo de una columna en especifico introducida por el usuario 
-lista.separada <- split(all.events.list.true, sapply(all.events.list.true, function(x) x@evento[[columna.agrupar]]))
-
-# Generar listas distintas para cada valor de la <columna.agrupar>, en caso de querer utilizarlas mas adelante
-for(i in seq_along(lista.separada)) assign(paste0("list.", names(lista.separada)[i]), lista.separada[[i]])
-
-# Se observo que generalmente, el dia del evento el retorno es positivo, pero en adelante es negativo. Falta explicar porque podria
-# ser que el retorno en el dia del evento sea positivo,mientras que para el resto de la ventana de evento es negativo.
-# Por lo anterior, el CAR va a ser menor si se elimina el dia del evento de la ventana de evento y solo se miran los dias posteriores
-inicio.ventana.evento <- 1 #<<<--- indica en que dia comenzara la ventana de evento <0> si se desea que inicie el dia del desastre, 
-                           # 1 si se desea el dia siguiente, 2 si se desea 2 dias despues ...
-
-# Graficas CAR ------------------------------------------------------------
-for(i in seq_along(lista.separada)){
-  element <- lista.separada[[i]]
-  name    <- names(lista.separada)[i]  
-  grafico_car(element,length_estimation_window,length_event_window,inicio.ventana.evento)
-  title(name,line=0.75)
-}
-grafico_car(all.events.list.true,length_estimation_window,length_event_window,inicio.ventana.evento)
-
-# Wilcoxon --------------------------------------------------------------
-
-# Usamos la funcion <wilcoxon.jp.test> para realizar la prueba de Wilcoxon asociada a los <CAR> 
-# de los eventos. Obtenemos el estadistico junto a su significancia
-# <Significancia> = "*" indica que el estadistico es significativo al 10%, "**" al 5% y "***" al 1%.
-# <Significancia> = " "  indica que el estadistico no es significativo a ningun nivel convencional
-# Aparte, se usa la funcion <stats::wilcox.test> para obtener el p-valor
-# La prueba que realiza wilcoxon.jp.test es a dos colas
-wilcoxon.resultado <- wilcoxon.jp.test(data.list = all.events.list.true,es.window.length = length_estimation_window,
-                                       ev.window.length = length_event_window,ev.window.begin = 0);wilcoxon.resultado
-# Dataframe con muchas ventanas
-matrix.wilcoxon <- matrix(nrow=(max_abnormal_returns- inicio.ventana.evento+1),ncol=(length(lista.separada)+1))
-for(i in seq_along(lista.separada)){
-  abnormal <- cumsum(rowMeans(purrr::map_dfc(lista.separada[[i]], 
-                                 ~ (.x@retornos$Abnormal)[(length_estimation_window+1+inicio.ventana.evento):(max_abnormal_returns+1+length_estimation_window)])))
-  for(j in (1:(max_abnormal_returns+1-inicio.ventana.evento))) 
-    matrix.wilcoxon[j,i] <- paste(round(abnormal[j],2),
-                                  wilcoxon.jp.test(lista.separada[[i]],length_estimation_window,j,inicio.ventana.evento)$Significancia)
-}
-
-k <- length(lista.separada)+1
-for(j in (1:(max_abnormal_returns+1-inicio.ventana.evento))){ 
-  abnormal <- cumsum(rowMeans(purrr::map_dfc(all.events.list.true, 
-                                             ~ (.x@retornos$Abnormal)[(length_estimation_window+1+inicio.ventana.evento):(max_abnormal_returns+1+length_estimation_window)])))
-  matrix.wilcoxon[j,k] <- paste(round(abnormal[j],2),
-                               wilcoxon.jp.test(all.events.list.true,length_estimation_window,j,inicio.ventana.evento)$Significancia)
-}
-
-colnames(matrix.wilcoxon) <- c(names(lista.separada),'Todos')
-Ventana                   <- 1:(max_abnormal_returns+1- inicio.ventana.evento)
-matrix.wilcoxon           <- cbind(Ventana,matrix.wilcoxon)
-  
-dataframe.wilcoxon <- data.frame(matrix.wilcoxon)
-
-# Exportarla a latex con <format = 'latex'>
-table.wilcoxon <- kable(dataframe.wilcoxon, format = "html", escape = FALSE) %>%
-  kable_styling(bootstrap_options = c("striped", "hover"));table.wilcoxon
-
-# Bootstrap CAAR  (sin GARCH) ----------------------------------------------------------
-
-# length(unlist(purrr::map(all.events.list, ~.x@error_estandar))) se utiliza para ver la longitud de los elementos
-# <@error.estandar>, ya que si todos son 0 significa que la estimacion se realizo con GARCH y el siguiente
-# procedimiento no tiene sentido
-if(length(unlist(purrr::map(all.events.list, ~.x@error_estandar)))>0){
-  # Para hacer el procedimiento por Bootstrap se sigue el procedimiento usado por Corrado & Truong (2008)
-  boot_n_simul <- 1000 #<<<--- parametro que indica el numero de repeticiones para bootstrapping
-  
-  bootstrap.resultado <- bootstrap_CT(data.list = all.events.list.true,market.returns=market.returns,
-                                      es.window.length = length_estimation_window, ev.window.length = length_event_window,
-                                      no.simul = boot_n_simul);bootstrap.resultado
-}
-# Corrado and Zivney rank test --------------------------------------------
-
-corrado.resultado <- corrado_zivney(data.list = all.events.list.true,es.window.length = length_estimation_window,
-                                    ev.window.length = length_event_window); corrado.resultado
-
-
-# BMP Savickas para media con GARCH ---------------------------------------
-# <if(0)> porque la funcion <bmp_savickas> ahora se corre para cada ventana 
+# <if(0)> porque las tablas de significancia para la media ahora estan en un nuevo codigo, llamado 
+# 'Creacion_tablas_media.R' Es importante mencionar que de los tests del siguiente bloque, solamente
+# se van a utilizar el wilcoxon, y el BMP, establecido por Savickas (2003)
 if(0){
-bmp.savickas.resultado <- bmp_savickas(data.list = all.events.list.true, es.window.length = length_estimation_window,
-                                       ev.window.length = length_event_window,ev.window.begin = inicio.ventana.evento); bmp.savickas.resultado
-}
-
-# Dataframe con muchas ventanas
-matrix.bmp <- matrix(nrow=(max_abnormal_returns-inicio.ventana.evento+1),ncol=(length(lista.separada)+1))
-for(i in seq_along(lista.separada)){
+  # Hay elementos en <all_events_list> que son <NA> dado que la estimacion no convergio, por lo que es necesario
+  # eliminarlos
+  suppressWarnings(all.events.list <- purrr::discard(all_events_list,is.na))
+  
+  # Ver cuantos eventos tienen fecha exacta
+  fecha.exacta        <- round(table(unlist(purrr::map(all.events.list, ~.x@evento$na_start)))/length(all.events.list)*100,2)
+  names(fecha.exacta) <- c('Tiene fecha exacta','No tiene fecha exacta'); fecha.exacta
+  # Dejar solamente los eventos que tengan fecha exacta
+  all.events.list.true <- purrr::keep(all.events.list, ~ .x@evento$na_start == 0)
+  
+  columna.agrupar <- 'Country' #<<<--- Columna del evento con la cual se quiere separar la lista <all.events.list.true>
+                                         # 'Country' la separa por pais donde sucedio el desastre y 'Disaster.Subgroup' por el tipo de desastre
+  # Separar la lista dependiendo de una columna en especifico introducida por el usuario 
+  lista.separada <- split(all.events.list.true, sapply(all.events.list.true, function(x) x@evento[[columna.agrupar]]))
+  
+  # Generar listas distintas para cada valor de la <columna.agrupar>, en caso de querer utilizarlas mas adelante
+  for(i in seq_along(lista.separada)) assign(paste0("list.", names(lista.separada)[i]), lista.separada[[i]])
+  
+  # Se observo que generalmente, el dia del evento el retorno es positivo, pero en adelante es negativo. Falta explicar porque podria
+  # ser que el retorno en el dia del evento sea positivo,mientras que para el resto de la ventana de evento es negativo.
+  # Por lo anterior, el CAR va a ser menor si se elimina el dia del evento de la ventana de evento y solo se miran los dias posteriores
+  inicio.ventana.evento <- 1 #<<<--- indica en que dia comenzara la ventana de evento <0> si se desea que inicie el dia del desastre, 
+                             # 1 si se desea el dia siguiente, 2 si se desea 2 dias despues ...
+  
+  # Graficas CAR ------------------------------------------------------------
+  for(i in seq_along(lista.separada)){
+    element <- lista.separada[[i]]
+    name    <- names(lista.separada)[i]  
+    grafico_car(element,length_estimation_window,length_event_window,inicio.ventana.evento)
+    title(name,line=0.75)
+  }
+  grafico_car(all.events.list.true,length_estimation_window,length_event_window,inicio.ventana.evento)
+  
+  # Wilcoxon --------------------------------------------------------------
+  
+  # Usamos la funcion <wilcoxon.jp.test> para realizar la prueba de Wilcoxon asociada a los <CAR> 
+  # de los eventos. Obtenemos el estadistico junto a su significancia
+  # <Significancia> = "*" indica que el estadistico es significativo al 10%, "**" al 5% y "***" al 1%.
+  # <Significancia> = " "  indica que el estadistico no es significativo a ningun nivel convencional
+  # Aparte, se usa la funcion <stats::wilcox.test> para obtener el p-valor
+  # La prueba que realiza wilcoxon.jp.test es a dos colas
+  wilcoxon.resultado <- wilcoxon.jp.test(data.list = all.events.list.true,es.window.length = length_estimation_window,
+                                         ev.window.length = length_event_window,ev.window.begin = 0);wilcoxon.resultado
+  # Dataframe con muchas ventanas
+  matrix.wilcoxon <- matrix(nrow=(max_abnormal_returns- inicio.ventana.evento+1),ncol=(length(lista.separada)+1))
+  for(i in seq_along(lista.separada)){
+    abnormal <- cumsum(rowMeans(purrr::map_dfc(lista.separada[[i]], 
+                                   ~ (.x@retornos$Abnormal)[(length_estimation_window+1+inicio.ventana.evento):(max_abnormal_returns+1+length_estimation_window)])))
+    for(j in (1:(max_abnormal_returns+1-inicio.ventana.evento))) 
+      matrix.wilcoxon[j,i] <- paste(round(abnormal[j],2),
+                                    wilcoxon.jp.test(lista.separada[[i]],length_estimation_window,j,inicio.ventana.evento)$Significancia)
+  }
+  
+  k <- length(lista.separada)+1
+  for(j in (1:(max_abnormal_returns+1-inicio.ventana.evento))){ 
+    abnormal <- cumsum(rowMeans(purrr::map_dfc(all.events.list.true, 
+                                               ~ (.x@retornos$Abnormal)[(length_estimation_window+1+inicio.ventana.evento):(max_abnormal_returns+1+length_estimation_window)])))
+    matrix.wilcoxon[j,k] <- paste(round(abnormal[j],2),
+                                 wilcoxon.jp.test(all.events.list.true,length_estimation_window,j,inicio.ventana.evento)$Significancia)
+  }
+  
+  colnames(matrix.wilcoxon) <- c(names(lista.separada),'Todos')
+  Ventana                   <- 1:(max_abnormal_returns+1- inicio.ventana.evento)
+  matrix.wilcoxon           <- cbind(Ventana,matrix.wilcoxon)
+    
+  dataframe.wilcoxon <- data.frame(matrix.wilcoxon)
+  
+  # Exportarla a latex con <format = 'latex'>
+  table.wilcoxon <- kable(dataframe.wilcoxon, format = "html", escape = FALSE) %>%
+    kable_styling(bootstrap_options = c("striped", "hover"));table.wilcoxon
+  
+  # Bootstrap CAAR  (sin GARCH) ----------------------------------------------------------
+  
+  # length(unlist(purrr::map(all.events.list, ~.x@error_estandar))) se utiliza para ver la longitud de los elementos
+  # <@error.estandar>, ya que si todos son 0 significa que la estimacion se realizo con GARCH y el siguiente
+  # procedimiento no tiene sentido
+  if(length(unlist(purrr::map(all.events.list, ~.x@error_estandar)))>0){
+    # Para hacer el procedimiento por Bootstrap se sigue el procedimiento usado por Corrado & Truong (2008)
+    boot_n_simul <- 1000 #<<<--- parametro que indica el numero de repeticiones para bootstrapping
+    
+    bootstrap.resultado <- bootstrap_CT(data.list = all.events.list.true,market.returns=market.returns,
+                                        es.window.length = length_estimation_window, ev.window.length = length_event_window,
+                                        no.simul = boot_n_simul);bootstrap.resultado
+  }
+  # Corrado and Zivney rank test --------------------------------------------
+  
+  corrado.resultado <- corrado_zivney(data.list = all.events.list.true,es.window.length = length_estimation_window,
+                                      ev.window.length = length_event_window); corrado.resultado
+  
+  
+  # BMP Savickas para media con GARCH ---------------------------------------
+  # <if(0)> porque la funcion <bmp_savickas> ahora se corre para cada ventana 
+  if(0){
+  bmp.savickas.resultado <- bmp_savickas(data.list = all.events.list.true, es.window.length = length_estimation_window,
+                                         ev.window.length = length_event_window,ev.window.begin = inicio.ventana.evento); bmp.savickas.resultado
+  }
+  
+  # Dataframe con muchas ventanas
+  matrix.bmp <- matrix(nrow=(max_abnormal_returns-inicio.ventana.evento+1),ncol=(length(lista.separada)+1))
+  for(i in seq_along(lista.separada)){
+    for(j in (1:(max_abnormal_returns+1-inicio.ventana.evento))) 
+      matrix.bmp[j,i] <- paste(round(mean(colSums(data.frame(purrr::map(lista.separada[[i]],~coredata(.x@retornos$Abnormal[(length_estimation_window+1+inicio.ventana.evento):(length_estimation_window+j+inicio.ventana.evento)]))))),2),
+                                    bmp_savickas(lista.separada[[i]],length_estimation_window,j,inicio.ventana.evento)$Significancia)
+  }
+  
+  k <- length(lista.separada)+1
   for(j in (1:(max_abnormal_returns+1-inicio.ventana.evento))) 
-    matrix.bmp[j,i] <- paste(round(mean(colSums(data.frame(purrr::map(lista.separada[[i]],~coredata(.x@retornos$Abnormal[(length_estimation_window+1+inicio.ventana.evento):(length_estimation_window+j+inicio.ventana.evento)]))))),2),
-                                  bmp_savickas(lista.separada[[i]],length_estimation_window,j,inicio.ventana.evento)$Significancia)
+    matrix.bmp[j,k] <- paste(round(mean(colSums(data.frame(purrr::map(all.events.list.true,~coredata(.x@retornos$Abnormal[(length_estimation_window+1+inicio.ventana.evento):(length_estimation_window+j+inicio.ventana.evento)]))))),2),
+                                  bmp_savickas(all.events.list.true,length_estimation_window,j,inicio.ventana.evento)$Significancia)
+  colnames(matrix.bmp) <- c(names(lista.separada),'Todos')
+  Ventana              <- 1:(max_abnormal_returns+1- inicio.ventana.evento)
+  matrix.bmp           <- cbind(Ventana,matrix.bmp)
+  
+  dataframe.bmp <- data.frame(matrix.bmp)
+  
+  # Exportarla a latex
+  table.bmp <- kable(dataframe.bmp, format = "html", escape = FALSE) %>%
+    kable_styling(bootstrap_options = c("striped", "hover"));table.bmp
+  
+  # Tambien se puede hacer la tabla para BMP con bootstrap usando la funcion <bmp.bootstrap>
+  
+  # J statistic para media con GARCH ----------------------------------------
+  # <if(0)> porque todavia no se ha incluido en la funcion un argumento para cuando <inicio.ventana.evento> sea diferente de 0.
+  # Pero no es el estadistico que vamos a usar, por lo que no es problematico
+  if(0){
+  j.statistic.resultado  <- j_statistic(data.list = all.events.list.true, es.window.length = length_estimation_window,
+                                        ev.window.length = length_event_window); j.statistic.resultado
+  }
 }
 
-k <- length(lista.separada)+1
-for(j in (1:(max_abnormal_returns+1-inicio.ventana.evento))) 
-  matrix.bmp[j,k] <- paste(round(mean(colSums(data.frame(purrr::map(all.events.list.true,~coredata(.x@retornos$Abnormal[(length_estimation_window+1+inicio.ventana.evento):(length_estimation_window+j+inicio.ventana.evento)]))))),2),
-                                bmp_savickas(all.events.list.true,length_estimation_window,j,inicio.ventana.evento)$Significancia)
-colnames(matrix.bmp) <- c(names(lista.separada),'Todos')
-Ventana              <- 1:(max_abnormal_returns+1- inicio.ventana.evento)
-matrix.bmp           <- cbind(Ventana,matrix.bmp)
-
-dataframe.bmp <- data.frame(matrix.bmp)
-
-# Exportarla a latex
-table.bmp <- kable(dataframe.bmp, format = "html", escape = FALSE) %>%
-  kable_styling(bootstrap_options = c("striped", "hover"));table.bmp
-
-# Tambien se puede hacer la tabla para BMP con bootstrap usando la funcion <bmp.bootstrap>
-
-# J statistic para media con GARCH ----------------------------------------
-# <if(0)> porque todavia no se ha incluido en la funcion un argumento para cuando <inicio.ventana.evento> sea diferente de 0.
-# Pero no es el estadistico que vamos a usar, por lo que no es problematico
-if(0){
-j.statistic.resultado  <- j_statistic(data.list = all.events.list.true, es.window.length = length_estimation_window,
-                                      ev.window.length = length_event_window); j.statistic.resultado
-}
 # Volatility event study --------------------------------------------------
 
 # El siguiente programa sigue la metodologia del paper The impact of natural disasters on stock returns and volatilities
 # of local firms (Bourdeau-Brien)
 estimation_windows <- c(500,750,1000)
 for(estimation_vol_start in estimation_windows){
-  # estimation_vol_start <- 750 #<<<-- ventana para la estimacion de la volatilidad previa al evento. 
   vol_ev_window        <- 15  #<<<--- Tamaño de la ventana de evento
   
   # Filtrar los eventos para que solo queden aquellos que cumplan con una ventana minima de estimacion y una ventana minima de 
@@ -342,71 +348,77 @@ for(estimation_vol_start in estimation_windows){
   eventos.filtrado.volatilidad <- drop.events(data.events = emdat_base,base = base_lagged,estimation.start = estimation_vol_start,max.ar=vol_ev_window, 
                                   date_col_name, geo_col_name)
   
-  # Filtrar la base de datos para solamente dejar los eventos mas significativos, y tambien asegurar que dentro de la 
-  # ventana de estimacion no hayan otros eventos.
-  umbral.evento.vol   <- 100 #<<<--- Numero de dias minimo entre cada evento. Lo anterior para que no se traslapen los eventos
-  columna.filtrar.vol <- 'Total.Affected' #<<<--- Columna para filtrar la base de eventos 'Total.Affected' o 'Damages'
-  eventos.volatilidad <- reducir.eventos(umbral.evento.vol,base_lagged,eventos.filtrado.volatilidad,
-                                   col.fecha='Start.Date',col.grupo = 'Country',col.filtro = columna.filtrar.vol)
-  
-  load.volatility <- 1           #<<<<-- 1 si se cargan los resultados de volatilidad, 0 si es necesario correr el codigo
-  if(!load.volatility){
-      volatility_results <- volatility_event_study(base.evento = eventos.volatilidad,date.col.name = "Start.Date",geo.col.name = "Country",
-                                        base.vol = base_Tommaso,interest.vars = indexes,num_lags = NULL,es.start=estimation_vol_start,
-                                        len.ev.window = vol_ev_window,var.exo="market.returns",var.exo.pais = c("gdp","fdi"),
-                                        bool.cds = bool_cds,bool.paper = bool_paper,garch = 'sGARCH')
-      if(bool_cds){serie <- 'CDS'}else{serie <- 'Indices'}
-      if(promedio.movil){regresor.mercado <- 'PM'}else{regresor.mercado <- 'benchmark'}
-      save(volatility_results, 
-           file=paste0(getwd(),'/Resultados_regresion/',serie,'_tra',umbral.evento.vol,'_est',estimation_vol_start,'_varianza_',regresor.mercado,'.RData'))
-  }else load(paste0(getwd(),'/Resultados_regresion/',serie,'_tra',umbral.evento.vol,'_est',estimation_vol_start,'_varianza_',regresor.mercado,'.RData'))
-}
-# Eliminar objetos NA
-volatility_results <- purrr::discard(volatility_results,is.na)
-
-v.columna.agrupar <- 'Disaster.Subgroup' #<<<--- Columna del evento con la cual se quiere separar la lista <volatility_results>
-# 'Country' la separa por pais donde sucedio el desastre y 'Disaster.Subgroup' por el tipo de desastre
-# Separar la lista dependiendo de una columna en especifico introducida por el usuario 
-v.lista.separada <- split(volatility_results, sapply(volatility_results, function(x) x@info.evento[[v.columna.agrupar]]))
-
-# Generar listas distintas para cada valor de la <columna.agrupar>, en caso de querer utilizarlas mas adelante
-for (i in seq_along(v.lista.separada)) assign(paste0("v.list.", names(v.lista.separada)[i]), v.lista.separada[[i]])
-
-# Graficas CAV ------------------------------------------------------------
-for(i in seq_along(v.lista.separada)){
-  element <- v.lista.separada[[i]]
-  name    <- names(v.lista.separada)[i]  
-  grafico_cav(element,estimation_vol_start,vol_ev_window)
-  title(name,line=0.75)
-}
-
-# Tabla CAV/significancia ------------------------------------------------
-
-# Dataframe con muchas ventanas
-matrix.volatilidad <- matrix(nrow=(vol_ev_window),ncol=(length(v.lista.separada)+1))
-iteraciones.bootstrap <- 1
-for(i in seq_along(v.lista.separada)){
-  for(j in (1:(vol_ev_window))){
-    prueba <- bootstrap.volatility(v.lista.separada[[i]],estimation_vol_start,j,iteraciones.bootstrap)
-    matrix.volatilidad[j,i] <- paste(prueba$CAV,prueba$Significancia)
+  umbrales.volatilidad <- c(50,100,200) #<<<--- Numero de dias minimo entre cada evento. Lo anterior para que no se traslapen los eventos
+  for(umbral.evento.vol in umbrales.volatilidad){
+    # Filtrar la base de datos para solamente dejar los eventos mas significativos, y tambien asegurar que dentro de la 
+    # ventana de estimacion no hayan otros eventos.
+    columna.filtrar.vol <- 'Total.Affected' #<<<--- Columna para filtrar la base de eventos 'Total.Affected' o 'Damages'
+    eventos.volatilidad <- reducir.eventos(umbral.evento.vol,base_lagged,eventos.filtrado.volatilidad,
+                                     col.fecha='Start.Date',col.grupo = 'Country',col.filtro = columna.filtrar.vol)
+    
+    load.volatility <- 0           #<<<<-- 1 si se cargan los resultados de volatilidad, 0 si es necesario correr el codigo
+    if(!load.volatility){
+        volatility_results <- volatility_event_study(base.evento = eventos.volatilidad,date.col.name = "Start.Date",geo.col.name = "Country",
+                                          base.vol = base_Tommaso,interest.vars = indexes,num_lags = NULL,es.start=estimation_vol_start,
+                                          len.ev.window = vol_ev_window,var.exo="market.returns",var.exo.pais = c("gdp","fdi"),
+                                          bool.cds = bool_cds,bool.paper = bool_paper,garch = 'sGARCH')
+        if(bool_cds){serie <- 'CDS'}else{serie <- 'Indices'}
+        if(promedio.movil){regresor.mercado <- 'PM'}else{regresor.mercado <- 'benchmark'}
+        save(volatility_results, 
+             file=paste0(getwd(),'/Resultados_regresion/',serie,'_tra',umbral.evento.vol,'_est',estimation_vol_start,'_varianza_',regresor.mercado,'.RData'))
+    }else load(paste0(getwd(),'/Resultados_regresion/',serie,'_tra',umbral.evento.vol,'_est',estimation_vol_start,'_varianza_',regresor.mercado,'.RData'))
   }
 }
 
-k <- length(v.lista.separada)+1
-for(j in (1:(vol_ev_window))){ 
-  prueba.cav <- bootstrap.volatility(volatility_results,estimation_vol_start,j,iteraciones.bootstrap)
-  matrix.volatilidad[j,k] <- paste(prueba.cav$CAV,prueba.cav$Significancia)
+# if(0) porque ahora la creacion de las tablas de varianza se van a crear usando el codigo "Creacion_tablas_varianza.R"
+if(0){
+  # Eliminar objetos NA
+  volatility_results <- purrr::discard(volatility_results,is.na)
+  
+  v.columna.agrupar <- 'Disaster.Subgroup' #<<<--- Columna del evento con la cual se quiere separar la lista <volatility_results>
+  # 'Country' la separa por pais donde sucedio el desastre y 'Disaster.Subgroup' por el tipo de desastre
+  # Separar la lista dependiendo de una columna en especifico introducida por el usuario 
+  v.lista.separada <- split(volatility_results, sapply(volatility_results, function(x) x@info.evento[[v.columna.agrupar]]))
+  
+  # Generar listas distintas para cada valor de la <columna.agrupar>, en caso de querer utilizarlas mas adelante
+  for (i in seq_along(v.lista.separada)) assign(paste0("v.list.", names(v.lista.separada)[i]), v.lista.separada[[i]])
+  
+  # Graficas CAV ------------------------------------------------------------
+  for(i in seq_along(v.lista.separada)){
+    element <- v.lista.separada[[i]]
+    name    <- names(v.lista.separada)[i]  
+    grafico_cav(element,estimation_vol_start,vol_ev_window)
+    title(name,line=0.75)
+  }
+  
+  # Tabla CAV/significancia ------------------------------------------------
+  
+  # Dataframe con muchas ventanas
+  matrix.volatilidad <- matrix(nrow=(vol_ev_window),ncol=(length(v.lista.separada)+1))
+  iteraciones.bootstrap <- 1
+  for(i in seq_along(v.lista.separada)){
+    for(j in (1:(vol_ev_window))){
+      prueba <- bootstrap.volatility(v.lista.separada[[i]],estimation_vol_start,j,iteraciones.bootstrap)
+      matrix.volatilidad[j,i] <- paste(prueba$CAV,prueba$Significancia)
+    }
+  }
+  
+  k <- length(v.lista.separada)+1
+  for(j in (1:(vol_ev_window))){ 
+    prueba.cav <- bootstrap.volatility(volatility_results,estimation_vol_start,j,iteraciones.bootstrap)
+    matrix.volatilidad[j,k] <- paste(prueba.cav$CAV,prueba.cav$Significancia)
+  }
+  colnames(matrix.volatilidad) <- c(names(v.lista.separada),'Todos')
+  Ventana                      <- 1:(vol_ev_window)
+  matrix.volatilidad           <- cbind(Ventana,matrix.volatilidad)
+  
+  dataframe.volatilidad        <- data.frame(matrix.volatilidad)
+  # save(dataframe.volatilidad, file = 'Tabla_volatilidad_Paises.RData') # Para guardar el dataframe de volatilidad por paises
+  # save(dataframe.volatilidad, file = 'Tabla_volatilidad_Tipodesastre.RData') # Para guardar el dataframe de volatilidad por tipo de desastre
+  #load('Tabla_volatilidad_Paises.RData')
+  #load('Tabla_volatilidad_Tipodesastre.RData')
+  
+  # Exportarla a latex
+  table.volatilidad <- kable(dataframe.volatilidad, format = "html", escape = FALSE) %>%
+    kable_styling(bootstrap_options = c("striped", "hover"));table.volatilidad
 }
-colnames(matrix.volatilidad) <- c(names(v.lista.separada),'Todos')
-Ventana                      <- 1:(vol_ev_window)
-matrix.volatilidad           <- cbind(Ventana,matrix.volatilidad)
-
-dataframe.volatilidad        <- data.frame(matrix.volatilidad)
-# save(dataframe.volatilidad, file = 'Tabla_volatilidad_Paises.RData') # Para guardar el dataframe de volatilidad por paises
-# save(dataframe.volatilidad, file = 'Tabla_volatilidad_Tipodesastre.RData') # Para guardar el dataframe de volatilidad por tipo de desastre
-#load('Tabla_volatilidad_Paises.RData')
-#load('Tabla_volatilidad_Tipodesastre.RData')
-
-# Exportarla a latex
-table.volatilidad <- kable(dataframe.volatilidad, format = "html", escape = FALSE) %>%
-  kable_styling(bootstrap_options = c("striped", "hover"));table.volatilidad

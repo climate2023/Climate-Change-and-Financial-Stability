@@ -1,92 +1,3 @@
-#--- Funcion anterior que leia los archivos csv, pero los argumentos no estaban explicitos, por lo que se prescinde de la funcion ---#
-if(0){
-  #---------------------------------- 1. read_csv ------------------------------------#
-  # Lee los archivos csv para los indices bursatiles, genera una base de datos de los indices 
-  # bursatiles en formato xts. 
-  #---------------------------------------------------------------------------------------#
-  # ----Argumentos de entrada ----#
-  #-- dir      : el directorio en donde se encuentran las bases de los países
-  #-- countries: lista que denota los paises de los cuales se cuenta el índice bursátil
-  # ----Argumentos de salida  ----#
-  #-- base: es una base de datos en formato xts que incluye todos los indices bursátiles para los países en countries
-  #---------------------------------------------------------------------------------------#
-  read_csv <- function(dir,countries) {
-    # Se forma una lista vacía, en la cual se irán añadiendo los elementos xts de los indices por cada país
-    xts_list     <- list() 
-    for (country in countries) {
-      # generar el nombre del archivo csv, siguiendo el directorio especificado, añadiendole /Stocks_ country.csv
-      csv_file <- paste0(dir,"Stocks_", country, ".csv")
-      # genera un archivo csv para el país country
-      csv      <- read.csv(csv_file, header = TRUE, sep = ";", quote = "\"", col.names = c("Date","Price", "Open", 
-                                                                                           "High","Low","Vol.","Change%"))
-      colnames <- names(csv)
-      
-      # Loop que corre por todas las columnas del archivo csv menos la primera (ya que es un dia), retirandole las
-      # comas que podrían generar problemas para reconocerlo como formato número
-      for (colname in colnames[2:length(colnames)]) {
-        csv[, colname] <- as.numeric(gsub(",","",csv[, colname]))
-      } ## Muestra warning() ya quehay una columna que contiene caracteres "M" 
-      
-      csv$Date <- as.Date(csv$Date, "%m/%d/%Y")
-      
-      #Generar la lista de los xts, solamente de la columna "Price", teniendo en cuenta los índices incluidos en "Date"
-      xts_list[[country]] <- xts(csv$Price, csv$Date)
-    }
-    
-    #Generar una base de datos que junte todos los indices bursatiles en formato xts.
-    base <- do.call(merge,xts_list)
-    return(base)
-  }
-  #------------------------------------------------------------------------------------#
-}
-
-#--- Funcion anterior que generaba el promedio movil, no es necesaria ya que con apply se hace lo mismo --#
-if(0){
-  #---------------------------------- 2. moving_average  ------------------------------------#
-  # Toma como argumento una base de datos, para la cual genera para cada columna
-  # el promedio movil de orden k.
-  #---------------------------------------------------------------------------------------#
-  # ----Argumentos de entrada ----#
-  #-- x: Nombre de la base de datos
-  #-- k: Orden del promedio móvil
-  # ----Argumentos de salida  ----#
-  #-- mov_average_base: base de datos con el promedio movil de orden <k> de cada una de las columnas de la base <x>
-  #---------------------------------------------------------------------------------------#
-  moving_average <- function(x,k){
-    mov_average_list <- list()
-    for(column in 1:ncol(x)){
-      rolling_average <- rollmean(x=x[, column], k=k, align="right")
-      mov_average_list[[length(mov_average_list)+1]] <- rolling_average
-    }
-    mov_average_base <- do.call(merge, mov_average_list)
-    return(mov_average_base)
-  }
-  #---------------------------------------------------------------------------------------#
-}
-
-#--- Funcion anterior de reducir el indice de una serie, fue mejorada por una propiedad de xts, donde solo tocaba especificar la fecha de inicio ---#
-if(0){
-  #---------------------------------- 3. muestra_paper  ------------------------------------#
-  # Reduce la base de datos dependiendo del indice. Esta funcion toma un día en 
-  # específico y tomará desde ese día en adelante para generar la base recortada.
-  #---------------------------------------------------------------------------------------#
-  # ----Argumentos de entrada ----#
-  #-- obj: el argumento denota una base de datos
-  #-- t: el argumento denota un día en específico que hace parte del índice de la base de datos obj
-  # ----Argumentos de salida  ----#
-  #-- obj: la misma base de datos de entrada pero las filas irán desde aquella que corresponda al dia t 
-  #---------------------------------------------------------------------------------------#
-  
-  muestra_paper <- function(obj,t){
-    indice           <- index(obj)
-    base_start       <- which(indice == t)
-    obj              <- obj[base_start:nrow(obj),]
-    return(obj)
-  }
-  
-  #---------------------------------------------------------------------------------------#
-}
-
 #---------------------------------- 1. chow_lin ------------------------------------#
 # Genera la desagregacion temporal de una base de datos siguiendo el método de Chow-lin.
 # Tanto la matriz de varianzas covarianzas como el procedimiento para realizar la desagregacion temporal fueron
@@ -120,28 +31,6 @@ chow_lin <- function(time_Series_list, c, w, var_covar,base_indice){
   return(return_base)
 } 
 #---------------------------------------------------------------------------------------#
-
-#--- Funcion anterior que generaba una lista de series de tiempo, arreglada con as.list()---#
-if(0){
-  #---------------------------------- 5. series_list_function  ------------------------------------#
-  # Teniendo en cuenta que la función de chow_lin requiere de primer argumento una lista, se necesita una función
-  # que genere una lista teniendo en cuenta los objetos xts
-  #---------------------------------------------------------------------------------------#
-  # ----Argumentos de entrada ----#
-  #-- ts1: el argumento denota una base de datos, puede ser en formato xts
-  # ----Argumentos de salida  ----#
-  #-- series_list: una lista que contiene los datos de cada columna de la base de datos
-  #---------------------------------------------------------------------------------------#
-  series_list_function <- function(ts1){
-    series_list <- list()
-    for(country in colnames(ts1)){
-      func_series <- as.vector(ts1[,country])
-      series_list[[tolower(country)]] <- func_series
-    }
-    return(series_list)
-  }
-  #---------------------------------------------------------------------------------------#
-}
 
 
 #---------------------------------- 2. days  ------------------------------------#
@@ -255,28 +144,6 @@ create_dummies <- function(excel_file, base.de.retornos, no.rezagos, first.calen
 }
 #---------------------------------------------------------------------------------------#
 
-#--- Funcion anterior que generaba las interacciones entre la dummy D y el promedio movil, arreglada usando matrices y *---#
-if(0){
-  #---------------------------------- 8. interaction_function  ------------------------------------#
-  # Genera el vector de interacción entre la dummy D y el promedio movil
-  #---------------------------------------------------------------------------------------#
-  # ----Argumentos de entrada ----#
-  #-- obj: un objeto xts
-  #-- average: una columna con los promedios moviles
-  #-- La función asume que "Promedio_movil" existe, vector que se tiene arriba en el codigo
-  # ----Argumentos de salida  ----#
-  #-- interaction_xts: objeto xts de la interacción entre D y el promedio movil
-  #---------------------------------------------------------------------------------------#
-  interaction_function <- function(obj,average){
-    interaction <- c()
-    for(i in 1:nrow(obj)){
-      interaction <- c(interaction, as.numeric(average[i])*as.numeric((obj[,ncol(obj)])[i]))
-    }
-    interaction_xts <- xts(interaction, order.by = index(obj))
-    return(interaction_xts)
-  }
-  #---------------------------------------------------------------------------------------#
-}
 
 #--------------------------- 4. arma_seleccion_df --------------------------------------------#
 #---- Toma una serie de tiempo, un rezago p y q maximos del modelo ARMA(p,q)
@@ -311,7 +178,6 @@ arma_seleccion_df = function(object, AR.m, MA.m, d, bool, metodo){
   return(df)
 }
 #---------------------------------------------------------------------------------------#
-
 
 
 #---------------------------------- 5. lag_function  ------------------------------------#
@@ -470,7 +336,6 @@ densidad_CAR <- function(x,indices){
 #---------------------------------------------------------------------------------------#
 
 
-
 #---------------------------------- 9. grafico_densidad  ------------------------------------#
 # Genera la densidad de los retornos acumulados. 
 #---------------------------------------------------------------------------------------#
@@ -548,59 +413,6 @@ grafico_retornos <- function(list,vector,main,legends,colors, width=3, position=
 }
 #---------------------------------------------------------------------------------------#
 
-#--- Funcion que generaba el las dummies sin tener en cuenta los dias habiles, fue mejorada por create_dummies ---#
-if(0){
-  #---------------------------------- 17. create_dummies_xts  ------------------------------------#
-  # Genera las dummies sin tener  en cuenta los días hábiles . Es decir las dummies originales
-  #---------------------------------------------------------------------------------------#
-  # ----Argumentos de entrada ----#
-  #-- excel_file: archivo de excel
-  # ----Argumentos de salida  ----#
-  #-- xts_dummies_list: lasta de objetos xts de las dummies
-  #---------------------------------------------------------------------------------------#
-  create_dummies_xts <- function(excel_file) {
-    # Get the names of all the sheets in the Excel file
-    sheet_names <- excel_sheets(excel_file)
-    
-    # Create an empty list to store the xts objects
-    xts_dummies_list <- list()
-    
-    # Loop through all the sheet names
-    for (sheet_name in sheet_names[1:length(sheet_names)]) {
-      # Read the current sheet into a data frame
-      current_sheet <- read.xlsx(excel_file, sheet = sheet_name, detectDates = TRUE)
-      
-      # Perform the necessary operations on the current sheet to create the xts object
-      dates <- index(Retornos)
-      dummies <- data.frame(t_0 = double(),t_1 = double(), t_2 = double(),t_3 = double(),t_4 = double())
-      for(i in 1:ncol(current_sheet)){
-        for(j in 1:nrow(Retornos)){
-          if(dates[j] %in% current_sheet[[i]]){
-            dummies[j,i] <- 1
-          }else if(!(dates[j] %in% current_sheet[[i]])){
-            dummies[j,i] <- 0
-          }
-        }
-      }
-      D <- c()
-      for(i in 1:nrow(dummies)){
-        if(sum(dummies[i,]) == 0){
-          D <- c(D,sum(dummies[i,]))
-        }else if(sum(dummies[i,]) != 0){
-          D <- c(D,sum(dummies[i,])/sum(dummies[i,])) 
-        }
-      }
-      xts_object <- as.xts(cbind(dummies,D), order.by = index(Retornos))
-      
-      # Use the sheet name to create a variable name for the xts object and store it in the list
-      xts_name <- paste0(sheet_name, "_dummies_xts}")
-      xts_dummies_list[[xts_name]] <- xts_object
-    }
-    # Return the list of xts objects
-    return(xts_dummies_list)
-  }
-  #---------------------------------------------------------------------------------------#
-}
 
 #---------------------------------- 11. grafico_estimates y grafico_estimates_car  ------------------------------------#
 # La siguiente función es para evitar la repeticion en los graficos AR_estimate y sus t-tests. 
@@ -686,6 +498,7 @@ grafico_estimates_car2 <- function(object.list,yaxis,title,colors){
 }
 #---------------------------------------------------------------------------------------#
 
+
 #----------------------------------- 12. order_coef --------------------------------------------------#
 # Ordena un vector de nombres de coeficientes basado en otro vector
 # ------------------------------------------------------------------------------------------------
@@ -695,7 +508,6 @@ grafico_estimates_car2 <- function(object.list,yaxis,title,colors){
 # ----Argumentos de salida  ----#
 #-- vec_ordenado    : vector numerico con el orden 
 #---------------------------------------------------------------------------------------#
-
 order_coef <- function(vec_desordenado, vec_orden){
   indexes <- c()
   for (i in 1:length(vec_orden)){
@@ -704,98 +516,8 @@ order_coef <- function(vec_desordenado, vec_orden){
   vec_ordenado = vec_desordenado[indexes]
   return(vec_ordenado)
 }
+#---------------------------------------------------------------------------------------#
 
-# Codigo para graficar los CAR por pais, fue mejorado por car_countries2, ya que usa una lista de coeficientes y no una lista
-# de modelos.
-if(0){
-  #----------------------------------- 20. car_countries --------------------------------------------------#
-  # Genera una grafica para cada indice de los retornos anormales acumulados (CAR) promedios dependiendo del continente y un
-  # nivel de significancia.
-  # ------------------------------------------------------------------------------------------------
-  # ----Argumentos de entrada ----#
-  # continent_model    : Un modelo estimado, el cual tiene ciertas propiedades, se le puede hacer summary y sacar los coeficientes
-  #                      con $ coeficients, los cuales incluyen el coeficiente estimado, error estandar, t_value y p_value.
-  # significance.level : El nivel de significancia que deben tener los coeficientes estimados para graficarlos
-  # pattern.step       : Al estimar los modelos por continente, los coeficientes tienen un nombre característico, pattern.step
-  #                      se utiliza para extraer la parte que corresponde a en que dia despues del evento se refiere el coeficiente (t0,t1,t2...)
-  # pattern.indexes    : string que es la parte del nombre del coeficiente que se refiere al pais del indice bursatil
-  # pattern.countries  : string que es la parte del nombre del coeficiente que se refiere al pais donde ocurre el desastre
-  # order.graph        : vector de nombres de paises que indicara el orden en que se graficara
-  # labels             : leyendas del eje de los indices bursatiles
-  # color              : color para la grafica
-  # title.graph        : titulo para la grafica
-  # ----Argumentos de salida  ----#
-  #-- plot_continent   : objeto tipo ggplot para poder graficar los retornos anormales acumulados (CAR) promedio para cada continente
-  #                      dependiendo de un nivel de significancia
-  #---------------------------------------------------------------------------------------#
-  
-  car_countries <- function(continent_model, significance.level, pattern.step, pattern.indexes, pattern.countries, order.graph, labels, color, title.graph){
-    
-    # Generamos un dataframe que va a guardar los parametros estimados, el error estandar, el valor del t test y el p_value.
-    dataframe_modelo <- data.frame(Estimate=double(), SD_error=double(), t_value=double(), p_value=double()) 
-    
-    # Filtrar por aquellos que acaben en t0, t1, t2, t3 o t4.
-    for (element in continent_model){
-      ## Genera un dataframe con el estimado, error estandar, t_value, p_value, que salen de la estimacion element
-      dataframe_coef <- as.data.frame(summary(element)$coefficients) 
-      ## Le cambiamos nombres al dataframe para mejor manejo, pero reflejan lo mismo
-      colnames(dataframe_coef) <- c("Estimate","SD_error","t_value","p_value")
-      ## Extraemos las filas que nos interesan, es decir aquellas de las dummies, que acaban en t0, t1, t2, t3 o t4, es decir steps
-      dataframe_coef_filtrado  <- dataframe_coef %>% 
-        dplyr::filter(str_ends(row.names(.),pattern = pattern.step)) %>% 
-        # Filtramos tambien para aquellos coeficientes que tengan un nivel de significancia menor que niv.significancia
-        dplyr::filter(p_value < significance.level)
-      ## Dejamos todos los coeficientes que cumplen con las condiciones en un solo dataframe
-      dataframe_modelo   <- rbind(dataframe_modelo, dataframe_coef_filtrado)
-    }
-    
-    ## Ahora para poder promediar los retornos anormales es necesario poder extraer el pais del indice y el step, usando la funcion
-    ## str_extract, que extrae el primer valor identico entre dos strings. Esto permite extraer el indice, que en cada fila aparece 
-    ## de primer lugar
-    string_start <- stringr::str_extract(row.names(dataframe_modelo), pattern.indexes)  
-    # cualquier valor de countries
-    string_end   <- stringr::str_extract(row.names(dataframe_modelo), pattern.step)  #En caso de querer revisar coeficientes por step
-    
-    ## Aparte, necesitamos hacer el CAR por cada pais del desastre por lo que el siguiente codigo obtiene todos los valores identicos entre 
-    #  dos strings. Sin embargo, para algunas filas va a encontrar dos coincidencias, la primera refiriendose al indice bursatil y la segunda 
-    #  al pais del desastre, por lo que necesitaremos por cada sublista guardar solamente el ultimo elemento.
-    string_pais     <- stringr::str_extract_all(row.names(dataframe_modelo), pattern.countries) 
-    string_pais_vec <- sapply(string_pais, function(x) x[[length(x)]])
-    
-    dataframe_modelo <- cbind(dataframe_modelo,string_start,string_pais_vec,string_end)
-    
-    ## Ellos mencionan que realizaran un promedio del CAR, por lo cual realizaremos el CAR de cada pais que tenemos datos
-    #  para cada indice y realizaremos un promedio
-    
-    promedio_car <- dataframe_modelo %>% 
-      group_by(string_start, string_pais_vec) %>% 
-      summarise(CAR = sum(Estimate)) %>% # El nombre Estimate sale del nombre que le colocamos anteriormente
-      group_by(string_start) %>% 
-      summarise(mean_CAR = mean(CAR)) %>% 
-      arrange(match(string_start,order.graph))
-    
-    ## Por ultimo, se agregan a las graficas los indices que no contienen valores, de modo que al graficar no saldra dato (es 0)
-    #  pero sirve para comparar con la grafica del paper
-    
-    dataframe_pagnorden <- data.frame(string_start = order.graph)
-    #Juntar las dos dataframes y rellenar con 0 los datos faltantes
-    promedio_car_all <- left_join(dataframe_pagnorden, promedio_car, by = "string_start") # string_start sale de un nombre que le colocamos en la funcion
-    promedio_car_all$mean_CAR <- ifelse(is.na(promedio_car_all$mean_CAR), 0, promedio_car_all$mean_CAR)
-    
-    promedio_car_all$string_start <- factor(promedio_car_all$string_start, levels = promedio_car_all$string_start)
-    
-    plot_continent <- ggplot(data = promedio_car_all, aes(y = mean_CAR, x = string_start, fill = mean_CAR < 0)) +
-      geom_col() +
-      scale_fill_manual(values = c(color, color)) +
-      coord_flip()+
-      scale_x_discrete(labels = labels)+
-      theme_light() + 
-      theme(plot.title = element_text(hjust = 0.5)) + 
-      guides(fill = "none") +
-      labs(y = paste0("Average CAR | p-value < ",percent(niv.significancia)),x="Index",title = title.graph)
-    return(plot_continent)
-  }
-}
 
 #----------------------------------- 13. car_countries2 --------------------------------------------------#
 # Genera una grafica para cada indice de los retornos anormales acumulados (CAR) promedios dependiendo del continente y un
@@ -816,8 +538,6 @@ if(0){
 #-- plot_continent   : objeto tipo ggplot para poder graficar los retornos anormales acumulados (CAR) promedio para cada continente
 #                      dependiendo de un nivel de significancia
 #---------------------------------------------------------------------------------------#
-
-
 car_countries2 <- function(continent_coefficients, significance.level, pattern.step, pattern.indexes, pattern.countries, order.graph, labels, color, title.graph){
   
   # Generamos un dataframe que va a guardar los parametros estimados, el error estandar, el valor del t test y el p_value.
@@ -880,6 +600,7 @@ car_countries2 <- function(continent_coefficients, significance.level, pattern.s
     labs(y = paste0("Average CAR | p-value < ",percent(significance.level)),x="Index",title = title.graph)
   return(plot_continent)
 }
+#---------------------------------------------------------------------------------------#
 
 
 #----------------------------------- 14. average_countries2 --------------------------------------------------#
@@ -902,8 +623,6 @@ car_countries2 <- function(continent_coefficients, significance.level, pattern.s
 #-- plot_continent   : objeto tipo ggplot para poder graficar los retornos anormales acumulados (CAR) promedio para cada continente
 #                      dependiendo de un nivel de significancia
 #---------------------------------------------------------------------------------------#
-
-
 average_countries2 <- function(continent_coefficients, significance.level, pattern.step, pattern.indexes, pattern.countries, order.graph, labels, color, title.graph){
   
   # Generamos un dataframe que va a guardar los parametros estimados, el error estandar, el valor del t test y el p_value.
@@ -966,6 +685,8 @@ average_countries2 <- function(continent_coefficients, significance.level, patte
     labs(y = paste0("Average ARs | p-value < ",percent(significance.level)),x="Index",title = title.graph)
   return(plot_continent)
 }
+#---------------------------------------------------------------------------------------#
+
 
 #---------------------------------- 15. matching  ------------------------------------#
 # Hacer matching entre el pais y el nombre del indice. 
@@ -1008,6 +729,7 @@ matching <- function(pais,bool.cds,bool.paper){
   return(index)
 }
 #---------------------------------------------------------------------------------------#
+
 
 #---------------------------------- 16. drop.events  ------------------------------------#
 # Filtrar una base de eventos para tener una ventana minima de estimacion y una ventana 
@@ -1214,7 +936,6 @@ if(0){
 #-- base_final         : base de datos con las mismas columnas de <base> junto a aquellos rezagos de las variables 
 #                        <interest.vars>
 #---------------------------------------------------------------------------------------#
-
 create.lags <- function(base, interest.vars,no.lags=NULL, AR.m, MA.m=0,d=0,bool=TRUE,metodo="CSS"){
   
   all_events_list      <- list() # lista que contendra todas las series de retornos + errores estandar
@@ -1278,127 +999,8 @@ create.lags <- function(base, interest.vars,no.lags=NULL, AR.m, MA.m=0,d=0,bool=
   base_final <- merge(base.completa,lags_df)
   return(base_final)
 }
-
 #---------------------------------------------------------------------------------------#
 
-# <if(0)> porque fue extendida mas adelante para poder estimar media y varianza utilizando GARCH, de ser deseado
-if(0){
-  #------------------------------   19. estimation.event.study  --------------------------#
-  # Realizar una estimacion por OLS siguiendo el modelo de mercado, obteniendo retornos anormales 
-  # y error estandar de la estimacion.
-  #---------------------------------------------------------------------------------------#
-  # ----Argumentos de entrada ----#
-  #-- base               : base de datos de clase zoo o ts donde deben estar las variables dependientes de las regresiones (Rit),
-  #--                      el indice de mercado (Rmt) y las variables exogenas de la regresion. Tambien los rezagos de las 
-  #                        variables dependientes (en caso de haber)
-  #-- data.events        : dataframe de eventos, que debe incluir alguna columna en formato fecha para funcionar
-  #-- days.evaluated     : maximo numero de dias a evaluar en caso de que la fecha de un evento no este en el indice de las 
-  #                        series a estimar
-  #-- market.returns     : nombre de la columna de <base> que corresponde al indice de mercado (Rmt)
-  #-- max.ar             : numero de dias maximos despues del evento para calcular retornos anormales
-  #-- es.start           : numero de dias previos al evento para comenzar la estimacion
-  #-- es.end             : numero de dias previos al evento para terminar la estimacion
-  #-- add.exo            : booleano donde <TRUE> indica que se van a agregar las variables <vars.exo> al modelo y <FALSE> 
-  #                        si no se agrega ninguna variable exogena. Default es <FALSE>
-  #-- vars.exo           : nombres de las variables en <base> que se quieren usar como exogenas
-  # ----Argumentos de salida  ----#
-  #-- all.events.list    : lista que incluye para cada par evento-indice la siguiente informacion:
-  #--   <Dataframe>      : base de datos con retornos observados, estimados y anormales para la ventana 
-  #--                      de estimacion y para la ventana de evaluacion del evento
-  #--   <Standard_Error> : error estandar de los residuales de la estimacion por OLS
-  #---------------------------------------------------------------------------------------#
-  
-  estimation.event.study <- function(base, data.events, days.evaluated, market.returns, max.ar, es.start, es.end, add.exo =FALSE,
-                                     vars.exo=NULL){
-    
-    all_events_list      <- list() # lista que contendra todas las series de retornos + errores estandar
-    
-    # Loop: Por cada evento se hace una regresion OLS con la muestra [-<es.start>,-<es.end>] dias antes del evento para estimar alfa, beta 
-    for(i in 1:nrow(data.events)){
-      # Primero se encuentra a que dato le corresponde el dia del evento, y el dia final de la ventana de evento es el dia del evento
-      # mas <max.ar>
-      event_list  <- list() # lista donde se guarda por cada evento un dataframe de retornos observados, estimados y anormales;
-      # junto a error estandar del error en la estimacion
-      pais        <- as.character(data.events[i,'Country']) # Establece el pais donde sucedio el evento
-      index_names <- matching(pais) # Nombre de la variable del <pais> con la que se calculan retornos anormales (ej: stock-index del pais)
-      # Detener la funcion si no se tiene indice para el pais especificado
-      if(is.null(index_names)) stop(paste0("No hay indice para el pais: ", pais))
-      suppressWarnings({
-        # Loop que genera la posicion de desastre respecto al indice de <asset.returns>. Si la fecha del evento no esta en el indice de 
-        # <asset.returns>,se revisara hasta <days.evaluated> dias despues del desastre para ser considerado como el inicio del evento
-        for(j in 0:days.evaluated){
-          if((data.events[i,'Start.Date']+j) %in% index(base[,index_names])){ 
-            # Generacion del dia del desastre (o j dias despues del desastre, si el dia del desastre no esta en el indice de 
-            # <asset.returns>)
-            event_start_date  <- data.events[i,'Start.Date']+j
-            # Generacion de la posicion del dia de desastre en el indice de fechas de <asset.returns>
-            # (o j dias despues del desastre, si el dia del desastre no esta en el indice de <asset.returns>)
-            event_start_index <- which(index(base[,index_names])==event_start_date)
-            break
-          }
-        }
-      })
-      
-      # Regresion por OLS del modelo de mercado
-      # Loop para los casos en que haya mas de un indice por pais, se realiza regresion OLS para estimar alpha y beta
-      # Nota: En general solo hay un indice por pais, pero en USA hay dos.
-      for(name in index_names){
-        # <window.event.dates> son las fechas que pertenecen a la ventana de evento
-        window_event_dates <- index(base[,name][(event_start_index):(event_start_index+max.ar)])
-        
-        # Creacion de una base de datos exclusiva para el indice <name>, que luego sera utilizada para la estimacion
-        # Asegurar que existe alguna columna de rezagos a traves de <length(grep(paste0(name,".l"),colnames(base)))> !=0, 
-        # ya que si es igual a 0, entonces la funcion <create.lags> no genero ningun rezago para el indice <name>
-        if(length(grep(paste0(name,".l"),colnames(base))) != 0){
-          lags_name   <- colnames(base)[grep(paste0(name,".l"),colnames(base))]
-          base_indice <- merge(base[,c(name,market.returns)],base[,lags_name])
-        }else base_indice <- base[,c(name, market.returns)]
-        
-        ## Añadir <vars.exo> si <add.exo> ==<TRUE>
-        if(add.exo == TRUE) base_indice <- merge(base_indice, base[,paste0(vars.exo,pais)])
-        
-        # Reducir el indice de la base para la estimacion.
-        # La posicion del primer dia de la ventana de estimacion respecto al indice de <asset.returns> o <market.returns>
-        # es (<event_start_index> - <es.start>) mientras que la posicion de ultimo dia de la ventana de estimacion es 
-        # (<event_start_index> - <es.end>)
-        base_estimacion <- base_indice[(event_start_index-es.start):(event_start_index-es.end),]
-        # Realizar la estimacion usando <lm>
-        model <- lm(as.formula(paste0(name,"~.")),data=base_estimacion) # <name> es la variable dependiente
-        
-        # Obtener los parametros estimados
-        betas         <- coef(model)
-        # Obtener el error estandar de los residuales
-        standard_error <- summary(model)$sigma
-        
-        # Para obtener los datos "predicted" para la ventana de evento, se crea una base de variables exogenas 
-        # cuyo indice sea <window_event_dates>
-        base_ev_window <- cbind(1,base_indice[,!colnames(base_indice) == name])[window_event_dates,]
-        
-        # Creacion series <observed>, <predicted> y <abnormal> solamente para la ventana de estimacion y la ventana de evento
-        observed <- base_indice[,name][c(index(base_estimacion),window_event_dates)]
-        # para <predicted> se usa model$fitted.values para los valores estimados durante la ventana de estimacion
-        # para la ventana de evento se usa <base_ev_window> %*% <betas>
-        predicted <- rbind(model$fitted.values,xts(base_ev_window %*% betas,order.by = window_event_dates))
-        # Indice en formato fecha
-        index(predicted) <- as.Date(index(predicted))
-        # Restar retornos estimados de los observados
-        abnormal <- observed - predicted
-        
-        # Se juntan las tres series en un solo dataframe
-        df             <- merge(observed,predicted,abnormal)
-        # Cambio de nombre de columnas
-        colnames(df)   <- c('Observed','Predicted','Abnormal')
-        # Agregar el dataframe a la lista <event_list>
-        event_list[["Dataframe"]]       <- df 
-        # Agregar el error estandar a la lista <event_list>
-        event_list[["Standard_Error"]]  <- standard_error
-        # Agregar la lista <event_list> a la lista <all_events_list>, por lo que seria una lista de listas
-        all_events_list[[paste(name,i,sep="_")]] <- event_list
-      }
-    }
-    return(all_events_list)
-  }
-}
 
 #------------------------------   18. estimation.event.study  --------------------------#
 # Realizar una estimacion por OLS siguiendo el modelo de mercado, obteniendo retornos anormales 
@@ -1436,7 +1038,6 @@ if(0){
 #                                    de evento
 #     <evento>                     : dataframe del evento asociado con la estimacion ARMA-GARCH
 #---------------------------------------------------------------------------------------#
-
 estimation.event.study <- function(bool.paper,bool.cds,base, data.events, market.returns, max.ar, es.start, es.end, add.exo =FALSE,
                                    vars.exo=NULL, GARCH=NULL, overlap.events = NULL, no.overlap = 0){
   
@@ -1792,8 +1393,8 @@ estimation.event.study <- function(bool.paper,bool.cds,base, data.events, market
   }
   return(events.list)
 }
-
 #---------------------------------------------------------------------------------------#
+
 
 #------------------------------   19. wilcoxon.jp.test  ----- --------------------------#
 # Realizar una prueba de rank-signed Wilcoxon teniendo en cuenta una lista generada por la funcion
@@ -1807,7 +1408,6 @@ estimation.event.study <- function(bool.paper,bool.cds,base, data.events, market
 # ----Argumentos de salida  ----#
 #-- result           : dataframe con el estadistico de Wilcoxon y su significancia (* para 10%, ** para 5% y *** para 1%)
 #---------------------------------------------------------------------------------------#
-
 wilcoxon.jp.test <- function(data.list,es.window.length,ev.window.length,ev.window.begin){
   # Para el calculo del CAR se toma la serie <Abnormal> a partir de la obs <es.window.length> + 1 hasta 
   # <es.window.length> + <ev.window.length>
@@ -1884,8 +1484,8 @@ wilcoxon.jp.test <- function(data.list,es.window.length,ev.window.length,ev.wind
   resultado <- data.frame('Estadistico'=statistic,'Significancia'=significancia, "p_value" = round(p_value,3))
   return(resultado)
 }
-
 #---------------------------------------------------------------------------------------#
+
 
 #------------------------------   20. bootstrap_CT  ----- --------------------------#
 # Realizar una prueba usando bootstrap siguiendo el procedimiento de Corrado & Truong (2008)
@@ -1901,7 +1501,6 @@ wilcoxon.jp.test <- function(data.list,es.window.length,ev.window.length,ev.wind
 # ----Argumentos de salida  ----#
 #-- result           : dataframe con el estadistico de Patell y su significancia (* para 10%, ** para 5% y *** para 1%)
 #---------------------------------------------------------------------------------------#
-
 bootstrap_CT <- function(data.list,market.returns,es.window.length,ev.window.length,no.simul){ 
   standardized_cars <- c()
   for(element in data.list){
@@ -1959,8 +1558,8 @@ bootstrap_CT <- function(data.list,market.returns,es.window.length,ev.window.len
   resultado_boot <- data.frame("Estadistico Patell" = Tp, "Significancia"= significancia)
   return(resultado_boot)
 }
-
 #---------------------------------------------------------------------------------------#
+
 
 #------------------------------   21. Corrado_Zivney   ----- --------------------------#
 # Realizar el test no parametrico de Corrado y Zivney (1992) siguiendo la formulacion de
@@ -1974,7 +1573,6 @@ bootstrap_CT <- function(data.list,market.returns,es.window.length,ev.window.len
 # ----Argumentos de salida  ----#
 #-- result           : dataframe con el estadistico de Corrado y su significancia (* para 10%, ** para 5% y *** para 1%)
 #---------------------------------------------------------------------------------------#
-
 corrado_zivney <- function(data.list,es.window.length,ev.window.length){
   # Establecer variables para guardar los rangos de retornos anormales
   full_rank  <- NULL
@@ -2038,8 +1636,8 @@ corrado_zivney <- function(data.list,es.window.length,ev.window.length){
   colnames(result) <- c("Statistic","Significance")
   return(result)
 }
-
 #---------------------------------------------------------------------------------------#
+
 
 #------------------------------   22. wilcoxon_Pagnottoni   ----- --------------------------#
 # Realizar el test no parametrico de Wilcoxon para los CAR de cada SUR estimado
@@ -2055,7 +1653,6 @@ corrado_zivney <- function(data.list,es.window.length,ev.window.length){
 #-- dataframe_wilcoxon : dataframe que va a incluir el pais o tipo de desastre, su retorno anormal acumulado
 #                        promedio (CAAR), su estadistico de Wilcoxon, su p_valor y su significancia
 #---------------------------------------------------------------------------------------#
-
 wilcoxon_Pagnottoni <- function(coefficients.list,name.variable,pattern.step,pattern.indexes,pattern.variable){
   # Dataframe que va a guardar el tipo de desastre/pais, el CAAR, el estadistico de wilcoxon, el p value y la significancia
   dataframe_wilcoxon <- data.frame() 
@@ -2153,8 +1750,8 @@ wilcoxon_Pagnottoni <- function(coefficients.list,name.variable,pattern.step,pat
   colnames(dataframe_wilcoxon) <- c(name.variable, "CAAR","Wilcoxon_statistic","p_value","Significance")
   return(dataframe_wilcoxon)
 }
-
 #---------------------------------------------------------------------------------------#
+
 
 #------------------------------   23. car_pagnottoni   ----- --------------------------#
 # Genera una grafica de los retornos anormales acumulados dependiendo del dia relativo al evento. 
@@ -2170,7 +1767,6 @@ wilcoxon_Pagnottoni <- function(coefficients.list,name.variable,pattern.step,pat
 # ----Argumentos de salida  ----#
 #-- 
 #---------------------------------------------------------------------------------------#
-
 car_pagnottoni = function(coeffs,indices,interest.vars,average){
   # El titulo del grafico se encuentra revisando los nombres de <coeffs> respecto a <interest.vars>. 
   # La siguiente linea busca cual es el tipo de desastre o pais que vamos a graficar
@@ -2211,6 +1807,7 @@ car_pagnottoni = function(coeffs,indices,interest.vars,average){
 }
 #---------------------------------------------------------------------------------------#
 
+
 #------------------------------   24. arma_lags_database   -------------------------------#
 # Por ahora la funcion solo trabaja con rezagos de la parte AR(p)
 #---------------------------------------------------------------------------------------#
@@ -2230,7 +1827,6 @@ car_pagnottoni = function(coeffs,indices,interest.vars,average){
 # ----Argumentos de salida  ----#
 #--   base_num_rezagos : base de datos que contiene el numero de rezagos optimos para cada indice en <indices>
 #---------------------------------------------------------------------------------------#
-
 arma_lags_database <- function(base, interest.vars, no.lags, AR.m, MA.m, d, bool, metodo){
   
   base_num_rezagos <- data.frame(p=double(),q=double())   # dataframe que va a guardar todos los rezagos
@@ -2282,8 +1878,8 @@ arma_lags_database <- function(base, interest.vars, no.lags, AR.m, MA.m, d, bool
   }
   return(base_num_rezagos)
 }
-
 #---------------------------------------------------------------------------------------#
+
 
 #------------------------------   25. volatility_event_study   -------------------------------#
 # Para cada evento estima un modelo apARCH(1,1) y calcula el forecast de la volatilidad condicional.
@@ -2320,7 +1916,6 @@ arma_lags_database <- function(base, interest.vars, no.lags, AR.m, MA.m, d, bool
 #                         a la distribucion t. Ademas, incluye el forecast de la volatilidad para los <len.ev.window> dias siguientes
 #                         al evento. Por ultimo, incluye el error durante la ventana de evento
 #---------------------------------------------------------------------------------------#
-
 volatility_event_study = function(base.evento, date.col.name, geo.col.name, base.vol, interest.vars, num_lags, AR.m = 20, MA.m = 0,d = 0,
                                   bool = TRUE,metodo = "CSS", es.start,len.ev.window,var.exo,var.exo.pais,bool.paper,bool.cds,garch){
   # Crear una nueva clase de objetos para guardar informacion importante de la estimacion ARMA-GARCH
