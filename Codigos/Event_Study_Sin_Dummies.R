@@ -130,7 +130,7 @@ if(1){
 
 # Filtrar la base de eventos para buscar eventos mas significativos -------
 emdat_base <- emdat_base %>% 
-  dplyr::filter(Total.Deaths >= 1000 | No.Injured >= 1000 | Total.Affected >= 25000 | Damages >= 1000000) %>% 
+  dplyr::filter(Total.Deaths >= 1000 | No.Injured >= 1000 | Total.Affected >= 10000 | Damages >= 1000000) %>% 
   dplyr::filter(Disaster.Subgroup %in% c('Geophysical','Hydrological','Meteorological')) %>% 
   dplyr::filter(na_start == 0)
 # Lo anterior siguiendo a Gassebner, Keck, Teh. No se puede seleccionar 100.000 de total de afectados porque 
@@ -147,7 +147,7 @@ number_lags <- NULL
 base_lagged <- create.lags(base = base_Tommaso,interest.vars = indexes,no.lags = number_lags,AR.m = 20)
 # Parametros event study --------------------------------------------------------------
 
-estimation_windows <- c(250,350,500) #<<<--- No. de dias antes del evento para comenzar la estimacion
+estimation_windows <- c(250,375,500) #<<<--- No. de dias antes del evento para comenzar la estimacion
 for(estimation_start in estimation_windows){
   estimation_end           <- 1    #<<<--- No. dias antes del evento para finalizar la estimacion
   max_abnormal_returns     <- 15   #<<<--- No. dias maximos despues del evento para calcular retorno anormal
