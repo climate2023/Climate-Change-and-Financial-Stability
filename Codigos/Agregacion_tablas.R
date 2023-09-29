@@ -69,7 +69,7 @@ if(1){
 # Los siguientes argumentos van a filtrar los resultados y tablas
 serie             <- 'Indices'      #<<<--- puede ser 'Indices' o 'CDS'
 tipo.estudio      <- 'media'     #<<<--- puede ser 'media' o 'varianza'
-regresor.mercado  <- 'benchmark'    #<<<--- puede ser 'PM' o 'benchmark', para CDS todavia no hay benchmark
+regresor.mercado  <- 'PM'    #<<<--- puede ser 'PM' o 'benchmark', para CDS todavia no hay benchmark
 umbrales.evento   <- c(50,100,150)  #<<<--- puede ser 50 100 o 150
 if(tipo.estudio=='media') es.windows <- c(250,350,500) #<<<--- Para media puede ser 250, 350 o 500.
 if(tipo.estudio=='varianza') es.windows <- c(500,750,1000) #<<<--- Para media puede ser 500, 750 o 1000.
@@ -169,7 +169,7 @@ if(tipo.estudio == 'media'){
     # Nombres de columnas
     colnames(dataframe.wil.organizado) <- c(paste0('est',umbrales.evento[1]),paste0('est',umbrales.evento[2]),paste0('est',umbrales.evento[3]))
     # Añadir columna de dias de estimacion
-    dataframe.wil.organizado$`Estimacion` <- c(rep('',8),200,rep('',15),300,rep('',15),500,rep('',7))
+    dataframe.wil.organizado$`Estimacion` <- c(rep('',8),250,rep('',15),350,rep('',15),500,rep('',7))
     # Mutar las columnas <50>, <100> y <200> para agregar un '/', para poder colocar la significancia de BMP en la misma tabla
     dataframe.wil.organizado <- dataframe.wil.organizado %>% 
       mutate('50' = paste(est50,'/'), '100' = paste(est100,'/'),'150' = paste(est150,'/'))
