@@ -59,7 +59,12 @@ if(1){
   # Cargar funciones --------------------------------------------------------
   
   source(paste0(getwd(),'/Codigos/Functions_Climate_Change.r')) # Source de las funciones
+  Dir  = paste0(getwd(),'/Bases/') #Directorio de datos, se supone que el subdirectorio <Bases> existe
+  Tipos.Desastres  <- c("Biological","Climatological","Geophysical","Hydrological","Meteorological")  #<<<--- Tipos de desastres considerados
 }
+
+##
+bool_paper <- T
 
 ## Parametros
 no.rezagos.de.desastres <- 15     #<<<--- Numero de rezagos de los desastres <w> (i.e. t0, t1, ..., tw)
@@ -539,7 +544,9 @@ if(!bool_paper){
 
 #Se eliminan las filas (desastres) que contengan <NA> en el mes de inicio, ya que no se puede suponer el mes en que empezo el desastre.
 emdat_final <- emdat_interest_variables %>% 
-  dplyr::filter(!is.na(Start.Month))
+  dplyr::filter(!is.na(Start.Month)) %>% 
+  # Tambien se van a eliminar los desastres sin dia de inicio exacto
+  dplyr::filter(!is.na(Start.Day))
 
 # Cargo los datos del mapamundi del paquete <ggplot2>
 world <- map_data("world")
@@ -828,6 +835,7 @@ palette2 <- brewer.pal(grupos, "RdPu")
 
 plots <- lapply(names(merged_data_disasters), function(name) {
   if(name == 'Biological') return(NULL) # Skip the 'Biological' category
+  if(name == 'Climatological') return(NULL) # Skip the 'Climatological' category
   df <- merged_data_disasters[[name]]
   agrupado <- df %>% dplyr::select(region,n) %>%  group_by(region,n) %>%  distinct()
   # Breaks para natural breaks
