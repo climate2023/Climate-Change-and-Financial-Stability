@@ -147,7 +147,7 @@ number_lags <- NULL
 base_lagged <- create.lags(base = base_Tommaso,interest.vars = indexes,no.lags = number_lags,AR.m = 20)
 # Parametros event study --------------------------------------------------------------
 
-estimation_windows <- c(250,375,500) #<<<--- No. de dias antes del evento para comenzar la estimacion
+estimation_windows <- c(500) #<<<--- No. de dias antes del evento para comenzar la estimacion
 for(estimation_start in estimation_windows){
   estimation_end           <- 1    #<<<--- No. dias antes del evento para finalizar la estimacion
   max_abnormal_returns     <- 15   #<<<--- No. dias maximos despues del evento para calcular retorno anormal

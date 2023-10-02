@@ -7,7 +7,7 @@ if(1){
   if(Sys.info()["sysname"]=='Windows') Sys.setlocale("LC_TIME","English")
   
   rm(list = ls())
-  if (Sys.info()["sysname"]=='Windows')  setwd('C:/Users/jpber/OneDrive/Documents/Codigo_compartido_Melo/Repositorio original/Climate-Change-and-Financial-Stability')
+  if (Sys.info()["sysname"]=='Windows')  setwd('C:/Users/jpber/OneDrive/Documents/Codigo_compartido_Melo/Climate_Change_and_Financial_Stability/Climate-Change-and-Financial-Stability')
   if (Sys.info()["sysname"]!='Windows')  setwd('/Users/lumelo/archivos/Climate-Change-and-Financial-Stability/Github/Climate-Change-and-Financial-Stability')
   
   cat("\014")
@@ -67,17 +67,17 @@ if(1){
 }
 
 # Prueba de filtro  -------------------------------------------------------
-directorio.saved        <- paste0(getwd(),'/Resultados_regresion/')
+directorio.saved        <- paste0(getwd(),'/Resul_reg_antiguos/')
 # directorio.guardar      <- paste0(directorio.saved,'Tablas/') # con cambio de bootstrap las tablas se guardan en otra carpeta
 directorio.guardar      <- paste0(directorio.saved,'Tablas/Nuevas_Tablas_Varianza/') 
 
 ventanas.estimacion <- c(500, 750, 1000)
 for(ventana.estimacion in ventanas.estimacion){
-  tipo.serie              <- 'CDS'   #<<<--- Puede ser 'CDS' o 'Indices'  
+  tipo.serie              <- 'Indices'   #<<<--- Puede ser 'CDS' o 'Indices'  
   # ventana.estimacion      <- '750'   #<<<--- Puede ser 200, 300 o 500   (Importante que sea string)
   ventana.traslape        <- '50'   #<<<--- Puede ser 50, 100 o 200   (Importante que sea string)
   tipo.estudio            <- 'varianza' #<<<--- Puede ser de 'media' o 'varianza'
-  regresor.mercado        <- 'PM'    #<<<--- Retornos de mercado 'PM' es promedio movil y 'MSCI' es el retorno MSCI Emerging Markets
+  regresor.mercado        <- 'benchmark'    #<<<--- Retornos de mercado 'PM' es promedio movil y 'MSCI' es el retorno MSCI Emerging Markets
   
   tipos.desastre.eliminar <- c('Biological','Climatological') #<<<--- NULL si no se desea eliminar ningun tipo de desastre 
   paises.resultados       <- countries # Seleccionar los paises sobre los cuales se quiere hacer el analisis de resultados. <countries> si se desea
@@ -133,42 +133,6 @@ for(ventana.estimacion in ventanas.estimacion){
     # a guardar los elementos de <v.lista.separada> que contengan mas de un desastre
     v.lista.separada <- purrr::keep(v.lista.separada, ~(length(.x) > 1))
   }
-  
-  # Graficas CAV ------------------------------------------------------------
-  for(i in seq_along(v.lista.separada)){
-    element <- v.lista.separada[[i]]
-    name    <- names(v.lista.separada)[i]  
-    grafico_cav(element,as.numeric(ventana.estimacion),vol_ev_window)
-    title(name,line=0.75)
-  }
-  
-  # Tabla CAV/significancia ------------------------------------------------
-  
-  # Dataframe con muchas ventanas
-  matrix.volatilidad <- matrix(nrow=(vol_ev_window),ncol=(length(v.lista.separada)+1))
-  iteraciones.bool  <- 5000
-  for(i in seq_along(v.lista.separada)){
-    for(j in (1:(vol_ev_window))){
-      prueba <- bootstrap.volatility2(v.lista.separada[[i]],as.numeric(ventana.estimacion),j,bootstrap_vol_iterations = iteraciones.bool)
-      matrix.volatilidad[j,i] <- paste(prueba$CAV,prueba$Significancia)
-    }
-  }
-  
-  k <- length(v.lista.separada)+1
-  for(j in (1:(vol_ev_window))){ 
-    prueba.cav <- bootstrap.volatility2(volatility_results,as.numeric(ventana.estimacion),j,bootstrap_vol_iterations = iteraciones.bool)
-    matrix.volatilidad[j,k] <- paste(prueba.cav$CAV,prueba.cav$Significancia)
-  }
-  colnames(matrix.volatilidad) <- c(names(v.lista.separada),'Todos')
-  Ventana                      <- 1:(vol_ev_window)
-  matrix.volatilidad           <- cbind(Ventana,matrix.volatilidad)
-  
-  dataframe.volatilidad        <- data.frame(matrix.volatilidad)
-  
-  # Guardar las tablas de significancia. No es necesario agregar el tipo de test ya que podemos guardar ambas tablas
-  if(columna.agrupar=='Disaster.Subgroup') agrupacion <- 'tipodesastre'
-  if(columna.agrupar=='Country') agrupacion <- 'pais'
-  if(columna.agrupar=='Ambas')   agrupacion <- 'paistipodesastre'
-  save(dataframe.volatilidad,
-       file=paste0(directorio.guardar,'Tablas_',tipo.serie,'_tra',ventana.traslape,'_est',ventana.estimacion,'_',tipo.estudio,'_',regresor.mercado,'_',agrupacion,'.RData'))
+  unlist(lapply(v.lista.separada, length))
+  sum(unlist(lapply(v.lista.separada, length)))
 }

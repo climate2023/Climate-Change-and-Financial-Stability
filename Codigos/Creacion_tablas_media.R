@@ -94,7 +94,7 @@ max_abnormal_returns     <- 15   #<<<--- No. dias maximos despues del evento par
 length_car_window        <- 15   #<<<--- Ventana para calcular el CAR (por ejemplo 5 significa [0,+5], donde 0 es el dia del evento)
 length_event_window      <- length_car_window + 1 # Longitud ventana de evento es 1 mas <length_car_window>
 
-ventanas.estimacion      <- c('250','350','500')   #<<<--- Puede ser 250, 350 o 500   (Importante que sea string)
+ventanas.estimacion      <- c('250','375','500')   #<<<--- Puede ser 250, 350 o 500   (Importante que sea string)
 ventanas.traslape        <- c('50','100','150')   #<<<--- Puede ser 50, 100 o 150   (Importante que sea string)
 
 for(ventana.estimacion in ventanas.estimacion){
