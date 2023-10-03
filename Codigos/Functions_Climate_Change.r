@@ -1001,6 +1001,401 @@ create.lags <- function(base, interest.vars,no.lags=NULL, AR.m, MA.m=0,d=0,bool=
 }
 #---------------------------------------------------------------------------------------#
 
+# if(0) porque se arreglo <overlap.dummy> en la funcion a partir del renglon 1400
+if(0){
+  #------------------------------   18. estimation.event.study  --------------------------#
+  # Realizar una estimacion por OLS siguiendo el modelo de mercado, obteniendo retornos anormales 
+  # y error estandar de la estimacion.
+  #---------------------------------------------------------------------------------------#
+  # ----Argumentos de entrada ----#
+  #-- bool.cds: booleano donde T indica que se hara el matching con los nombres de las series de 
+  #             CDS y F que se haran con los nombres de las series de Pagnottoni
+  #-- base               : base de datos de clase zoo o ts donde deben estar las variables dependientes de las regresiones (Rit),
+  #--                      el indice de mercado (Rmt) y las variables exogenas de la regresion. Tambien los rezagos de las 
+  #                        variables dependientes (en caso de haber)
+  #-- data.events        : dataframe de eventos, que debe incluir alguna columna en formato fecha para funcionar
+  #-- days.evaluated     : maximo numero de dias a evaluar en caso de que la fecha de un evento no este en el indice de las 
+  #                        series a estimar
+  #-- market.returns     : nombre de la columna de <base> que corresponde al indice de mercado (Rmt)
+  #-- max.ar             : numero de dias maximos despues del evento para calcular retornos anormales
+  #-- es.start           : numero de dias previos al evento para comenzar la estimacion
+  #-- es.end             : numero de dias previos al evento para terminar la estimacion
+  #-- add.exo            : booleano donde <TRUE> indica que se van a agregar las variables <vars.exo> al modelo y <FALSE> 
+  #                        si no se agrega ninguna variable exogena. Default es <FALSE>
+  #-- vars.exo           : nombres de las variables en <base> que se quieren usar como exogenas
+  #-- GARCH              : variable que indicara con cual modelo GARCH se estimara. 
+  #        - NULL es el default, en cuyo caso se estimara la media con OLS, sin tener modelo para la varianza
+  #        - sGARCH, es el modelo GARCH(1,1)
+  #        - apARCH : asymmetric power-ARCH(1)
+  #        - eGARCH : exponential-GARCH(1,1)
+  # ----Argumentos de salida  ----#
+  #-- events.list    : lista que incluye para cada par evento-indice un objeto de clase "ESmean" con la siguiente informacion:
+  #--   <Retornos>       : base de datos con retornos observados, estimados y anormales para la ventana 
+  #--                      de estimacion y para la ventana de evaluacion del evento
+  #--   <error_estandar> : error estandar de los residuales de la estimacion por OLS
+  #--   <res_estandar_estimacion>    : residuales estandarizados durante la estimacion, en caso de haber sido estimado con GARCH
+  #--   <res_no_estandar_estimacion> : residuales no estandarizados durante la estimacion, en caso de haber sido estimado con GARCH
+  #--   <variance_forecast>          : forecast de la varianza condicional durante los <max.ar> dias correspondientes a la ventana
+  #                                    de evento
+  #     <evento>                     : dataframe del evento asociado con la estimacion ARMA-GARCH
+  #---------------------------------------------------------------------------------------#
+  estimation.event.study <- function(bool.paper,bool.cds,base, data.events, market.returns, max.ar, es.start, es.end, add.exo =FALSE,
+                                     vars.exo=NULL, GARCH=NULL, overlap.events = NULL, no.overlap = 0){
+    
+    events.list <- list() # lista que contendra todas la informacion del modelo
+    
+    # Crear una nueva clase de objetos para guardar informacion importante de la estimacion ARMA-GARCH
+    setClass("ESmean",slots=list(retornos = "xts",error_estandar = "numeric",res_estandar_estimacion="xts",
+                                 res_no_estandar_estimacion="xts",variance_forecast="xts",
+                                 evento='data.frame',fit='list'))
+    
+    # Si GARCH = FALSE: Por cada evento se hace una regresion OLS con la muestra [-<es.start>,-<es.end>] dias antes del evento para estimar alfa, beta 
+    # Si GARCH = TRUE:  Por cada evento se hace una regresion con ML para estimar la media y el GARCH con la muestra [-<es.start>,-<es.end>] dias 
+    # antes del evento para estimar alfa, beta
+    
+    # Primero se crea una columna de los indices del <Start.Date> de cada desastre respectivo a <base>
+    indices2 <- c()
+    for (i in 1:nrow(data.events)) {
+      indices2[i] <- match(data.events[i,'Start.Date'],index(base))
+      if(is.na(indices2[i])){
+        for(j in 1:nrow(base)){
+          indices2[i] <- match(data.events[i,'Start.Date'] + j, index(base))
+          if(!is.na(indices2[i])) break
+        }
+      }
+    }
+    data.events$indices2 <- indices2
+    
+    # Realizar lo mismo para <overlap.events> , si no es <NULL>
+    if(!is.null(overlap.events)){
+      indices2 <- c()
+      for (i in 1:nrow(overlap.events)) {
+        indices2[i] <- match(overlap.events[i,'Start.Date'],index(base))
+        if(is.na(indices2[i])){
+          for(j in 1:nrow(base)){
+            indices2[i] <- match(overlap.events[i,'Start.Date'] + j, index(base))
+            if(!is.na(indices2[i])) break
+          }
+        }
+      }
+      overlap.events$indices2 <- indices2
+    }
+    
+    for(i in 1:nrow(data.events)){
+      # Primero se encuentra a que dato le corresponde el dia del evento, y el dia final de la ventana de evento es el dia del evento
+      # mas <max.ar>
+      pais        <- as.character(data.events[i,'Country']) # Establece el pais donde sucedio el evento
+      index_names <- matching(pais,bool.cds,bool.paper) # Nombre de la variable del <pais> con la que se calculan retornos anormales (ej: stock-index del pais)
+      # Detener la funcion si no se tiene indice para el pais especificado
+      if(is.null(index_names)) stop(paste0("No hay indice para el pais: ", pais))
+      # Seleccionar indice y fecha del desastre
+      event_start_index <- data.events[i,'indices2']
+      event_start_date  <- data.events[i,'Start.Date']
+      
+      if(is.null(GARCH)){
+        # Regresion por OLS del modelo de mercado
+        # Loop para los casos en que haya mas de un indice por pais, se realiza regresion OLS para estimar alpha y beta
+        # Nota: En general solo hay un indice por pais, pero en USA hay dos.
+        for(name in index_names){
+          # <window.event.dates> son las fechas que pertenecen a la ventana de evento
+          window_event_dates <- index(base[,name][(event_start_index):(event_start_index+max.ar)])
+          
+          # Creacion de una base de datos exclusiva para el indice <name>, que luego sera utilizada para la estimacion
+          # Asegurar que existe alguna columna de rezagos a traves de <length(grep(paste0(name,".l"),colnames(base)))> !=0, 
+          # ya que si es igual a 0, entonces la funcion <create.lags> no genero ningun rezago para el indice <name>
+          if(length(grep(paste0(name,".l"),colnames(base))) != 0){
+            lags_name   <- colnames(base)[grep(paste0(name,".l"),colnames(base))]
+            base_indice <- merge(base[,c(name,market.returns)],base[,lags_name])
+          }else base_indice <- base[,c(name, market.returns)]
+          
+          ## Añadir <vars.exo> si <add.exo> ==<TRUE>
+          if(add.exo == TRUE) base_indice <- merge(base_indice, base[,paste0(vars.exo,pais)])
+          
+          # Reducir el indice de la base para la estimacion.
+          # La posicion del primer dia de la ventana de estimacion respecto al indice de <asset.returns> o <market.returns>
+          # es (<event_start_index> - <es.start>) mientras que la posicion de ultimo dia de la ventana de estimacion es 
+          # (<event_start_index> - <es.end>)
+          base_estimacion <- base_indice[(event_start_index-es.start):(event_start_index-es.end),]
+          # Realizar la estimacion usando <lm>
+          model <- lm(as.formula(paste0(name,"~.")),data=base_estimacion) # <name> es la variable dependiente
+          
+          # Obtener los parametros estimados
+          betas         <- coef(model)
+          # Obtener el error estandar de los residuales
+          standard_error <- summary(model)$sigma
+          
+          # Para obtener los datos "predicted" para la ventana de evento, se crea una base de variables exogenas 
+          # cuyo indice sea <window_event_dates>, inlcuyendo los rezagos
+          base_ev_window <- cbind(1,base_indice[,!colnames(base_indice) == name])[window_event_dates,]
+          
+          # Creacion series <observed>, <predicted> y <abnormal> solamente para la ventana de estimacion y la ventana de evento
+          observed <- base_indice[,name][c(index(base_estimacion),window_event_dates)]
+          # para <predicted> se usa model$fitted.values para los valores estimados durante la ventana de estimacion
+          # y para la ventana de evento se usa <base_ev_window> %*% <betas>
+          predicted <- rbind(xts(model$fitted.values,order.by = index(base_estimacion)),xts(base_ev_window %*% betas,order.by = window_event_dates))
+          
+          # Restar retornos estimados de los observados
+          abnormal <- observed - predicted
+          
+          # Se juntan las tres series en un solo dataframe
+          df             <- merge(observed,predicted,abnormal)
+          # Cambio de nombre de columnas
+          colnames(df)   <- c('Observed','Predicted','Abnormal')
+          
+          object <- new("ESmean",retornos=df,error_estandar=standard_error,res_estandar_estimacion=xts(NULL),
+                        res_no_estandar_estimacion=xts(NULL),variance_forecast=xts(NULL))
+          
+          # Agregar <object> a la lista <events.list>, por lo que seria una lista de listas
+          events.list[[paste(name,i,sep="_")]] <- object
+        }
+      }else{
+        # Regresion por ML del modelo de mercado + GARCH para la varianza
+        # Loop para los casos en que haya mas de un indice por pais
+        # Nota: En general solo hay un indice por pais, pero en USA hay dos.
+        for(name in index_names){
+          # <window.event.dates> son las fechas que pertenecen a la ventana de evento
+          window_event_dates <- index(base[,name][(event_start_index):(event_start_index+max.ar)])
+          
+          # Obtener el numero de rezagos para el modelo de la media, calculando el numero de columnas que en su nombre tengan
+          # <(paste0(name,".l"))>
+          p <- length(grep(paste0(name,".l"),colnames(base)))
+          
+          # Variables exogenas que dependen del pais
+          variables_pais <- paste0(vars.exo,pais)
+          
+          # Loop necesario para asegurar que para cada evento siempre haya una estimacion. Cuando haya algun warning durante la estimacion,
+          # el codigo va a volver a correr con el mismo numero de datos, pero rezagados un periodo, con el fin de buscar que siempre converja la estimacion
+          # El loop va a correr hasta que <ugarchfit> corra sin ningun warning
+          
+          # <while_count> sera utilizado para contar cuantas veces se ha compleado una iteracion, con el fin de terminar el loop despues de una 
+          # cantidad limite de iteraciones
+          # <warning_count> sera el numero de veces que se encontro un warning, con el fin de reestimar el modelo con los datos
+          # correctos pero con los coeficientes de los datos rezagados
+          while_count   <- 0
+          warning_count <- 0
+          
+          # <fin_estimacion> indica que la ventana de estimacion va hasta el dia anterior al dia de evento. Si se desea que termine mucho antes
+          # faltaria parametrizarlo
+          fin_estimacion      <- event_start_index - 1
+          inicio_estimacion   <- event_start_index - es.start
+          
+          if(!is.null(overlap.events)) {
+            # Ver si hay eventos en la base completa, es decir <overlap.events> por dentro de la ventana de estimacion del desastre
+            subset_data <- subset(overlap.events, indices2 <= fin_estimacion)
+            # Una anotacion importante es que es posible que el desastre de interes este dentro de <subset_data>, dependiendo del fin
+            # de la ventana de estimacion, por lo cual se realiza <anti_join> solo para asegurar que no este dentro de <subset_data>
+            subset_data <- suppressMessages(anti_join(subset_data, data.events[i,]))
+            # <subset_data> es un data.frame que contiene todos los desastres de <overlap.events> que se encuentran anterior a nuestro desastre
+            # de interes. La idea entonces es generar una variable dummy donde 1 sea en los dias que hubo uno de estos eventos
+            # con el fin de controlar el posible confounding effect. 
+            # Tambien seria interesante agregar a la dummy ciertos dias despues de cada desastre en <subset_data>, para lo cual se utilizara
+            # la media de duracion por el tipo de desastre
+            overlap.dummy <- rep(0, fin_estimacion)
+            subset_data_list <- split(subset_data, subset_data$Disaster.Subgroup)
+            # Recordemos que del analisis descriptivo, la media de duracion de los desastres geofisicos es 3, mientras que de los hidrologicos es 9
+            # y de los meteorologicos es 7
+            df.mediaduracion <- data.frame(c('Geophysical','Hydrological','Meteorological'), c(2,8,4))
+            colnames(df.mediaduracion) <- c('Tipo.desastre','Media.duracion')
+            for(df.m in seq_along(subset_data_list)) {
+              for(num in subset_data_list[[df.m]]$indices2) overlap.dummy[num:(num+df.mediaduracion$Media.duracion[df.mediaduracion == names(subset_data_list)[df.m]])] <- 1 
+            }
+            # <overlap.dummy> es del tamaño de <fin_estimacion>, por lo que en la estimacion se restringira a <inicio_estimacion>- <fin_estimacion>
+          }
+          
+          while (TRUE) {
+            warning_dummy <- FALSE
+            # <tryCatch> corre el codigo, pero si encuentra algun warning o error, realiza un codigo especifico.
+            tryCatch({
+              # Especificacion GARCH
+              if(!is.null(overlap.events)) {
+                
+                # Asegurar que la dummy tenga valores de 1 y 0, porque si solamente tiene valores de 1 , no va a converger y 
+                # sera necesario rezagarla
+                if(mean(overlap.dummy[inicio_estimacion:fin_estimacion]) == 1){
+                  warning('La ventana de estimacion tiene traslape completo con otros eventos')
+                }
+                # El warning va a forzar a la funcion <tryCatch> a rezagar la dummy y correr la siguiente iteracion
+                
+                # Se formula una especificacion de garch teniendo en cuenta que la dummy <overlap.dummy>
+                # tiene datos 0 y 1, ya que si fuese solamente 0, no habría necesidad de la dummy
+                if(mean(overlap.dummy[inicio_estimacion:fin_estimacion])>0){
+                  spec <- ugarchspec(
+                    variance.model = list(model = GARCH, garchOrder = c(1, 1)),
+                    mean.model = list(
+                      armaOrder = c(p, 0),
+                      # Para la primera iteracion del loop <While> se utilizan los datos de la ventana de estimacion
+                      external.regressors = as.matrix(cbind(base[(inicio_estimacion:fin_estimacion),c(variables_pais,market.returns)], 
+                                                            overlap.dummy[inicio_estimacion:fin_estimacion]))
+                    ),
+                    distribution.model = "std"
+                  )
+                }else{
+                  # Creamos una especificacion para el garch sin dummy (en el caso que <dummy.overlap> sea completamente 0)
+                  spec <- ugarchspec(
+                    variance.model = list(model = GARCH, garchOrder = c(1, 1)),
+                    mean.model = list(
+                      armaOrder = c(p, 0),
+                      # Para la primera iteracion del loop <While> se utilizan los datos de la ventana de estimacion
+                      external.regressors = as.matrix(cbind(base[(inicio_estimacion:fin_estimacion),c(variables_pais,market.returns)]))
+                    ),
+                    distribution.model = "std"
+                  )
+                }
+              } else {
+                # el caso cuando <overlap.dummy> es NULL
+                spec <- ugarchspec(
+                  variance.model = list(model = GARCH, garchOrder = c(1, 1)),
+                  mean.model = list(
+                    armaOrder = c(p, 0),
+                    # Para la primera iteracion del loop <While> se utilizan los datos de la ventana de estimacion
+                    external.regressors = as.matrix(base[(inicio_estimacion:fin_estimacion),c(variables_pais,market.returns)])
+                  ),
+                  distribution.model = "std"
+                )
+                
+              }
+              fit <- ugarchfit(spec, data = base[(inicio_estimacion:fin_estimacion), name], solver = "hybrid")
+              if(is.na(persistence(fit)) | persistence(fit)>=1) warning('El GARCH no es estacionario') # Lo anterior porque con un evento la persistencia era 11, 
+              # y el forecast de la volatilidad daba numeros muy grandes
+              
+              # En algunos casos, <fit> tendra datos rezagados, por lo que debemos tomar los coeficientes de <fit> (el que convergio)
+              # y realizar la estimacion para los datos correctos
+              if(warning_count > 0 ){
+                # La especificacion del GARCH es la misma que <fit>, y por tanto se usa <getspec()>
+                adjusted_spec <- getspec(fit)
+                # <setfixed> permite fijar los parametros de <fit>
+                setfixed(adjusted_spec) <- as.list(coef(fit))
+                # En el paquete <rugarch> cuando se fijan todos los parametros, no estima un nuevo modelo. La funcion <ugarchfit> sugiere
+                # utilizar <ugarchfilter>, que "filtra" los nuevos datos con base al modelo previo.
+                # Se necesita fit para obtener los residuales estandarizados y no estandarizados para el pronostico de la varianza condicional
+                fit <- ugarchfilter(adjusted_spec, data = base[((inicio_estimacion+warning_count):(fin_estimacion+warning_count)), name])
+              }
+            },
+            warning = function(wrn) {
+              
+              # El siguiente codigo solo corre en caso de que haya habido un warning en el bloque superior
+              # Es importante usar <<- en vez de <-, ya que <warning> es una funcion, <function(wrn)>, por lo que se necesita asignar 
+              # <warning_dummy>, <warning_count>, <inicio_estimacion> y <fin_estimacion> por fuera de <function(wrn)>
+              warning_dummy <<- TRUE
+              warning_count <<- warning_count + 1
+              
+              # Rezagar los indices del <inicio_estimacion> y <fin_estimacion>, para tener datos distintos en la siguiente iteracion
+              # del loop <While>
+              inicio_estimacion <<- inicio_estimacion - 1
+              fin_estimacion <<- fin_estimacion - 1
+              cat('Fallo la convergencia, intentando con datos rezagados','\n')
+            }, 
+            error = function(e) {
+              
+              # Este error-handling se coloco porque puede haber un error de convergencia:
+              # Error in diag(fit$robust.cvar) : invalid 'nrow' value (too large or NA)
+              
+              # El siguiente codigo solo corre en caso de que haya habido un error en el bloque de <tryCatch>
+              # Es importante usar <<- en vez de <-, ya que <error> es una funcion, <function(e)>, por lo que se necesita asignar 
+              # <warning_dummy>, <warning_count>, <inicio_estimacion> y <fin_estimacion> por fuera de <function(e)>
+              warning_dummy <<- TRUE
+              warning_count <<- warning_count + 1
+              
+              # Rezagar los indices del <inicio_estimacion> y <fin_estimacion>, para tener datos distintos en la siguiente iteracion
+              # del loop <While>
+              inicio_estimacion <<- inicio_estimacion - 1
+              fin_estimacion <<- fin_estimacion - 1
+              cat('Fallo la convergencia, intentando con datos rezagados','\n')
+            })
+            
+            while_count <- while_count + 1
+            # Romper el loop si no hubo warning
+            if(!warning_dummy) break
+            
+            
+            if(while_count == 40){
+              warning("El modelo no converge despues de rezagar los datos 40 dias") # Falta parametrizar el numero maximo, <40>, pero no
+              # estoy muy seguro de si es completamente necesario
+              # Asignar <NULL> a <fit>
+              fit <- NULL
+              break
+            }
+          }
+          
+          if(is.null(fit)){
+            events.list[[paste(name,i,sep="_")]] <- NA
+            break
+          }
+          
+          # Asegurar que <fit> tenga los datos correctos usando <fitted()>. El ultimo dia de <fitted(fit)> debe ser igual que
+          # <index(base[(indice_del_evento-1),])>, ya que ese fue el ultimo dia de estimacion.
+          if(index(tail(fitted(fit),1)) != index(base[(event_start_index-1),])){
+            # <format> se necesita para que aparezca con el formato fecha
+            cat(format((index(tail(fitted(fit), 1))), "%Y-%m-%d"), '\n')
+            cat(format(index(base[fin_estimacion,]),"%Y-%m-%d"),'\n')
+            stop('Las fechas del modelo GARCH no corresponden a la ventana de estimacion')
+          }else{
+            cat(i,'Las fechas del modelo GARCH corresponden con la ventana de estimacion','\n')
+          }
+          
+          # Ahora con el GARCH estimado necesitamos guardar la informacion en un objeto de clase "Esmean" (el cual creamos anteriormente)
+          # Primero comenzamos con el dataframe de retornos, el cual es un objeto xts con los retornos observados, estimados y anormales
+          # tanto para la ventana de estimacion como para la ventana de evento
+          
+          # La base de datos de variables exogenas durante la ventana de evento en caso que <overlap.events> no sea nula, y en el caso en que
+          # <overlap.dummy> efectivamente haya entrado como regresora es:
+          if(!is.null(overlap.events) & ncol(spec@model$modeldata$mexdata) == 4) base_ev_window <- cbind(base[(window_event_dates), c(variables_pais, market.returns)],0)
+          # Para el caso en que <overlap.events> no sea nula, pero la dummy no haya entrado como regresora es
+          if(!is.null(overlap.events) & ncol(spec@model$modeldata$mexdata) == 3) base_ev_window <- base[(window_event_dates), c(variables_pais, market.returns)]
+          # Lo anterior porque el cuarto regresor es siempre 0 en la ventana de evento. Si hubiese un 1 estaríamos diciendo que se va a pronosticar
+          # el efecto de un desastre durante la ventana de evento
+          # Por otro lado, si no hay <overlap.events> la base de exogenas durante la ventana de evento seria
+          if(is.null(overlap.events)) base_ev_window <- base[(window_event_dates), c(variables_pais, market.returns)]
+          
+          # Creacion series <observed>, <predicted> y <abnormal> solamente para la ventana de estimacion y la ventana de evento
+          observed <- rbind(base[((inicio_estimacion+warning_count):(fin_estimacion+warning_count)),name],base[window_event_dates,name])
+          
+          # Para <predicted> se usa fitted(fit) para los valores estimados durante la ventana de estimacion y para la ventana de 
+          # evento se usa el forecast de la media
+          
+          # <fit> puede ser de clase <ugarchfit> o de clase <ugarchfilter> dependiendo si no hubo convergencia la primera vez que se
+          # estimo el GARCH. Dependiendo de su clase, toca realizar un proceso diferente ya que <ugarchforecast> no puede ser aplicada 
+          # a objetos tipo <ugarchfilter>
+          if(inherits(fit,"uGARCHfit")){
+            forecast <- ugarchforecast(fit,n.ahead = (max.ar+1), 
+                                       external.forecasts = list(mregfor= as.matrix(base_ev_window)))
+          }else if(inherits(fit,"uGARCHfilter")){
+            forecast <- ugarchforecast(adjusted_spec,data = base[((inicio_estimacion+warning_count):(fin_estimacion+warning_count)), name],
+                                       n.ahead = (max.ar+1), 
+                                       external.forecasts = list(mregfor= as.matrix(base_ev_window)))
+          }
+          predicted <- rbind(fitted(fit),xts(as.numeric(forecast@forecast$seriesFor),order.by = window_event_dates))
+          
+          # Restar retornos estimados de los observados
+          abnormal <- observed - predicted
+          
+          # Se juntan las tres series en un solo dataframe
+          df             <- merge(observed,predicted,abnormal)
+          # Cambio de nombre de columnas
+          colnames(df)   <- c('Observed','Predicted','Abnormal')
+          
+          if(inherits(fit,"uGARCHfit")){
+            object <- new("ESmean",retornos=df,error_estandar=numeric(),res_estandar_estimacion=residuals(fit,standardize=TRUE),
+                          res_no_estandar_estimacion=residuals(fit,standardize=FALSE),
+                          variance_forecast=xts(forecast@forecast$sigmaFor^2,order.by = window_event_dates),
+                          evento=data.events[i,],fit=fit@fit)
+          }else if(inherits(fit,"uGARCHfilter")){
+            object <- new("ESmean",retornos=df,error_estandar=numeric(),res_estandar_estimacion=residuals(fit,standardize=TRUE),
+                          res_no_estandar_estimacion=residuals(fit,standardize=FALSE),
+                          variance_forecast=xts(forecast@forecast$sigmaFor^2,order.by = window_event_dates),
+                          evento=data.events[i,],fit=fit@filter)
+          }
+          
+          
+          # Agregar <object> a la lista <events.list>, por lo que seria una lista de listas
+          events.list[[paste(name,i,sep="_")]] <- object
+        }
+      }
+    }
+    return(events.list)
+  }
+  #---------------------------------------------------------------------------------------#
+}
 
 #------------------------------   18. estimation.event.study  --------------------------#
 # Realizar una estimacion por OLS siguiendo el modelo de mercado, obteniendo retornos anormales 
@@ -1015,7 +1410,7 @@ create.lags <- function(base, interest.vars,no.lags=NULL, AR.m, MA.m=0,d=0,bool=
 #-- data.events        : dataframe de eventos, que debe incluir alguna columna en formato fecha para funcionar
 #-- days.evaluated     : maximo numero de dias a evaluar en caso de que la fecha de un evento no este en el indice de las 
 #                        series a estimar
-#-- market.returns     : nombre de la columna de <base> que corresponde al indice de mercado (Rmt)
+#-- market_returns     : nombre de la columna de <base> que corresponde al indice de mercado (Rmt)
 #-- max.ar             : numero de dias maximos despues del evento para calcular retornos anormales
 #-- es.start           : numero de dias previos al evento para comenzar la estimacion
 #-- es.end             : numero de dias previos al evento para terminar la estimacion
@@ -1038,8 +1433,8 @@ create.lags <- function(base, interest.vars,no.lags=NULL, AR.m, MA.m=0,d=0,bool=
 #                                    de evento
 #     <evento>                     : dataframe del evento asociado con la estimacion ARMA-GARCH
 #---------------------------------------------------------------------------------------#
-estimation.event.study <- function(bool.paper,bool.cds,base, data.events, market.returns, max.ar, es.start, es.end, add.exo =FALSE,
-                                   vars.exo=NULL, GARCH=NULL, overlap.events = NULL, no.overlap = 0){
+estimation.event.study <- function(bool.paper,bool.cds,base, data.events, market_returns, max.ar, es.start, es.end, add.exo =FALSE,
+                                   vars.exo=NULL, GARCH=NULL, overlap.events = NULL, overlap.max){
   
   events.list <- list() # lista que contendra todas la informacion del modelo
   
@@ -1104,14 +1499,14 @@ estimation.event.study <- function(bool.paper,bool.cds,base, data.events, market
         # ya que si es igual a 0, entonces la funcion <create.lags> no genero ningun rezago para el indice <name>
         if(length(grep(paste0(name,".l"),colnames(base))) != 0){
           lags_name   <- colnames(base)[grep(paste0(name,".l"),colnames(base))]
-          base_indice <- merge(base[,c(name,market.returns)],base[,lags_name])
-        }else base_indice <- base[,c(name, market.returns)]
+          base_indice <- merge(base[,c(name,market_returns)],base[,lags_name])
+        }else base_indice <- base[,c(name, market_returns)]
         
         ## Añadir <vars.exo> si <add.exo> ==<TRUE>
         if(add.exo == TRUE) base_indice <- merge(base_indice, base[,paste0(vars.exo,pais)])
         
         # Reducir el indice de la base para la estimacion.
-        # La posicion del primer dia de la ventana de estimacion respecto al indice de <asset.returns> o <market.returns>
+        # La posicion del primer dia de la ventana de estimacion respecto al indice de <asset.returns> o <market_returns>
         # es (<event_start_index> - <es.start>) mientras que la posicion de ultimo dia de la ventana de estimacion es 
         # (<event_start_index> - <es.end>)
         base_estimacion <- base_indice[(event_start_index-es.start):(event_start_index-es.end),]
@@ -1190,13 +1585,19 @@ estimation.event.study <- function(bool.paper,bool.cds,base, data.events, market
           # Tambien seria interesante agregar a la dummy ciertos dias despues de cada desastre en <subset_data>, para lo cual se utilizara
           # la media de duracion por el tipo de desastre
           overlap.dummy <- rep(0, fin_estimacion)
-          subset_data_list <- split(subset_data, subset_data$Disaster.Subgroup)
-          # Recordemos que del analisis descriptivo, la media de duracion de los desastres geofisicos es 3, mientras que de los hidrologicos es 9
-          # y de los meteorologicos es 7
-          df.mediaduracion <- data.frame(c('Geophysical','Hydrological','Meteorological'), c(2,8,4))
-          colnames(df.mediaduracion) <- c('Tipo.desastre','Media.duracion')
-          for(df.m in seq_along(subset_data_list)) {
-            for(num in subset_data_list[[df.m]]$indices2) overlap.dummy[num:(num+df.mediaduracion$Media.duracion[df.mediaduracion == names(subset_data_list)[df.m]])] <- 1 
+          # Se van a revisar solamente los eventos que esten en una determinada ventana de traslape, definida por <overlap.max>, por lo que se va a filtrar
+          # <subset_data> para solo dejar los eventos pertenecientes a la ventana de traslape
+          subset_data <- subset_data %>% dplyr::filter(indices2 %in% ((event_start_index - overlap.max):event_start_index))
+          # En <overlap.dummy> se va a colocar 1 para cada desastre en <subset_data> tanto para el dia del evento, como para los dias en que duro el evento, siguiendo
+          # la columna <$Duracion>, pero para no tener eventos con una ventana de evento extremadamente larga debido a su duracion, va a colocarse 1 hasta maximo <max.ar>
+          # dias
+          subset_data <- subset_data %>% mutate(Duracion2 = ifelse(Duracion>max.ar,max.ar,Duracion)) %>% mutate(fin.evento = indices2+Duracion2-1)
+          # Por ultimo, es necesario asegurar que <fin.evento> no tenga valores mayores a la longitud de <overlap.dummy>
+          subset_data <- subset_data %>% mutate(fin.evento = ifelse(fin.evento>length(overlap.dummy),length(overlap.dummy),fin.evento))
+          
+          # Ahora bien, asignamos el valor de 1 al dia del evento junto con su correspondiente duracion
+          if(nrow(subset_data)>0) for(k in 1:nrow(subset_data)){
+            overlap.dummy[subset_data[k,'indices2']:subset_data[k,'fin.evento']] <- 1
           }
           # <overlap.dummy> es del tamaño de <fin_estimacion>, por lo que en la estimacion se restringira a <inicio_estimacion>- <fin_estimacion>
         }
@@ -1223,7 +1624,7 @@ estimation.event.study <- function(bool.paper,bool.cds,base, data.events, market
                   mean.model = list(
                     armaOrder = c(p, 0),
                     # Para la primera iteracion del loop <While> se utilizan los datos de la ventana de estimacion
-                    external.regressors = as.matrix(cbind(base[(inicio_estimacion:fin_estimacion),c(variables_pais,market.returns)], 
+                    external.regressors = as.matrix(cbind(base[(inicio_estimacion:fin_estimacion),c(variables_pais,market_returns)], 
                                                           overlap.dummy[inicio_estimacion:fin_estimacion]))
                   ),
                   distribution.model = "std"
@@ -1235,7 +1636,7 @@ estimation.event.study <- function(bool.paper,bool.cds,base, data.events, market
                   mean.model = list(
                     armaOrder = c(p, 0),
                     # Para la primera iteracion del loop <While> se utilizan los datos de la ventana de estimacion
-                    external.regressors = as.matrix(cbind(base[(inicio_estimacion:fin_estimacion),c(variables_pais,market.returns)]))
+                    external.regressors = as.matrix(cbind(base[(inicio_estimacion:fin_estimacion),c(variables_pais,market_returns)]))
                   ),
                   distribution.model = "std"
                 )
@@ -1247,7 +1648,7 @@ estimation.event.study <- function(bool.paper,bool.cds,base, data.events, market
                 mean.model = list(
                   armaOrder = c(p, 0),
                   # Para la primera iteracion del loop <While> se utilizan los datos de la ventana de estimacion
-                  external.regressors = as.matrix(base[(inicio_estimacion:fin_estimacion),c(variables_pais,market.returns)])
+                  external.regressors = as.matrix(base[(inicio_estimacion:fin_estimacion),c(variables_pais,market_returns)])
                 ),
                 distribution.model = "std"
               )
@@ -1338,13 +1739,13 @@ estimation.event.study <- function(bool.paper,bool.cds,base, data.events, market
         
         # La base de datos de variables exogenas durante la ventana de evento en caso que <overlap.events> no sea nula, y en el caso en que
         # <overlap.dummy> efectivamente haya entrado como regresora es:
-        if(!is.null(overlap.events) & ncol(spec@model$modeldata$mexdata) == 4) base_ev_window <- cbind(base[(window_event_dates), c(variables_pais, market.returns)],0)
+        if(!is.null(overlap.events) & ncol(spec@model$modeldata$mexdata) == 4) base_ev_window <- cbind(base[(window_event_dates), c(variables_pais, market_returns)],0)
         # Para el caso en que <overlap.events> no sea nula, pero la dummy no haya entrado como regresora es
-        if(!is.null(overlap.events) & ncol(spec@model$modeldata$mexdata) == 3) base_ev_window <- base[(window_event_dates), c(variables_pais, market.returns)]
+        if(!is.null(overlap.events) & ncol(spec@model$modeldata$mexdata) == 3) base_ev_window <- base[(window_event_dates), c(variables_pais, market_returns)]
         # Lo anterior porque el cuarto regresor es siempre 0 en la ventana de evento. Si hubiese un 1 estaríamos diciendo que se va a pronosticar
         # el efecto de un desastre durante la ventana de evento
         # Por otro lado, si no hay <overlap.events> la base de exogenas durante la ventana de evento seria
-        if(is.null(overlap.events)) base_ev_window <- base[(window_event_dates), c(variables_pais, market.returns)]
+        if(is.null(overlap.events)) base_ev_window <- base[(window_event_dates), c(variables_pais, market_returns)]
         
         # Creacion series <observed>, <predicted> y <abnormal> solamente para la ventana de estimacion y la ventana de evento
         observed <- rbind(base[((inicio_estimacion+warning_count):(fin_estimacion+warning_count)),name],base[window_event_dates,name])
@@ -1394,7 +1795,6 @@ estimation.event.study <- function(bool.paper,bool.cds,base, data.events, market
   return(events.list)
 }
 #---------------------------------------------------------------------------------------#
-
 
 #------------------------------   19. wilcoxon.jp.test  ----- --------------------------#
 # Realizar una prueba de rank-signed Wilcoxon teniendo en cuenta una lista generada por la funcion
@@ -1880,7 +2280,337 @@ arma_lags_database <- function(base, interest.vars, no.lags, AR.m, MA.m, d, bool
 }
 #---------------------------------------------------------------------------------------#
 
+# if(0) porque abajo se cambio la funcion para que se revisaran los confounding events solamente en una ventana 
+# de traslape determinada
+if(0){
+  volatility_event_study = function(base.evento, date.col.name, geo.col.name, base.vol, interest.vars, num_lags, AR.m = 20, MA.m = 0,d = 0,
+                                    bool = TRUE,metodo = "CSS", es.start,len.ev.window,var.exo,var.exo.pais,bool.paper,bool.cds,garch,
+                                    overlap.events = NULL){
+    # Crear una nueva clase de objetos para guardar informacion importante de la estimacion ARMA-GARCH
+    setClass("ESVolatility",slots=list(coefficients = "numeric",goodness_of_fit = "numeric",res_estandar_estimacion="xts",
+                                       res_no_estandar_estimacion="xts",variance_forecast="xts",residuales_evento="xts",
+                                       info.evento = 'data.frame'))
+    
+    # Generamos un dataframe que incluya los ordenes de rezagos para cada variable de interes, stock (Pagnottoni) o CDS
+    # Tambien se tendra un parametro que le permita al usuario decidir cuantos rezagos desea en especifico para todas las variables de interes.
+    # Si se desa el mismo numero de rezagos para todas las variables de interes, asignar el numero a <num_lags>. Si se desea un numero de 
+    # rezagos para cada variable de interes, asignar una lista a <num_lags> con los numeros de rezagos. 
+    # Nota: Si se coloca la lista, tiene que tener el mismo numero de datos que numero de variables de interes.
+    
+    # Si se desea que se elijan los rezagos siguiendo el criterio de informacion de Akaike, dejar <num_lags> como NULL
+    
+    lags_database <- arma_lags_database(base=base.vol,interest.vars,num_lags,AR.m, MA.m,d,bool,metodo)
+    
+    # Primero se crea una columna de los indices del <Start.Date> de cada desastre respectivo a <base>
+    indices2 <- c()
+    for (i in 1:nrow(base.evento)) {
+      indices2[i] <- match(base.evento[i,'Start.Date'],index(base.vol))
+      if(is.na(indices2[i])){
+        for(j in 1:nrow(base.vol)){
+          indices2[i] <- match(base.evento[i,'Start.Date'] + j, index(base.vol))
+          if(!is.na(indices2[i])) break
+        }
+      }
+    }
+    base.evento$indices2 <- indices2
+    
+    # Realizar lo mismo para <overlap.events> , si no es <NULL>
+    if(!is.null(overlap.events)){
+      indices2 <- c()
+      for (i in 1:nrow(overlap.events)) {
+        indices2[i] <- match(overlap.events[i,'Start.Date'],index(base.vol))
+        if(is.na(indices2[i])){
+          for(j in 1:nrow(base.vol)){
+            indices2[i] <- match(overlap.events[i,'Start.Date'] + j, index(base.vol))
+            if(!is.na(indices2[i])) break
+          }
+        }
+      }
+      overlap.events$indices2 <- indices2
+    }
+    
+    lista_volatilidad <- list()
+    for(i in 1:nrow(base.evento)){
+      evento <- base.evento[i,]
+      pais_evento   <- evento[geo.col.name]
+      # Se obtiene primero el indice del pais donde sucedio el desastre
+      indice <- matching(as.character(pais_evento),bool.cds,bool.paper)[1] # El 1 solamente se coloca porque con la base de Pagnottoni, USA tiene dos stocks
+      # Ya no es necesario escribirlo cuando se utilicen los CDS, cada pais solo tiene un CDS
+      
+      #if(0) porque se realiza arriba en el vector
+      if(0){
+        # Loop que genera la posicion de desastre respecto al indice de <base.vol>. Si la fecha del evento no esta en el indice de 
+        # <base.vol>,se revisara hasta <nrow(base.vol)> dias despues del desastre para ser considerado como el inicio del evento
+        for(j in 0:nrow(base.vol)){
+          if((evento[,date.col.name]+j) %in% index(base.vol[,indice])){ 
+            # Generacion del dia del desastre (o j dias despues del desastre, si el dia del desastre no esta en el indice de 
+            # <asset.returns>)
+            dia_evento  <- evento[,date.col.name]+j
+            # Generacion de la posicion del dia de desastre en el indice de fechas de <base.vol>
+            # (o j dias despues del desastre, si el dia del desastre no esta en el indice de <base.vol>)
+            indice_del_evento <- which(index(base.vol[,indice]) == dia_evento)
+            break
+          }
+        }
+      }
+      # Variable que indica el inicio del evento
+      indice_del_evento <- base.evento[i, 'indices2']
+      
+      # <fin_estimacion> indica que la ventana de estimacion va hasta el dia anterior al dia de evento. Si se desea que termine mucho antes
+      # faltaria parametrizarlo
+      fin_estimacion      <- indice_del_evento - 1
+      inicio_estimacion   <- indice_del_evento - es.start
+      
+      # Estimacion APARCH con modelo de media ARMA -------------------------------
+      
+      # Se obtienen los ordenes para el modelo ARMA(p,q) del indice
+      p   <- lags_database[indice,"p"]
+      q   <- lags_database[indice,"q"]
+      
+      # Variables exogenas que dependen del pais
+      variables_pais <- paste(var.exo.pais,pais_evento,sep="_")
+      
+      # Loop necesario para asegurar que para cada evento siempre haya una estimacion. Cuando haya algun warning durante la estimacion,
+      # el codigo va a volver a correr con 500 datos, pero rezagados un periodo, con el fin de buscar que siempre converja la estimacion
+      # El loop va a correr hasta que <ugarchfit> corra sin ningun warning
+      
+      # <while_count> sera utilizado para contar cuantas veces se ha compleado una iteracion, con el fin de terminar el loop despues de una 
+      # cantidad limite de iteraciones
+      # <warning_count> sera el numero de veces que se encontro un warning, con el fin de reestimar el modelo con los datos
+      # correctos pero con los coeficientes de los datos rezagados
+      while_count   <- 0
+      warning_count <- 0
+      
+      if(!is.null(overlap.events)) {
+        # Ver si hay eventos en la base completa, es decir <overlap.events> por dentro de la ventana de estimacion del desastre
+        subset_data <- subset(overlap.events, indices2 <= fin_estimacion)
+        # Una anotacion importante es que es posible que el desastre de interes este dentro de <subset_data>, dependiendo del fin
+        # de la ventana de estimacion, por lo cual se realiza <anti_join> solo para asegurar que no este dentro de <subset_data>
+        subset_data <- suppressMessages(anti_join(subset_data, base.evento[i,]))
+        # <subset_data> es un data.frame que contiene todos los desastres de <overlap.events> que se encuentran anterior a nuestro desastre
+        # de interes. La idea entonces es generar una variable dummy donde 1 sea en los dias que hubo uno de estos eventos
+        # con el fin de controlar el posible confounding effect. 
+        # Tambien seria interesante agregar a la dummy ciertos dias despues de cada desastre en <subset_data>, para lo cual se utilizara
+        # la media de duracion por el tipo de desastre
+        overlap.dummy <- rep(0, fin_estimacion)
+        subset_data_list <- split(subset_data, subset_data$Disaster.Subgroup)
+        # Recordemos que del analisis descriptivo, la media de duracion de los desastres geofisicos es 2, mientras que de los hidrologicos es 8
+        # y de los meteorologicos es 4
+        df.mediaduracion <- data.frame(c('Geophysical','Hydrological','Meteorological'), c(2,8,4))
+        colnames(df.mediaduracion) <- c('Tipo.desastre','Media.duracion')
+        for(df.m in seq_along(subset_data_list)) {
+          for(num in subset_data_list[[df.m]]$indices2) overlap.dummy[num:(num+df.mediaduracion$Media.duracion[df.mediaduracion == names(subset_data_list)[df.m]])] <- 1 
+        }
+        # <overlap.dummy> es del tamaño de <fin_estimacion>, por lo que en la estimacion se restringira a <inicio_estimacion>- <fin_estimacion>
+      }
+      
+      while (TRUE) {
+        warning_dummy <- FALSE
+        # <tryCatch> corre el codigo, pero si encuentra algun warning o error, realiza un codigo especifico.
+        tryCatch({
+          # Antigua especificacion GARCH, reemplazada en la linea 2058
+          if(0){
+            # Especificacion sGARCH
+            spec <- ugarchspec(
+              variance.model = list(model = garch, garchOrder = c(1, 1)),
+              mean.model = list(
+                armaOrder = c(p, q),
+                # Para la primera iteracion del loop <While> se utilizan los datos de la ventana de estimacion
+                external.regressors = as.matrix(base.vol[(inicio_estimacion:fin_estimacion), c(var.exo, variables_pais)])
+              ),
+              distribution.model = "std"
+            )
+          }
+          
+          if(!is.null(overlap.events)) {
+            
+            # Asegurar que la dummy tenga valores de 1 y 0, porque si solamente tiene valores de 1 , no va a converger y 
+            # sera necesario rezagarla
+            if(mean(overlap.dummy[inicio_estimacion:fin_estimacion]) == 1){
+              warning('La ventana de estimacion tiene traslape completo con otros eventos')
+            }
+            # El warning va a forzar a la funcion <tryCatch> a rezagar la dummy y correr la siguiente iteracion
+            
+            # Se formula una especificacion de garch teniendo en cuenta que la dummy <overlap.dummy>
+            # tiene datos 0 y 1, ya que si fuese solamente 0, no habría necesidad de la dummy
+            if(mean(overlap.dummy[inicio_estimacion:fin_estimacion])>0){
+              spec <- ugarchspec(
+                variance.model = list(model = garch, garchOrder = c(1, 1)),
+                mean.model = list(
+                  armaOrder = c(p, q),
+                  # Para la primera iteracion del loop <While> se utilizan los datos de la ventana de estimacion
+                  external.regressors = as.matrix(cbind(base.vol[(inicio_estimacion:fin_estimacion),c(var.exo,variables_pais)], 
+                                                        overlap.dummy[inicio_estimacion:fin_estimacion]))
+                ),
+                distribution.model = "std"
+              )
+            }else{
+              # Creamos una especificacion para el garch sin dummy (en el caso que <dummy.overlap> sea completamente 0)
+              spec <- ugarchspec(
+                variance.model = list(model = garch, garchOrder = c(1, 1)),
+                mean.model = list(
+                  armaOrder = c(p, q),
+                  # Para la primera iteracion del loop <While> se utilizan los datos de la ventana de estimacion
+                  external.regressors = as.matrix(cbind(base.vol[(inicio_estimacion:fin_estimacion),c(var.exo,variables_pais)]))
+                ),
+                distribution.model = "std"
+              )
+            }
+          } else {
+            # el caso cuando <overlap.dummy> es NULL
+            spec <- ugarchspec(
+              variance.model = list(model = garch, garchOrder = c(1, 1)),
+              mean.model = list(
+                armaOrder = c(p, 0),
+                # Para la primera iteracion del loop <While> se utilizan los datos de la ventana de estimacion
+                external.regressors = as.matrix(base.vol[(inicio_estimacion:fin_estimacion),c(var.exo,variables_pais)])
+              ),
+              distribution.model = "std"
+            )
+            
+          }
+          fit <- ugarchfit(spec, data = base.vol[(inicio_estimacion:fin_estimacion), indice], solver = "hybrid")
+          if(is.na(persistence(fit)) | persistence(fit)>=1) warning('El GARCH no es estacionario') # Lo anterior porque con un evento la persistencia era 11, 
+          # y el forecast de la volatilidad daba numeros muy grandes
+          
+          # En algunos casos, <fit> tendra datos rezagados, por lo que debemos tomar los coeficientes de <fit> (el que convergio)
+          # y realizar la estimacion para los datos correctos
+          if(warning_count > 0 ){
+            # La especificacion del GARCH es la misma que <fit>, y por tanto se usa <getspec()>
+            adjusted_spec <- getspec(fit)
+            # <setfixed> permite fijar los parametros de <fit>
+            setfixed(adjusted_spec) <- as.list(coef(fit))
+            # En el paquete <rugarch> cuando se fijan todos los parametros, no estima un nuevo modelo. La funcion <ugarchfit> sugiere
+            # utilizar <ugarchfilter>, que "filtra" los nuevos datos con base al modelo previo.
+            # Se necesita fit para obtener los residuales estandarizados y no estandarizados para el pronostico de la varianza condicional
+            fit <- ugarchfilter(adjusted_spec, data = base.vol[((inicio_estimacion+warning_count):(fin_estimacion+warning_count)), indice])
+          }
+        },
+        warning = function(wrn) {
+          
+          # El siguiente codigo solo corre en caso de que haya habido un warning en el bloque superior
+          # Es importante usar <<- en vez de <-, ya que <warning> es una funcion, <function(wrn)>, por lo que se necesita asignar 
+          # <warning_dummy>, <warning_count>, <inicio_estimacion> y <fin_estimacion> por fuera de <function(wrn)>
+          warning_dummy <<- TRUE
+          warning_count <<- warning_count + 1
+          
+          # Rezagar los indices del <inicio_estimacion> y <fin_estimacion>, para tener datos distintos en la siguiente iteracion
+          # del loop <While>
+          inicio_estimacion <<- inicio_estimacion - 1
+          fin_estimacion <<- fin_estimacion - 1
+          cat('Fallo la convergencia, intentando con datos rezagados.','\n')
+        }, 
+        error = function(e) {
+          
+          # Este error-handling se coloco porque puede haber un error de convergencia:
+          # Error in diag(fit$robust.cvar) : invalid 'nrow' value (too large or NA)
+          
+          # El siguiente codigo solo corre en caso de que haya habido un error en el bloque de <tryCatch>
+          # Es importante usar <<- en vez de <-, ya que <error> es una funcion, <function(e)>, por lo que se necesita asignar 
+          # <warning_dummy>, <warning_count>, <inicio_estimacion> y <fin_estimacion> por fuera de <function(e)>
+          warning_dummy <<- TRUE
+          warning_count <<- warning_count + 1
+          
+          # Rezagar los indices del <inicio_estimacion> y <fin_estimacion>, para tener datos distintos en la siguiente iteracion
+          # del loop <While>
+          inicio_estimacion <<- inicio_estimacion - 1
+          fin_estimacion <<- fin_estimacion - 1
+          cat('Fallo la convergencia, intentando con datos rezagados','\n')
+        })
+        
+        while_count <- while_count + 1
+        # Romper el loop si no hubo warning
+        if(!warning_dummy) break
+        
+        
+        if(while_count == 40){
+          warning("El modelo no converge despues de rezagar los datos 40 dias") # Falta parametrizar el numero maximo, <40>, pero no
+          # estoy muy seguro de si es completamente necesario
+          # Asignar <NULL> a <fit>
+          fit <- NULL
+          break
+        }
+      }
+      
+      if(is.null(fit)){
+        lista_volatilidad[[paste(pais_evento,i,sep="_")]] <- NA
+        next
+      }
+      
+      # Asegurar que <fit> tenga los datos correctos usando <fitted()>. El ultimo dia de <fitted(fit)> debe ser igual que
+      # <index(base.vol[(indice_del_evento-1),])>, ya que ese fue el ultimo dia de estimacion.
+      if(index(tail(fitted(fit),1)) != index(base.vol[(indice_del_evento-1),])){
+        # <format> se necesita para que aparezca con el formato fecha
+        cat(format((index(tail(fitted(fit), 1))), "%Y-%m-%d"), '\n')
+        cat(format(index(base.vol[fin_estimacion,]),"%Y-%m-%d"),'\n')
+        stop('Las fechas del modelo GARCH no corresponden a la ventana de estimacion')
+      }else{
+        cat('Las fechas del modelo GARCH corresponden con la ventana de estimacion','\n')
+      }
+      
+      gof_p_values        <- gof(fit,c(20,30,40,50))[,"p-value(g-1)"]
+      names(gof_p_values) <- c("20 bins","30 bins","40 bins","50 bins")
+      if(any(as.logical(gof_p_values < 0.05))) warning("Los residuales estandarizados no siguen la distribucion seleccionada.")
+      cat(i,"\n")
+      
+      # if(0)porque el forecast de la voaltilidad condicional se realiza usando <ugarchforecast>
+      if(0){
+        # Forecast volatilidad condicional
+        # Usando la ecuacion de Bialkowski (2008) para realizar el forecast de sigma^2
+        # h_t sale de fit@fit$var, \varepsilon_t sale de fit@fit$residuals y los errores estandarizados 
+        # salen de fit@fit!z
+        omega         <- coef(fit)["omega"]
+        alpha         <- coef(fit)["alpha1"]
+        beta          <- coef(fit)["beta1"]
+        fcast_var     <- c()
+        for(k in 1:len.ev.window){
+          j <- 0:(k-1)
+          fcast_var_ti  <- omega*sum((beta+alpha)^j) + (beta+alpha)^(k-1)*beta*(tail(as.numeric(sigma(fit))^2,1))+
+            (beta+alpha)^(k-1)*alpha*(tail((residuals(fit))^2,1))
+          fcast_var <- c(fcast_var, fcast_var_ti)
+        }
+      }
+      
+      # Crear la serie de los residuales para la ventana de evento
+      # <fit> puede ser de clase <ugarchfit> o de clase <ugarchfilter> dependiendo si no hubo convergencia la primera vez que se
+      # estimo el GARCH. Dependiendo de su clase, toca realizar un proceso diferente ya que <ugarchforecast> no puede ser aplicada 
+      # a objetos tipo <ugarchfilter>
+      # La base de datos de variables exogenas durante la ventana de evento en caso que <overlap.events> no sea nula, y en el caso en que
+      # <overlap.dummy> efectivamente haya entrado como regresora es:
+      if(!is.null(overlap.events) & ncol(spec@model$modeldata$mexdata) == 4) base_ev_window <- cbind(base.vol[(indice_del_evento:(indice_del_evento+len.ev.window-1)), c(var.exo, variables_pais)],0)
+      # Para el caso en que <overlap.events> no sea nula, pero la dummy no haya entrado como regresora es
+      if(!is.null(overlap.events) & ncol(spec@model$modeldata$mexdata) == 3) base_ev_window <- base.vol[(indice_del_evento:(indice_del_evento+len.ev.window-1)), c(var.exo, variables_pais)]
+      # Lo anterior porque el cuarto regresor es siempre 0 en la ventana de evento. Si hubiese un 1 estaríamos diciendo que se va a pronosticar
+      # el efecto de un desastre durante la ventana de evento
+      # Por otro lado, si no hay <overlap.events> la base de exogenas durante la ventana de evento seria
+      if(is.null(overlap.events)) base_ev_window <- base.vol[(indice_del_evento:(indice_del_evento+len.ev.window-1)), c(var.exo, variables_pais)]
+      if(inherits(fit,"uGARCHfit")){
+        forecast <- ugarchforecast(fit,n.ahead = len.ev.window, 
+                                   external.forecasts = list(mregfor= as.matrix(base_ev_window)))
+        residual_evento <- base.vol[(indice_del_evento:(indice_del_evento+len.ev.window-1)),indice] - forecast@forecast$seriesFor
+        fcast_var       <- as.numeric((forecast@forecast$sigmaFor)^2)
+      }else if(inherits(fit,"uGARCHfilter")){
+        forecast        <- ugarchforecast(adjusted_spec,data = base.vol[((inicio_estimacion+warning_count):(fin_estimacion+warning_count)), indice],
+                                          n.ahead = len.ev.window, 
+                                          external.forecasts = list(mregfor= as.matrix(base_ev_window)))
+        residual_evento <- base.vol[(indice_del_evento:(indice_del_evento+len.ev.window-1)),indice] - forecast@forecast$seriesFor
+        fcast_var       <- as.numeric((forecast@forecast$sigmaFor)^2)
+      }
+      
+      # Convertir en xts <fcast_var>
+      fcast_var <- as.xts(fcast_var, order.by = index(residual_evento))
+      # Guardar objetos importantes
+      object <- new("ESVolatility",coefficients=coef(fit),goodness_of_fit=gof_p_values,res_estandar_estimacion=residuals(fit,standardize=TRUE),
+                    res_no_estandar_estimacion=residuals(fit,standardize=FALSE),variance_forecast=fcast_var,
+                    residuales_evento=residual_evento,info.evento= evento)
+      
+      # Agregar <object> a la lista <lista.volatilidad>, por lo que seria una lista de listas
+      lista_volatilidad[[paste(pais_evento,i,sep="_")]] <- object
+    }
+    return(lista_volatilidad)
+  }
 
+}
 #------------------------------   25. volatility_event_study   -------------------------------#
 # Para cada evento estima un modelo apARCH(1,1) y calcula el forecast de la volatilidad condicional.
 # Por el momento la funcion solo corre con apARCH(1,1) y modelo de distribucion t. Faltaria parametrizarlos si se desean cambiar
@@ -1910,6 +2640,12 @@ arma_lags_database <- function(base, interest.vars, no.lags, AR.m, MA.m, d, bool
 #--                   dependen del pais (o ciudad o region)
 #--   var.exo.pais  : strings que indican parte del nombre de alguna columna de <base> que corresponde, concatenado al pais,
 #--                   una variable exogena
+#--   bool.paper    : booleano donde 1 indica que se usaran los datos del paper, se necesita para la funcion <matching> que esta incluida en la
+#                     presente funcion
+#--   bool.cds      : booleano donde 1 indica que se usan datos de cds y 0 indica que son datos de indices de bolsa. 
+#--   garch         : el tipo de garch que se quiere estimar
+#--   overlap.events: dataframe de posibles eventos que se traslapan con la ventana de estimacion de los desastres
+#--   overlap.max: ventana maxima para la duracion de un evento que este traslapando
 # ----Argumentos de salida  ----#
 #--   lista_volatilidad : lista de objetos clase "ESVolatility". Cada objeto de esta clase incluye los parametros estimados durante el
 #                         modelo ARMA(p,q)-apARCH(1,1), junto con p_values de pruebas de bondad de ajuste de los errores estandarizados
@@ -1917,7 +2653,8 @@ arma_lags_database <- function(base, interest.vars, no.lags, AR.m, MA.m, d, bool
 #                         al evento. Por ultimo, incluye el error durante la ventana de evento
 #---------------------------------------------------------------------------------------#
 volatility_event_study = function(base.evento, date.col.name, geo.col.name, base.vol, interest.vars, num_lags, AR.m = 20, MA.m = 0,d = 0,
-                                  bool = TRUE,metodo = "CSS", es.start,len.ev.window,var.exo,var.exo.pais,bool.paper,bool.cds,garch){
+                                  bool = TRUE,metodo = "CSS", es.start,len.ev.window,var.exo,var.exo.pais,bool.paper,bool.cds,garch,
+                                  overlap.events = NULL,overlap.max){
   # Crear una nueva clase de objetos para guardar informacion importante de la estimacion ARMA-GARCH
   setClass("ESVolatility",slots=list(coefficients = "numeric",goodness_of_fit = "numeric",res_estandar_estimacion="xts",
                                      res_no_estandar_estimacion="xts",variance_forecast="xts",residuales_evento="xts",
@@ -1933,6 +2670,34 @@ volatility_event_study = function(base.evento, date.col.name, geo.col.name, base
   
   lags_database <- arma_lags_database(base=base.vol,interest.vars,num_lags,AR.m, MA.m,d,bool,metodo)
   
+  # Primero se crea una columna de los indices del <Start.Date> de cada desastre respectivo a <base>
+  indices2 <- c()
+  for (i in 1:nrow(base.evento)) {
+    indices2[i] <- match(base.evento[i,'Start.Date'],index(base.vol))
+    if(is.na(indices2[i])){
+      for(j in 1:nrow(base.vol)){
+        indices2[i] <- match(base.evento[i,'Start.Date'] + j, index(base.vol))
+        if(!is.na(indices2[i])) break
+      }
+    }
+  }
+  base.evento$indices2 <- indices2
+  
+  # Realizar lo mismo para <overlap.events> , si no es <NULL>
+  if(!is.null(overlap.events)){
+    indices2 <- c()
+    for (i in 1:nrow(overlap.events)) {
+      indices2[i] <- match(overlap.events[i,'Start.Date'],index(base.vol))
+      if(is.na(indices2[i])){
+        for(j in 1:nrow(base.vol)){
+          indices2[i] <- match(overlap.events[i,'Start.Date'] + j, index(base.vol))
+          if(!is.na(indices2[i])) break
+        }
+      }
+    }
+    overlap.events$indices2 <- indices2
+  }
+  
   lista_volatilidad <- list()
   for(i in 1:nrow(base.evento)){
     evento <- base.evento[i,]
@@ -1941,19 +2706,8 @@ volatility_event_study = function(base.evento, date.col.name, geo.col.name, base
     indice <- matching(as.character(pais_evento),bool.cds,bool.paper)[1] # El 1 solamente se coloca porque con la base de Pagnottoni, USA tiene dos stocks
     # Ya no es necesario escribirlo cuando se utilicen los CDS, cada pais solo tiene un CDS
     
-    # Loop que genera la posicion de desastre respecto al indice de <base.vol>. Si la fecha del evento no esta en el indice de 
-    # <base.vol>,se revisara hasta <nrow(base.vol)> dias despues del desastre para ser considerado como el inicio del evento
-    for(j in 0:nrow(base.vol)){
-      if((evento[,date.col.name]+j) %in% index(base.vol[,indice])){ 
-        # Generacion del dia del desastre (o j dias despues del desastre, si el dia del desastre no esta en el indice de 
-        # <asset.returns>)
-        dia_evento  <- evento[,date.col.name]+j
-        # Generacion de la posicion del dia de desastre en el indice de fechas de <base.vol>
-        # (o j dias despues del desastre, si el dia del desastre no esta en el indice de <base.vol>)
-        indice_del_evento <- which(index(base.vol[,indice]) == dia_evento)
-        break
-      }
-    }
+    # Variable que indica el inicio del evento
+    indice_del_evento <- base.evento[i, 'indices2']
     
     # <fin_estimacion> indica que la ventana de estimacion va hasta el dia anterior al dia de evento. Si se desea que termine mucho antes
     # faltaria parametrizarlo
@@ -1969,17 +2723,6 @@ volatility_event_study = function(base.evento, date.col.name, geo.col.name, base
     # Variables exogenas que dependen del pais
     variables_pais <- paste(var.exo.pais,pais_evento,sep="_")
     
-    # <if(0)> ya que mas adelante se incluye dentro de un loop <While> para prevenir errores en la funcion
-    if(0){
-      # Especificacion apARCH
-      spec <- ugarchspec(variance.model = list(model = garch, garchOrder = c(1, 1)),
-                         mean.model = list(armaOrder = c(p, q),
-                                           external.regressors = as.matrix(base.vol[(inicio_estimacion:fin_estimacion),
-                                                                                    c(var.exo, variables_pais)])),
-                         distribution.model = "std")
-      fit <- ugarchfit(spec, data = base.vol[(inicio_estimacion:fin_estimacion),indice],solver="hybrid")
-    }
-    
     # Loop necesario para asegurar que para cada evento siempre haya una estimacion. Cuando haya algun warning durante la estimacion,
     # el codigo va a volver a correr con 500 datos, pero rezagados un periodo, con el fin de buscar que siempre converja la estimacion
     # El loop va a correr hasta que <ugarchfit> corra sin ningun warning
@@ -1991,20 +2734,89 @@ volatility_event_study = function(base.evento, date.col.name, geo.col.name, base
     while_count   <- 0
     warning_count <- 0
     
+    if(!is.null(overlap.events)) {
+      # Ver si hay eventos en la base completa, es decir <overlap.events> por dentro de la ventana de estimacion del desastre
+      subset_data <- subset(overlap.events, indices2 <= fin_estimacion)
+      # Una anotacion importante es que es posible que el desastre de interes este dentro de <subset_data>, dependiendo del fin
+      # de la ventana de estimacion, por lo cual se realiza <anti_join> solo para asegurar que no este dentro de <subset_data>
+      subset_data <- suppressMessages(anti_join(subset_data, base.evento[i,]))
+      # <subset_data> es un data.frame que contiene todos los desastres de <overlap.events> que se encuentran anterior a nuestro desastre
+      # de interes. La idea entonces es generar una variable dummy donde 1 sea en los dias que hubo uno de estos eventos
+      # con el fin de controlar el posible confounding effect. 
+      # Tambien seria interesante agregar a la dummy ciertos dias despues de cada desastre en <subset_data>, para lo cual se utilizara
+      # la media de duracion por el tipo de desastre
+      overlap.dummy <- rep(0, fin_estimacion)
+      
+      # Se van a revisar solamente los eventos que esten en una determinada ventana de traslape, definida por <overlap.max>, por lo que se va a filtrar
+      # <subset_data> para solo dejar los eventos pertenecientes a la ventana de traslape
+      subset_data <- subset_data %>% dplyr::filter(indices2 %in% ((indice_del_evento - overlap.max):indice_del_evento))
+      # En <overlap.dummy> se va a colocar 1 para cada desastre en <subset_data> tanto para el dia del evento, como para los dias en que duro el evento, siguiendo
+      # la columna <$Duracion>, pero para no tener eventos con una ventana de evento extremadamente larga debido a su duracion, va a colocarse 1 hasta maximo <max.ar>
+      # dias
+      subset_data <- subset_data %>% mutate(Duracion2 = ifelse(Duracion>len.ev.window,len.ev.window,Duracion)) %>% 
+        mutate(fin.evento = indices2+Duracion2-1)
+      # Por ultimo, es necesario asegurar que <fin.evento> no tenga valores mayores a la longitud de <overlap.dummy>
+      subset_data <- subset_data %>% mutate(fin.evento = ifelse(fin.evento>length(overlap.dummy),length(overlap.dummy),fin.evento))
+      
+      # Ahora bien, asignamos el valor de 1 al dia del evento junto con su correspondiente duracion
+      if(nrow(subset_data)>0) for(k in 1:nrow(subset_data)){
+        overlap.dummy[subset_data[k,'indices2']:subset_data[k,'fin.evento']] <- 1
+      }
+      # <overlap.dummy> es del tamaño de <fin_estimacion>, por lo que en la estimacion se restringira a <inicio_estimacion>- <fin_estimacion>
+      
+      
+    }
+    
     while (TRUE) {
       warning_dummy <- FALSE
       # <tryCatch> corre el codigo, pero si encuentra algun warning o error, realiza un codigo especifico.
       tryCatch({
-        # Especificacion sGARCH
-        spec <- ugarchspec(
-          variance.model = list(model = garch, garchOrder = c(1, 1)),
-          mean.model = list(
-            armaOrder = c(p, q),
-            # Para la primera iteracion del loop <While> se utilizan los datos de la ventana de estimacion
-            external.regressors = as.matrix(base.vol[(inicio_estimacion:fin_estimacion), c(var.exo, variables_pais)])
-          ),
-          distribution.model = "std"
-        )
+        if(!is.null(overlap.events)) {
+          # Asegurar que la dummy tenga valores de 1 y 0, porque si solamente tiene valores de 1 , no va a converger y 
+          # sera necesario rezagarla
+          if(mean(overlap.dummy[inicio_estimacion:fin_estimacion]) == 1){
+            warning('La ventana de estimacion tiene traslape completo con otros eventos')
+          }
+          # El warning va a forzar a la funcion <tryCatch> a rezagar la dummy y correr la siguiente iteracion
+          
+          # Se formula una especificacion de garch teniendo en cuenta que la dummy <overlap.dummy>
+          # tiene datos 0 y 1, ya que si fuese solamente 0, no habría necesidad de la dummy
+          if(mean(overlap.dummy[inicio_estimacion:fin_estimacion])>0){
+            spec <- ugarchspec(
+              variance.model = list(model = garch, garchOrder = c(1, 1)),
+              mean.model = list(
+                armaOrder = c(p, q),
+                # Para la primera iteracion del loop <While> se utilizan los datos de la ventana de estimacion
+                external.regressors = as.matrix(cbind(base.vol[(inicio_estimacion:fin_estimacion),c(var.exo,variables_pais)], 
+                                                      overlap.dummy[inicio_estimacion:fin_estimacion]))
+              ),
+              distribution.model = "std"
+            )
+          }else{
+            # Creamos una especificacion para el garch sin dummy (en el caso que <dummy.overlap> sea completamente 0)
+            spec <- ugarchspec(
+              variance.model = list(model = garch, garchOrder = c(1, 1)),
+              mean.model = list(
+                armaOrder = c(p, q),
+                # Para la primera iteracion del loop <While> se utilizan los datos de la ventana de estimacion
+                external.regressors = as.matrix(cbind(base.vol[(inicio_estimacion:fin_estimacion),c(var.exo,variables_pais)]))
+              ),
+              distribution.model = "std"
+            )
+          }
+        } else {
+          # el caso cuando <overlap.dummy> es NULL
+          spec <- ugarchspec(
+            variance.model = list(model = garch, garchOrder = c(1, 1)),
+            mean.model = list(
+              armaOrder = c(p, 0),
+              # Para la primera iteracion del loop <While> se utilizan los datos de la ventana de estimacion
+              external.regressors = as.matrix(base.vol[(inicio_estimacion:fin_estimacion),c(var.exo,variables_pais)])
+            ),
+            distribution.model = "std"
+          )
+          
+        }
         fit <- ugarchfit(spec, data = base.vol[(inicio_estimacion:fin_estimacion), indice], solver = "hybrid")
         if(is.na(persistence(fit)) | persistence(fit)>=1) warning('El GARCH no es estacionario') # Lo anterior porque con un evento la persistencia era 11, 
         # y el forecast de la volatilidad daba numeros muy grandes
@@ -2111,17 +2923,24 @@ volatility_event_study = function(base.evento, date.col.name, geo.col.name, base
     # <fit> puede ser de clase <ugarchfit> o de clase <ugarchfilter> dependiendo si no hubo convergencia la primera vez que se
     # estimo el GARCH. Dependiendo de su clase, toca realizar un proceso diferente ya que <ugarchforecast> no puede ser aplicada 
     # a objetos tipo <ugarchfilter>
+    # La base de datos de variables exogenas durante la ventana de evento en caso que <overlap.events> no sea nula, y en el caso en que
+    # <overlap.dummy> efectivamente haya entrado como regresora es:
+    if(!is.null(overlap.events) & ncol(spec@model$modeldata$mexdata) == 4) base_ev_window <- cbind(base.vol[(indice_del_evento:(indice_del_evento+len.ev.window-1)), c(var.exo, variables_pais)],0)
+    # Para el caso en que <overlap.events> no sea nula, pero la dummy no haya entrado como regresora es
+    if(!is.null(overlap.events) & ncol(spec@model$modeldata$mexdata) == 3) base_ev_window <- base.vol[(indice_del_evento:(indice_del_evento+len.ev.window-1)), c(var.exo, variables_pais)]
+    # Lo anterior porque el cuarto regresor es siempre 0 en la ventana de evento. Si hubiese un 1 estaríamos diciendo que se va a pronosticar
+    # el efecto de un desastre durante la ventana de evento
+    # Por otro lado, si no hay <overlap.events> la base de exogenas durante la ventana de evento seria
+    if(is.null(overlap.events)) base_ev_window <- base.vol[(indice_del_evento:(indice_del_evento+len.ev.window-1)), c(var.exo, variables_pais)]
     if(inherits(fit,"uGARCHfit")){
       forecast <- ugarchforecast(fit,n.ahead = len.ev.window, 
-                                 external.forecasts = list(mregfor= as.matrix(base.vol[(indice_del_evento:(indice_del_evento+len.ev.window-1)),
-                                                                                       c(var.exo, variables_pais)])))
+                                 external.forecasts = list(mregfor= as.matrix(base_ev_window)))
       residual_evento <- base.vol[(indice_del_evento:(indice_del_evento+len.ev.window-1)),indice] - forecast@forecast$seriesFor
       fcast_var       <- as.numeric((forecast@forecast$sigmaFor)^2)
     }else if(inherits(fit,"uGARCHfilter")){
       forecast        <- ugarchforecast(adjusted_spec,data = base.vol[((inicio_estimacion+warning_count):(fin_estimacion+warning_count)), indice],
                                         n.ahead = len.ev.window, 
-                                        external.forecasts = list(mregfor= as.matrix(base.vol[(indice_del_evento:(indice_del_evento+len.ev.window-1)),
-                                                                                              c(var.exo, variables_pais)])))
+                                        external.forecasts = list(mregfor= as.matrix(base_ev_window)))
       residual_evento <- base.vol[(indice_del_evento:(indice_del_evento+len.ev.window-1)),indice] - forecast@forecast$seriesFor
       fcast_var       <- as.numeric((forecast@forecast$sigmaFor)^2)
     }
@@ -2138,8 +2957,6 @@ volatility_event_study = function(base.evento, date.col.name, geo.col.name, base
   }
   return(lista_volatilidad)
 }
-
-#---------------------------------------------------------------------------------------#
 
 #---------------------------------- 26. bootstrap.volatility  ------------------------------------#
 # Para una lista de eventos estimados, genera la volatilidad anormal acumulada, junto al pvalue 

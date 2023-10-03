@@ -92,7 +92,7 @@ if(1){
   
   # Ahora se crea una columna de duracion del evento, que sera la diferencia entre <End.Date> y <Start.Date>
   emdat_base <- emdat_base %>% 
-    mutate(Duracion = as.numeric(End.Date - Start.Date))
+    mutate(Duracion = as.numeric(End.Date - Start.Date+1))
   
   # Creacion de la variable <na_end>
   emdat_base <- emdat_base %>%
@@ -147,7 +147,7 @@ number_lags <- NULL
 base_lagged <- create.lags(base = base_Tommaso,interest.vars = indexes,no.lags = number_lags,AR.m = 20)
 # Parametros event study --------------------------------------------------------------
 
-estimation_windows <- c(500) #<<<--- No. de dias antes del evento para comenzar la estimacion
+estimation_windows <- c(250,375,500) #<<<--- No. de dias antes del evento para comenzar la estimacion
 for(estimation_start in estimation_windows){
   estimation_end           <- 1    #<<<--- No. dias antes del evento para finalizar la estimacion
   max_abnormal_returns     <- 15   #<<<--- No. dias maximos despues del evento para calcular retorno anormal
@@ -186,16 +186,18 @@ for(estimation_start in estimation_windows){
     # Otras variables exogenas de una base de datos que se quieren incluir. 
     var_exo <- c("gdp_","fdi_")
     
-    load.eventslist <- 0     #<<<<-- 1 si se cargan los datos, 0 si se corre la funcion para estimar 
+    load.eventslist <- 0    #<<<<-- 1 si se cargan los datos, 0 si se corre la funcion para estimar 
     if(!load.eventslist){
-      all_events_list <- estimation.event.study(bool.paper = bool_paper, bool.cds=bool_cds,base = base_lagged,data.events = eventos.final,market.returns = "market.returns",
+      all_events_list <- estimation.event.study(bool.paper = bool_paper, bool.cds=bool_cds,base = base_lagged,data.events = eventos.final,market_returns = "market.returns",
                                                 max.ar = 15,es.start = estimation_start,es.end = estimation_end,add.exo = TRUE,vars.exo = var_exo,GARCH = "sGARCH",
-                                                overlap.events = eventos_filtrado, no.overlap = 4)
+                                                overlap.events = eventos_filtrado, overlap.max = umbral.evento)
       if(bool_cds){serie <- 'CDS'}else{serie <- 'Indices'}
       if(promedio.movil){regresor.mercado <- 'PM'}else{regresor.mercado <- 'benchmark'}
       save(all_events_list, 
            file=paste0(getwd(),'/Resultados_regresion/',serie,'_tra',umbral.evento,'_est',estimation_start,'_media_',regresor.mercado,'.RData'))
     }else{
+      if(bool_cds){serie <- 'CDS'}else{serie <- 'Indices'}
+      if(promedio.movil){regresor.mercado <- 'PM'}else{regresor.mercado <- 'benchmark'}
       load(paste0(getwd(),'/Resultados_regresion/',serie,'_tra',umbral.evento,'_est',estimation_start,'_media_',regresor.mercado,'.RData'))
     } 
   }
@@ -348,7 +350,7 @@ for(estimation_vol_start in estimation_windows){
   eventos.filtrado.volatilidad <- drop.events(data.events = emdat_base,base = base_lagged,estimation.start = estimation_vol_start,max.ar=vol_ev_window, 
                                   date_col_name, geo_col_name)
   
-  umbrales.volatilidad <- c(50,100,200) #<<<--- Numero de dias minimo entre cada evento. Lo anterior para que no se traslapen los eventos
+  umbrales.volatilidad <- c(50,100,150) #<<<--- Numero de dias minimo entre cada evento. Lo anterior para que no se traslapen los eventos
   for(umbral.evento.vol in umbrales.volatilidad){
     # Filtrar la base de datos para solamente dejar los eventos mas significativos, y tambien asegurar que dentro de la 
     # ventana de estimacion no hayan otros eventos.
@@ -361,7 +363,8 @@ for(estimation_vol_start in estimation_windows){
         volatility_results <- volatility_event_study(base.evento = eventos.volatilidad,date.col.name = "Start.Date",geo.col.name = "Country",
                                           base.vol = base_Tommaso,interest.vars = indexes,num_lags = NULL,es.start=estimation_vol_start,
                                           len.ev.window = vol_ev_window,var.exo="market.returns",var.exo.pais = c("gdp","fdi"),
-                                          bool.cds = bool_cds,bool.paper = bool_paper,garch = 'sGARCH')
+                                          bool.cds = bool_cds,bool.paper = bool_paper,garch = 'sGARCH',overlap.events = eventos.filtrado.volatilidad,
+                                          overlap.max = umbral.evento.vol)
         if(bool_cds){serie <- 'CDS'}else{serie <- 'Indices'}
         if(promedio.movil){regresor.mercado <- 'PM'}else{regresor.mercado <- 'benchmark'}
         save(volatility_results, 
