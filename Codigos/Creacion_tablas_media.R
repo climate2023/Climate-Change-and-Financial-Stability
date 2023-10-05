@@ -79,6 +79,8 @@ setClass("ESmean",slots=list(retornos = "xts",error_estandar = "numeric",res_est
 directorio.saved        <- paste0(getwd(),'/Resultados_regresion/')
 directorio.guardar      <- paste0(directorio.saved,'Tablas/')
 tipo.serie              <- 'Indices'   #<<<--- Puede ser 'CDS' o 'Indices'  
+if(tipo.serie == 'CDS')     cola <- 1
+if(tipo.serie == 'Indices') cola <- -1
 tipo.estudio            <- 'media' #<<<--- Puede ser de 'media' o 'varianza'
 regresor.mercado        <- 'benchmark'    #<<<--- Retornos de mercado 'PM' es promedio movil y 'benchmark' es el retorno MSCI Emerging Markets
 tipos.desastre.eliminar <- c('Biological','Climatological') #<<<--- NULL si no se desea eliminar ningun tipo de desastre 
@@ -94,7 +96,7 @@ max_abnormal_returns     <- 15   #<<<--- No. dias maximos despues del evento par
 length_car_window        <- 15   #<<<--- Ventana para calcular el CAR (por ejemplo 5 significa [0,+5], donde 0 es el dia del evento)
 length_event_window      <- length_car_window + 1 # Longitud ventana de evento es 1 mas <length_car_window>
 
-ventanas.estimacion      <- c('250','375','500')   #<<<--- Puede ser 250, 350 o 500   (Importante que sea string)
+ventanas.estimacion      <- c('250','375','500')   #<<<--- Puede ser 250, 375 o 500   (Importante que sea string)
 ventanas.traslape        <- c('50','100','150')   #<<<--- Puede ser 50, 100 o 150   (Importante que sea string)
 
 for(ventana.estimacion in ventanas.estimacion){
@@ -171,7 +173,8 @@ for(ventana.estimacion in ventanas.estimacion){
                                                  ~ (.x@retornos$Abnormal)[(length_estimation_window+1+inicio.ventana.evento):(max_abnormal_returns+1+length_estimation_window)])))
       for(j in (1:(max_abnormal_returns+1-inicio.ventana.evento))) 
         matrix.wilcoxon[j,i] <- paste(round(abnormal[j],2),
-                                      wilcoxon.jp.test(lista.separada[[i]],length_estimation_window,j,inicio.ventana.evento)$Significancia)
+                                      wilcoxon.jp.test(data.list = lista.separada[[i]],es.window.length = length_estimation_window,
+                                                       ev.window.length = j,ev.window.begin = inicio.ventana.evento,tail = cola)$Significancia)
     }
     
     k <- length(lista.separada)+1
@@ -179,7 +182,7 @@ for(ventana.estimacion in ventanas.estimacion){
       abnormal <- cumsum(rowMeans(purrr::map_dfc(all.events.list, 
                                                  ~ (.x@retornos$Abnormal)[(length_estimation_window+1+inicio.ventana.evento):(max_abnormal_returns+1+length_estimation_window)])))
       matrix.wilcoxon[j,k] <- paste(round(abnormal[j],2),
-                                    wilcoxon.jp.test(all.events.list,length_estimation_window,j,inicio.ventana.evento)$Significancia)
+                                    wilcoxon.jp.test(all.events.list,length_estimation_window,j,inicio.ventana.evento,tail = cola)$Significancia)
     }
     
     colnames(matrix.wilcoxon) <- c(names(lista.separada),'Todos')
@@ -193,13 +196,13 @@ for(ventana.estimacion in ventanas.estimacion){
     for(i in seq_along(lista.separada)){
       for(j in (1:(max_abnormal_returns+1-inicio.ventana.evento))) 
         matrix.bmp[j,i] <- paste(round(mean(colSums(data.frame(purrr::map(lista.separada[[i]],~coredata(.x@retornos$Abnormal[(length_estimation_window+1+inicio.ventana.evento):(length_estimation_window+j+inicio.ventana.evento)]))))),2),
-                                 bmp_savickas(lista.separada[[i]],length_estimation_window,j,inicio.ventana.evento)$Significancia)
+                                 bmp_savickas(lista.separada[[i]],length_estimation_window,j,inicio.ventana.evento,tail = cola)$Significancia)
     }
     
     k <- length(lista.separada)+1
     for(j in (1:(max_abnormal_returns+1-inicio.ventana.evento))) 
       matrix.bmp[j,k] <- paste(round(mean(colSums(data.frame(purrr::map(all.events.list,~coredata(.x@retornos$Abnormal[(length_estimation_window+1+inicio.ventana.evento):(length_estimation_window+j+inicio.ventana.evento)]))))),2),
-                               bmp_savickas(all.events.list,length_estimation_window,j,inicio.ventana.evento)$Significancia)
+                               bmp_savickas(all.events.list,length_estimation_window,j,inicio.ventana.evento, tail=cola)$Significancia)
     colnames(matrix.bmp) <- c(names(lista.separada),'Todos')
     Ventana              <- 1:(max_abnormal_returns+1- inicio.ventana.evento)
     matrix.bmp           <- cbind(Ventana,matrix.bmp)
@@ -224,10 +227,3 @@ for(ventana.estimacion in ventanas.estimacion){
     
   }
 }
-
-
-
-
-
-
-

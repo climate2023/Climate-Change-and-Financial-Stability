@@ -72,6 +72,19 @@ if(1){
     emdat_base <- emdat_base %>% 
       mutate(Start.Day=replace_na(Start.Day,1)) # <replace_na> se utiliza para reemplazar los valores <NA> por <1>
   }
+  
+  # Revisar proporcion de datos faltantes en agregado y por tipo de desastre
+  prop.dias.faltantes.agregado <- round((table(emdat_base$na_start) %>% prop.table)*100,2)['1']
+  # Separar la base de datos dependiendo el valor en <Disaster.Subgroup>
+  bases.separadas        <- emdat_base %>% group_split(Disaster.Subgroup)
+  # Anhadir los nombres de los valores en <Disaster.Subgroup>
+  names(bases.separadas) <- unlist(lapply(bases.separadas, function(x) unique(x$Disaster.Subgroup)))
+  # Obtener la proporcion de dias faltantes y no faltantes por cada base de datos
+  proporcion.na.start <- lapply(bases.separadas, function(x) table(x$na_start) %>% prop.table())
+  # Obtener la proporcion de dias faltantes para cada base de datos
+  prop.dias.faltantes <- round(as.numeric(unlist(purrr::map(proporcion.na.start, ~.x['1'])))*100,2)
+  names(prop.dias.faltantes) <- names(bases.separadas)
+  
   # Generacion de la fecha completa del inicio de evento, <Start.Date>, 
   # a partir de <Start.Year>, <Start.Month> y <Start.Day>
   emdat_base <- emdat_base %>% 

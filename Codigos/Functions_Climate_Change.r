@@ -1805,10 +1805,12 @@ estimation.event.study <- function(bool.paper,bool.cds,base, data.events, market
 #--                    cada par evento-indice un dataframe con retornos anormales
 #-- es.window.length : tamaño ventana de estimacion
 #-- ev.window.length : tamaño ventana de evento
+#-- tail             : a que cola se quiere la hipotesis alternativa, donde -1 significa cola izquierda, 1 significa cola derecha y 2 significa a dos colas. 
+#                      el default es a dos colas
 # ----Argumentos de salida  ----#
 #-- result           : dataframe con el estadistico de Wilcoxon y su significancia (* para 10%, ** para 5% y *** para 1%)
 #---------------------------------------------------------------------------------------#
-wilcoxon.jp.test <- function(data.list,es.window.length,ev.window.length,ev.window.begin){
+wilcoxon.jp.test <- function(data.list,es.window.length,ev.window.length,ev.window.begin, tail = 2){
   # Para el calculo del CAR se toma la serie <Abnormal> a partir de la obs <es.window.length> + 1 hasta 
   # <es.window.length> + <ev.window.length>
   # Se crea el vector <all_car> para guardar los CAR
@@ -1873,8 +1875,13 @@ wilcoxon.jp.test <- function(data.list,es.window.length,ev.window.length,ev.wind
       resultado <- data.frame("Wilcoxon_statistic" = positive_rank_sum,"Significancia" = round(significance,3))
     }
   }
-  # Por ultimo, usando la funcion <wilcox.test> obtenemos el pvalor
-  test      <- wilcox.test(all_car)
+  # Por ultimo, usando la funcion <wilcox.test> obtenemos el pvalor dependiendo de la cola, si tenemos que <tail> es 2, eso significa que la alternativa debe
+  # ser con dos colas, es decir <alt> = 'two-sided'. Si <tail> = -1, entonces es para la cola izquierda de la hipotesis alterna (por ejemplo para indices de bolsa) entonces <alt> = 'less'
+  # Por ultimo, si <tail> = 1, entonces es para la cola derecha, por lo que <alt> = 'greater0
+  if(tail == 2)  alt <- 'two.sided'
+  if(tail == -1) alt <- 'less'
+  if(tail == 1)  alt <- 'greater'
+  test      <- wilcox.test(all_car,alternative = alt)
   statistic <- as.numeric(test$statistic)
   p_value   <- test$p.value
   significancia <-''
@@ -3088,11 +3095,13 @@ mt_function = function(epsilon_matrix, variance_forecast_matrix){
 #                      Es necesario que en la funcion <estimation.event.study>, <GARCH> no sea null para que funcione <bmp_savickas>
 #-- es.window.length : tamaño ventana de estimacion
 #-- ev.window.length : tamaño ventana de evento
+#-- tail             : a que cola se quiere la hipotesis alternativa, donde -1 significa cola izquierda, 1 significa cola derecha y 2 significa a dos colas. 
+#                      el default es a dos colas
 # ----Argumentos de salida  ----#
 #-- resultado        : dataframe con el estadistico GARCH y su significancia (* para 10%, ** para 5% y *** para 1%)   
 #---------------------------------------------------------------------------------------#
 
-bmp_savickas = function(data.list,es.window.length,ev.window.length,ev.window.begin){
+bmp_savickas = function(data.list,es.window.length,ev.window.length,ev.window.begin,tail){
   # Para el calculo del CAR se toma la serie <Abnormal> a partir de la obs <es.window.length> + 1 hasta 
   # <es.window.length> + <ev.window.length>
   
@@ -3107,15 +3116,31 @@ bmp_savickas = function(data.list,es.window.length,ev.window.length,ev.window.be
   n               <- length(ScT)
   garch_statistic <- (mean(ScT))/(sqrt((1/(n*(n-1)))*sum((ScT - mean(ScT))^2)))
   
+  if(0){
+    # Comparar con una T con n-1 grados de libertad
+    significancia <- ""
+    significancia[garch_statistic <= qt(0.1/2, df = (n-1)) | garch_statistic >= qt(1- 0.1/2, df = (n-1))] <- "*"
+    # Significancia al 5%
+    significancia[garch_statistic <= qt(0.05/2,df = (n-1)) | garch_statistic >= qt(1- 0.05/2,df = (n-1))] <- "**"
+    # Significancia al 1%
+    significancia[garch_statistic <= qt(0.01/2,df = (n-1)) | garch_statistic >= qt(1- 0.01/2,df = (n-1))] <- "***"
+  }
+  
+  # Hallar el pvalue a dos colas, dado que <tail> == '2' implica qu
+  if(tail == 2)   p_value <- pt(abs(garch_statistic),df=(n-1),lower.tail = F)*2 
+  # Hallar el pvalue para cola izquierda
+  if(tail == -1 ) p_value <- pt(garch_statistic,df=(n-1),lower.tail = T)
+  # Hallar el pvalue para cola derecha
+  if(tail == 1 )  p_value <- pt(garch_statistic,df=(n-1),lower.tail = F)
+  
   # Comparar con una T con n-1 grados de libertad
   significancia <- ""
-  significancia[garch_statistic <= qt(0.1/2, df = (n-1)) | garch_statistic >= qt(1- 0.1/2, df = (n-1))] <- "*"
+  significancia[p_value < 0.10] <- "*"
   # Significancia al 5%
-  significancia[garch_statistic <= qt(0.05/2,df = (n-1)) | garch_statistic >= qt(1- 0.05/2,df = (n-1))] <- "**"
+  significancia[p_value < 0.05] <- "**"
   # Significancia al 1%
-  significancia[garch_statistic <= qt(0.01/2,df = (n-1)) | garch_statistic >= qt(1- 0.01/2,df = (n-1))] <- "***"
+  significancia[p_value < 0.01] <- "***"
   
-  p_value   <- pt(abs(garch_statistic),df=(n-1),lower.tail = F)*2  
   resultado <- data.frame('Estadistico'=round(garch_statistic,4),'Significancia'= significancia,
                           'p_value' = round(p_value,4))
   return(resultado)
