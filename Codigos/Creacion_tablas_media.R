@@ -66,7 +66,6 @@ if(1){
                    'SouthAfrica','Turkey') #<<<--- Lista de los paises de cada CDS/indice
 }
 
-
 # Creacion objeto tabla.media ---------------------------------------------
 # Se crea un tipo de objeto S4 para guardar la tabla de la media, y aparte el numero de eventos para cada pais
 setClass('Tabla.media', slots = list(dataframe = 'data.frame', no.eventos = 'numeric'))
@@ -81,8 +80,8 @@ directorio.guardar      <- paste0(directorio.saved,'Tablas/')
 tipo.serie              <- 'Indices'   #<<<--- Puede ser 'CDS' o 'Indices'  
 if(tipo.serie == 'CDS')     cola <- 1
 if(tipo.serie == 'Indices') cola <- -1
-tipo.estudio            <- 'media' #<<<--- Puede ser de 'media' o 'varianza'
-regresor.mercado        <- 'benchmark'    #<<<--- Retornos de mercado 'PM' es promedio movil y 'benchmark' es el retorno MSCI Emerging Markets
+tipo.estudio            <- 'benchmark' #<<<--- Puede ser de 'media' o 'varianza'
+regresor.mercado        <- 'PM'    #<<<--- Retornos de mercado 'PM' es promedio movil y 'benchmark' es el retorno MSCI Emerging Markets
 tipos.desastre.eliminar <- c('Biological','Climatological') #<<<--- NULL si no se desea eliminar ningun tipo de desastre 
 paises.resultados       <- countries # Seleccionar los paises sobre los cuales se quiere hacer el analisis de resultados. <countries> si se desea
 # de todos los paises de los que se tiene informacion
@@ -98,6 +97,7 @@ length_event_window      <- length_car_window + 1 # Longitud ventana de evento e
 
 ventanas.estimacion      <- c('250','375','500')   #<<<--- Puede ser 250, 375 o 500   (Importante que sea string)
 ventanas.traslape        <- c('50','100','150')   #<<<--- Puede ser 50, 100 o 150   (Importante que sea string)
+table.caar              <- 0 #<<<--- booleano para indicar si las tablas se construiran mostrando el CAAR o el estadistico. 0 para estadistico, 1  para CAAR
 
 for(ventana.estimacion in ventanas.estimacion){
   for(ventana.traslape in ventanas.traslape){
@@ -171,18 +171,32 @@ for(ventana.estimacion in ventanas.estimacion){
     for(i in seq_along(lista.separada)){
       abnormal <- cumsum(rowMeans(purrr::map_dfc(lista.separada[[i]], 
                                                  ~ (.x@retornos$Abnormal)[(length_estimation_window+1+inicio.ventana.evento):(max_abnormal_returns+1+length_estimation_window)])))
-      for(j in (1:(max_abnormal_returns+1-inicio.ventana.evento))) 
-        matrix.wilcoxon[j,i] <- paste(round(abnormal[j],2),
+      for(j in (1:(max_abnormal_returns+1-inicio.ventana.evento))){
+        # El siguiente codigo genera las tablas de Wilcoxon, presentando el CAAR y el pvalue asociado. if(0) para presentar 
+        if(table.caar) matrix.wilcoxon[j,i] <- paste(round(abnormal[j],2),
                                       wilcoxon.jp.test(data.list = lista.separada[[i]],es.window.length = length_estimation_window,
                                                        ev.window.length = j,ev.window.begin = inicio.ventana.evento,tail = cola)$Significancia)
+        # El siguiente codigo genera las tablas de Wilcoxon, presentando el estadistico de Wilcoxon y el pvalue asociado
+        if(!table.caar){
+          prueba <- wilcoxon.jp.test(data.list = lista.separada[[i]],es.window.length = length_estimation_window,
+                                   ev.window.length = j,ev.window.begin = inicio.ventana.evento,tail = cola)
+          matrix.wilcoxon[j,i] <- paste(prueba$Estadistico, prueba$Significancia)
+        }
+      }
     }
     
     k <- length(lista.separada)+1
     for(j in (1:(max_abnormal_returns+1-inicio.ventana.evento))){ 
       abnormal <- cumsum(rowMeans(purrr::map_dfc(all.events.list, 
                                                  ~ (.x@retornos$Abnormal)[(length_estimation_window+1+inicio.ventana.evento):(max_abnormal_returns+1+length_estimation_window)])))
-      matrix.wilcoxon[j,k] <- paste(round(abnormal[j],2),
+      # El siguiente codigo genera las tablas de Wilcoxon, presentando el CAAR y el pvalue asociado. if(0) para presentar 
+      if(table.caar) matrix.wilcoxon[j,k] <- paste(round(abnormal[j],2),
                                     wilcoxon.jp.test(all.events.list,length_estimation_window,j,inicio.ventana.evento,tail = cola)$Significancia)
+      # El siguiente codigo genera las tablas de Wilcoxon, presentando el estadistico de Wilcoxon y el pvalue asociado
+      if(!table.caar){
+        prueba2 <-  wilcoxon.jp.test(all.events.list,length_estimation_window,j,inicio.ventana.evento,tail = cola)
+        matrix.wilcoxon[j,k] <- paste(prueba2$Estadistico, prueba2$Significancia)
+      }
     }
     
     colnames(matrix.wilcoxon) <- c(names(lista.separada),'Todos')
@@ -194,15 +208,31 @@ for(ventana.estimacion in ventanas.estimacion){
     # Dataframe con muchas ventanas
     matrix.bmp <- matrix(nrow=(max_abnormal_returns-inicio.ventana.evento+1),ncol=(length(lista.separada)+1))
     for(i in seq_along(lista.separada)){
-      for(j in (1:(max_abnormal_returns+1-inicio.ventana.evento))) 
-        matrix.bmp[j,i] <- paste(round(mean(colSums(data.frame(purrr::map(lista.separada[[i]],~coredata(.x@retornos$Abnormal[(length_estimation_window+1+inicio.ventana.evento):(length_estimation_window+j+inicio.ventana.evento)]))))),2),
-                                 bmp_savickas(lista.separada[[i]],length_estimation_window,j,inicio.ventana.evento,tail = cola)$Significancia)
+      for(j in (1:(max_abnormal_returns+1-inicio.ventana.evento))){
+        # Se realiza el mismo procedimiento que con Wilcoxon
+        if(table.caar) {
+          matrix.bmp[j,i] <- paste(round(mean(colSums(data.frame(purrr::map(lista.separada[[i]],~coredata(.x@retornos$Abnormal[(length_estimation_window+1+inicio.ventana.evento):(length_estimation_window+j+inicio.ventana.evento)]))))),2),
+                                   bmp_savickas(lista.separada[[i]],length_estimation_window,j,inicio.ventana.evento,tail = cola)$Significancia)
+        }
+        if(!table.caar) {
+          prueba.bmp <- bmp_savickas(lista.separada[[i]],length_estimation_window,j,inicio.ventana.evento,tail = cola)
+          matrix.bmp[j,i] <- paste(round(prueba.bmp$Estadistico,2), prueba.bmp$Significancia)
+        }
+      } 
     }
     
     k <- length(lista.separada)+1
-    for(j in (1:(max_abnormal_returns+1-inicio.ventana.evento))) 
-      matrix.bmp[j,k] <- paste(round(mean(colSums(data.frame(purrr::map(all.events.list,~coredata(.x@retornos$Abnormal[(length_estimation_window+1+inicio.ventana.evento):(length_estimation_window+j+inicio.ventana.evento)]))))),2),
-                               bmp_savickas(all.events.list,length_estimation_window,j,inicio.ventana.evento, tail=cola)$Significancia)
+    for(j in (1:(max_abnormal_returns+1-inicio.ventana.evento))){
+      if(table.caar) {
+        matrix.bmp[j,k] <- paste(round(mean(colSums(data.frame(purrr::map(all.events.list,~coredata(.x@retornos$Abnormal[(length_estimation_window+1+inicio.ventana.evento):(length_estimation_window+j+inicio.ventana.evento)]))))),2),
+                                 bmp_savickas(all.events.list,length_estimation_window,j,inicio.ventana.evento, tail=cola)$Significancia)
+      }
+      if(!table.caar) {
+        prueba2.bmp <- bmp_savickas(all.events.list,length_estimation_window,j,inicio.ventana.evento, tail=cola)
+        matrix.bmp[j,k] <- paste(round(prueba2.bmp$Estadistico,2), prueba2.bmp$Significancia)
+      }
+    } 
+      
     colnames(matrix.bmp) <- c(names(lista.separada),'Todos')
     Ventana              <- 1:(max_abnormal_returns+1- inicio.ventana.evento)
     matrix.bmp           <- cbind(Ventana,matrix.bmp)
@@ -224,6 +254,5 @@ for(ventana.estimacion in ventanas.estimacion){
     if(columna.agrupar == 'Ambas') agrupacion <- 'paistipodesastre'
     save(tabla.bmp,
          tabla.wilcoxon,file=paste0(directorio.guardar,'Tablas_',tipo.serie,'_tra',ventana.traslape,'_est',ventana.estimacion,'_',tipo.estudio,'_',regresor.mercado,'_',agrupacion,'.RData'))
-    
   }
 }

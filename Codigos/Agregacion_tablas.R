@@ -67,15 +67,17 @@ if(1){
 }
 
 # Los siguientes argumentos van a filtrar los resultados y tablas
-serie             <- 'CDS'      #<<<--- puede ser 'Indices' o 'CDS'
+serie             <- 'Indices'      #<<<--- puede ser 'Indices' o 'CDS'
 tipo.estudio      <- 'media'     #<<<--- puede ser 'media' o 'varianza'
-regresor.mercado  <- 'PM'    #<<<--- puede ser 'PM' o 'benchmark', para CDS todavia no hay benchmark
+regresor.mercado  <- 'benchmark'    #<<<--- puede ser 'PM' o 'benchmark', para CDS todavia no hay benchmark
 umbrales.evento   <- c(50,100,150)  #<<<--- puede ser 50 100 o 150
 if(tipo.estudio=='media') es.windows <- c(250,375,500) #<<<--- Para media puede ser 250, 375 o 500.
 if(tipo.estudio=='varianza') es.windows <- c(500,750,1000) #<<<--- Para media puede ser 500, 750 o 1000.
-columnas.tabla    <- 'tipodesastre' #<<<--- Las tablas de la media estan guardadas tanto por tipo de desastre como por pais
+columnas.tabla    <- 'paistipodesastre' #<<<--- Las tablas de la media estan guardadas tanto por tipo de desastre como por pais
 # <columnas.tabla> toma el valor de 'tipodesastre' o 'pais'. Tambien estan guardadas por 'ambas, en cuyo caso <columnas.tabla> toma el valor
 # de 'paistipodesastre'
+table.caar        <- 0 #<<<--- booleano para indicar si las tablas se construiran mostrando el CAAR o el estadistico. 0 para estadistico, 1  para CAAR
+# Debe corresponder al mismo <table.caar> de "Creacion_tablas_media.R"
 
 # Organizacion tablas -----------------------------------------------------
 
@@ -214,10 +216,23 @@ if(tipo.estudio == 'media'){
     # Lo unico que falta es juntar los dos dataframe: <dataframe.wil.organizado> y <data.bmp.organizado> para tener un solo dataframe con la significancia de 
     # ambos tests
     dataframe.final <- cbind(dataframe.wil.organizado,data.bmp.organizado)
-    dataframe.final <- dataframe.final %>% 
+    if(table.caar) {dataframe.final <- dataframe.final %>% 
       mutate('50' = paste((rep(c('', paste0('[1,',1:15,']')),3)),`50`,`50bmp`),'100'=paste((rep(c('', paste0('[1,',1:15,']')),3)),`100`,`100bmp`),
              '150'=paste((rep(c('', paste0('[1,',1:15,']')),3)),`150`,`150bmp`)) %>% 
       dplyr::select(Estimacion,`50`,`100`,`150`)
+    }else{
+      # Primero se debe eliminar el numero de eventos en las columnas <est50> <est100> y <est150>, para poder unir correctamente la wilcoxon y BMP
+      dataframe.final <- dataframe.final %>%
+        mutate(est50 = str_replace_all(est50, "Eventos\\s*:\\s*\\d+", " ")) %>% 
+        mutate(est100 = str_replace_all(est100,  "Eventos\\s*:\\s*\\d+", " ")) %>% 
+        mutate(est150 = str_replace_all(est150,  "Eventos\\s*:\\s*\\d+", " "))
+      
+      # Por ultimo creamos el dataframe para exportar
+      dataframe.final <- dataframe.final %>% 
+        mutate('50' = paste((rep(c('', paste0('[1,',1:15,']')),3)),`50`,`est50`),'100'=paste((rep(c('', paste0('[1,',1:15,']')),3)),`100`,`est100`),
+               '150'=paste((rep(c('', paste0('[1,',1:15,']')),3)),`150`,`est150`)) %>% 
+        dplyr::select(Estimacion,`50`,`100`,`150`)
+    }
     
     # Exportar a latex
     kable.final <- kable(dataframe.final,format='latex', booktabs=T, caption = paste0('Significancia para eventos ', nombre.columna,'. Nota: para ', serie, 
