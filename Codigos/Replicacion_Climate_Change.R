@@ -80,7 +80,6 @@ if(!bool_paper){
                  "SouthAfrica","SouthKorea", "Spain", "Sweden","Switzerland","Thailand","Turkey", 
                  "UnitedKingdom","USA1","USA2") #<<<--- Lista de los paises de cada indice, con el proposito de leer los excel con los datos
   
-  Tipos.Desastres  <- c("Biological","Climatological","Geophysical","Hydrological","Meteorological")  #<<<--- Tipos de desastres considerados
   no.rezagos.de.desastres <- 4  #<<<--- Numero de rezagos de los desastres <w> (i.e. t0, t1, ..., tw)
   
   # Establecemos el directorio de los datos
@@ -131,7 +130,6 @@ if(!bool_paper){
   countries   <- c('Brazil','Chile','China','Colombia','Indonesia','Korea','Malaysia','Mexico','Peru',
                    'SouthAfrica','Turkey') #<<<--- Lista de los paises de cada CDS/indice
   
-  Tipos.Desastres  <- c("Biological","Climatological","Geophysical","Hydrological","Meteorological")  #<<<--- Tipos de desastres considerados
   no.rezagos.de.desastres <- 15  #<<<--- Numero de rezagos de los desastres <w> (i.e. t0, t1, ..., tw)
   
   # Establecemos el directorio de los datos
@@ -541,10 +539,12 @@ if(!bool_paper){
   dummies <- create_dummies(excel_file=paste0(Dir,"emdata_dummies_cds.xlsx"), 
                             Retornos, no.rezagos=no.rezagos.de.desastres, first.calendar.days.tobe.evaluated = 10 ) 
 }
+
+Tipos.Desastres <- dimnames(dummies)[[1]]
 # Calculo de interacciones entre D y Rmt
-names.int    = paste0('Int_D_', dimnames(dummies)[[1]])
+names.int    = paste0('Int_D_', Tipos.Desastres)
 # <interactions> sera una matriz con el mismo numero de filas que <Retornos> y su numero de columnas es length(dimnames(<dummies>)[[1]])
-interactions = matrix( NA, nrow(Retornos), length(dimnames(dummies)[[1]]), dimnames=list(as.character(index(Retornos)), names.int))
+interactions = matrix( NA, nrow(Retornos), length(Tipos.Desastres), dimnames=list(as.character(index(Retornos)), names.int))
 for (tip.desast in 1:ncol(interactions))
   interactions[,tip.desast] =  as.numeric(market.returns) * dummies[tip.desast,,'D']
 
@@ -691,6 +691,7 @@ if(!load.SURpaises){
   # Solo puede correrlo JP, ya que los residuos estsn en su PC y  pesan demasiado para mandarlos por github
 }
 
+if(0){
 # Test de Wilcoxon --------------------------------------------------------
 
 steps <- paste('t',(0:no.rezagos.de.desastres),sep='')  # vector con los días adelante del evento, hace referencia a como termina el nombre de las dummies
@@ -705,4 +706,4 @@ if(Por_tipo_desastre){
   name_column <- "Country"
   resultado <- wilcoxon_Pagnottoni(coefficients_countries_list,name_column,steps,indexes,paises);resultado
 }
-
+}

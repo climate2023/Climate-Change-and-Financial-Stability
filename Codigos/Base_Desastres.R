@@ -10,6 +10,7 @@ cat("\014")
 
 # Librerias ---------------------------------------------------------------
 library(tidyverse)
+library(openxlsx)
 
 # Cargar funciones --------------------------------------------------------
 source(paste0(getwd(),'/Codigos/Functions_Climate_Change.r')) # Source de las funciones
@@ -17,6 +18,8 @@ source(paste0(getwd(),'/Codigos/Functions_Climate_Change.r')) # Source de las fu
 # Lectura de datos --------------------------------------------------------
 bool_paper <- T #<<<--- Parametro que indica si se carga la base de datos que utilizaremos o los retornos de Pagnottoni (2022). 
 # <T> si se desea la base de datos para el paper. <F> si los retornos de Pagnottoni
+filtrar    <- T #<<<--- T si se desea filtrar la base de datos por el numero de afectados, muertos, danos, heridos, y dejar solamente los eventos 
+# con fecha especifica
 Dir  = paste0(getwd(),'/Bases/') #Directorio de datos, se supone que el subdirectorio <Bases> existe
 countries   <- c('Brazil','Chile','China','Colombia','Indonesia','Korea','Malaysia','Mexico','Peru',
                  'SouthAfrica','Turkey') #<<<--- Lista de los paises de cada CDS/indice
@@ -135,7 +138,8 @@ if(1){
   # Por ultimo, con la duracion ya se puede completar la columna <End.Date>
   emdat_base <- emdat_base %>% 
     dplyr::mutate(End.Date = ifelse(is.na(End.Date), Start.Date + Duracion , 
-                                    End.Date))
+                                    End.Date)) %>% 
+    mutate(End.Date = as.Date(End.Date))
   
   # Vector con los nombres de paises usados para la generacion de la base de eventos
   if(is.null(unico_pais)){
@@ -154,11 +158,64 @@ if(1){
 #    <Start.Date> : fecha de inicio del evento
 
 # Filtrar la base de eventos para buscar eventos mas significativos -------
-emdat_base <- emdat_base %>% 
-  dplyr::filter(Total.Deaths >= 1000 | No.Injured >= 1000 | Total.Affected >= 10000 | Damages >= 1000000) %>% 
-  dplyr::filter(Disaster.Subgroup %in% c('Geophysical','Hydrological','Meteorological')) %>% 
-  dplyr::filter(na_start == 0)
-
+if(filtrar){
+  emdat_base <- emdat_base %>% 
+    dplyr::filter(Total.Deaths >= 1000 | No.Injured >= 1000 | Total.Affected >= 10000 | Damages >= 1000000) %>% 
+    dplyr::filter(Disaster.Subgroup %in% c('Geophysical','Hydrological','Meteorological')) %>% 
+    dplyr::filter(na_start == 0)
+}
 # Guardar en .RData -------------------------------------------------------
 save(emdat_base, file= paste0(getwd(),'/Bases/EMDAT_PAPER.RData'))
 
+# Creacion de los excel para SUR ------------------------------------------
+# La funcion create_dummies recoge un formato de excel caracteristico, donde cada hoja es un tipo de desastre/ un pais. 
+# En cada hoja hay cuatro columnas, <t0> es el dia de inicio del desastre, <na.start> es variable dummy donde 1 indica si se 
+# asumio el dia inicial. <end> es la fecha del fin del desastre, <na.end> es dummy donde 1 indica si se asumio el dia final
+
+# Primero se separa la base <emdat_base> segun los valores unicos de <$Disaster.Subgroup>
+df.tipo.desastre <- emdat_base %>% 
+  dplyr::group_split(Disaster.Subgroup)
+names(df.tipo.desastre) <- unlist(lapply(df.tipo.desastre, function(x) unique(x$Disaster.Subgroup)))
+
+# En <df.tipo.desastre> tenemos una lista de dataframes, una por cada tipo de desastre. Lo que resta es seleccionar solamente 
+# las columnas de interes y renombrarlas para tenerlas en el formato adecuado para <create_dummies>
+
+df.tipo.desastre <- lapply(df.tipo.desastre, function(x){
+  x <- x %>% 
+    dplyr::select(c(Start.Date, na_start, End.Date,na_end)) %>% 
+    dplyr::rename(t0 = Start.Date, na.start = na_start, end = End.Date, na.end = na_end) %>% 
+    dplyr::arrange(t0)
+  return(x)})
+
+# Escribir los dataframes en excel
+wb.tipo.desastre <- createWorkbook()
+
+for(i in seq_along(df.tipo.desastre)) {
+  addWorksheet(wb.tipo.desastre, sheetName = names(df.tipo.desastre)[i])
+  writeData(wb.tipo.desastre, sheet = i, x = df.tipo.desastre[[i]])
+}
+
+# Salvar el excel
+saveWorkbook(wb.tipo.desastre, file = paste0(getwd(),'/Bases/emdata_dummies_cds.xlsx'),overwrite = T)
+
+# Excel por pais ----------------------------------------------------------
+# Ahora hacemos lo mismo, pero con los paises en vez de tipos de desastres
+df.pais <- emdat_base %>% 
+  dplyr::group_split(Country)
+names(df.pais) <- unlist(lapply(df.pais, function(x) unique(x$Country)))
+
+df.pais <- lapply(df.pais, function(x){
+  x <- x %>% 
+    dplyr::select(c(Start.Date, na_start, End.Date,na_end)) %>% 
+    dplyr::rename(t0 = Start.Date, na.start = na_start, end = End.Date, na.end = na_end) %>% 
+    dplyr::arrange(t0)
+  return(x)})
+
+wb.pais <- createWorkbook()
+
+for(i in seq_along(df.pais)) {
+  addWorksheet(wb.pais, sheetName = names(df.pais)[i])
+  writeData(wb.pais, sheet = i, x = df.pais[[i]])
+}
+
+saveWorkbook(wb.pais, file = paste0(getwd(),'/Bases/dummies_countries_cds.xlsx'),overwrite = T)
