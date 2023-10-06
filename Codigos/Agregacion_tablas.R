@@ -73,7 +73,7 @@ regresor.mercado  <- 'benchmark'    #<<<--- puede ser 'PM' o 'benchmark', para C
 umbrales.evento   <- c(50,100,150)  #<<<--- puede ser 50 100 o 150
 if(tipo.estudio=='media') es.windows <- c(250,375,500) #<<<--- Para media puede ser 250, 375 o 500.
 if(tipo.estudio=='varianza') es.windows <- c(500,750,1000) #<<<--- Para media puede ser 500, 750 o 1000.
-columnas.tabla    <- 'paistipodesastre' #<<<--- Las tablas de la media estan guardadas tanto por tipo de desastre como por pais
+columnas.tabla    <- 'tipodesastre' #<<<--- Las tablas de la media estan guardadas tanto por tipo de desastre como por pais
 # <columnas.tabla> toma el valor de 'tipodesastre' o 'pais'. Tambien estan guardadas por 'ambas, en cuyo caso <columnas.tabla> toma el valor
 # de 'paistipodesastre'
 table.caar        <- 0 #<<<--- booleano para indicar si las tablas se construiran mostrando el CAAR o el estadistico. 0 para estadistico, 1  para CAAR
