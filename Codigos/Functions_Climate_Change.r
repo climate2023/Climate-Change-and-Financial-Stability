@@ -350,23 +350,37 @@ densidad_CAR <- function(x,indices){
 #-- NA. No retorna argumentos, más bien un gráfico que incluye las 5 densidades (biologico, climatológico
 #-- hidrologico, geologico, meteorologico).
 #---------------------------------------------------------------------------------------#
-grafico_densidad <- function(vector,main,labels,colors,width=2, position = "topright"){
-  maximo_y <- c()
-  minimo_x <- c()
-  maximo_x <- c()
-  for(i in vector[1:length(vector)]){
-    maximo_y <- c(maximo_y, max(get(i)$y))
-    minimo_x <- c(minimo_x, min(get(i)$x))
-    maximo_x <- c(maximo_x, max(get(i)$x))
+grafico_densidad <- function(vector,main,labels,width=2, position = "topright"){
+  # if(0) porque se encontro una manera mas eficiente de desarrollarlo
+  if(0){
+    maximo_y <- c()
+    minimo_x <- c()
+    maximo_x <- c()
+    for(i in vector[1:length(vector)]){
+      maximo_y <- c(maximo_y, max(get(i)$y))
+      minimo_x <- c(minimo_x, min(get(i)$x))
+      maximo_x <- c(maximo_x, max(get(i)$x))
+    }
+    limite_y          <-  max(maximo_y)
+    limite_min_x      <-  min(minimo_x)
+    limite_max_x      <-  max(maximo_x)
   }
-  limite_y          <-  max(maximo_y)
-  limite_min_x      <-  min(minimo_x)
-  limite_max_x      <-  max(maximo_x)
   
+  # SE encuentra los limites de los ejes x y y para el grafico
+  limite_y     <- max(unlist(purrr::map(vector, ~max(.x$y))))
+  limite_min_x <- min(unlist(purrr::map(vector, ~min(.x$x))))
+  limite_max_x <- max(unlist(purrr::map(vector, ~max(.x$x))))
+  
+  # Se determinan los colores para graficar
+  if(length(vector) <= 9){
+    colors <- brewer.pal(n=length(vector), name='Set1')
+  }else{
+    colors <- c(brewer.pal(n=7, name='Set1'), brewer.pal(n=(length(vector) - 7), name='Dark2'))
+  }
   x11()
-  plot(get(vector[1]), main = main, col = colors[1],lwd=width,ylim=c(0,limite_y),xlim=c(limite_min_x,limite_max_x))
+  plot(vector[[1]], main = main, col = colors[1],lwd=width,ylim=c(0,limite_y),xlim=c(limite_min_x,limite_max_x))
   for(i in 2:length(vector)){
-    lines(get(vector[i]),col=colors[i],lwd=width)
+    lines(vector[[i]],col=colors[i],lwd=width)
   }
   legend(position,legend = labels,col = colors, lwd = width)
 }

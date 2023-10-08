@@ -59,39 +59,55 @@ if(1){
   # Cargar funciones --------------------------------------------------------
   
   source(paste0(getwd(),'/Codigos/Functions_Climate_Change.r')) # Source de las funciones
-  Dir  = paste0(getwd(),'/Bases/') #Directorio de datos, se supone que el subdirectorio <Bases> existe
+  Dir         = paste0(getwd(),'/Bases/') #Directorio de datos, se supone que el subdirectorio <Bases> existe
+  cd.graficos = paste0(getwd(),'/Graficos_Paper/') # Directorio para las imagenes
   Tipos.Desastres  <- c("Biological","Climatological","Geophysical","Hydrological","Meteorological")  #<<<--- Tipos de desastres considerados
+  paises   <- c('Brazil','Chile','China','Colombia','Indonesia','Korea','Malaysia','Mexico','Peru',
+                   'SouthAfrica','Turkey') 
 }
 
-##
-bool_paper <- T
-
-## Parametros
+# Parametros --------------------------------------------------------------
+bool_paper <- T # booleano que toma el valor de T si se quiere revisar el paper que vamos a escribir, F para Pagnottoni
 no.rezagos.de.desastres <- 15     #<<<--- Numero de rezagos de los desastres <w> (i.e. t0, t1, ..., tw)
 tipo.serie              <- 'cds'  #<<<--- Puede ser 'cds' o 'indices
 market                  <- 'PM'   #<<<--- Puede ser 'PM' o 'benchmark', pero si tenemos CDS solamente puede ser PM
-
-if(tipo.serie == 'cds') indexes     <- c('CDS_Brazil','CDS_Chile','CDS_China','CDS_Colombia','CDS_Indonesia','CDS_Korea',
-                                      'CDS_Malaysia','CDS_Mexico','CDS_Peru','CDS_SouthAfrica','CDS_Turkey') #<<<--- Lista de los indices analizados. 
+if(tipo.serie == 'cds') indexes     <- c('CDSBrazil','CDSChile','CDSChina','CDSColombia','CDSIndonesia','CDSKorea',
+                                      'CDSMalaysia','CDSMexico','CDSPeru','CDSSouthAfrica','CDSTurkey') #<<<--- Lista de los indices analizados. 
 if(tipo.serie == 'indices') indexes <- c('BIST100','Bovespa','ChinaA50','JSX','KOSPI','S.PBMVIPC','S.PCLXIPSA','SouthAfricaTop40',
                                                  'IGBVL','KLCI','COLCAP') # Nombre indices para el paper. JSX es el de Jakarta
-# Cargar resultados
-load(paste0('Resultados_SUR/Resultados_Desastres_',tipo.serie,'_',market,'.RData'))
+nivel.desagregacion <- 'pais'  # Como se quiere desagregar las graficas, por 'pais' o 'tipodesastre'
 
-### CODIGO PARA GRAFICAS
+# Creacion de una funcion vectorizada de <grep>
+vgrep <- Vectorize(grep, vectorize.args = 'pattern')
+# Cargar resultados -------------------------------------------------------
+if(nivel.desagregacion == 'tipodesastre') load(paste0('Resultados_SUR/Resultados_Desastres_',tipo.serie,'_',market,'.RData'))
+if(nivel.desagregacion == 'pais'){
+  load(paste0('Resultados_SUR/Resultados_Desastres_Paises_',tipo.serie,'_',market,'.RData'))
+  coefficients_disasters_list <- coefficients_countries_list
+}
 
+# Graficas ----------------------------------------------------------------
 # De acuerdo con la notacion de los modelos estimados, los coeficientes el dia del evento terminan en <t0>, 
 # el dia siguiente en <t1>, dos dias despues <t2>, y asi hasta llegar a <t4>. 
 steps <- paste('t',(0:no.rezagos.de.desastres),sep='')  # vector con los días adelante del evento, hace referencia a como termina el nombre de las dummies
 
-
 ## El siguiente ciclo genera la densidad Kernel de los coeficientes para cada tipo de desastre 
 ## y para todos los <t0>, <t1> ...
-for(step in steps){
-  for(model_name in names(coefficients_disasters_list)){
-    dens_name <- paste("dens",model_name,step,sep="_")
-    assign(dens_name,dens(coefficients_disasters_list[[model_name]][,"Estimate"],step))
+# <if(0)> porque se encontro una manera mas eficiente
+if(0){
+  for(step in steps){
+    for(model_name in names(coefficients_disasters_list)){
+      dens_name <- paste("dens",model_name,step,sep="_")
+      assign(dens_name,dens(coefficients_disasters_list[[model_name]][,"Estimate"],step))
+    }
   }
+}
+
+densidades.AR <- list()
+for(step in steps){
+  lista.temp <- lapply(coefficients_disasters_list, function(x) dens(x[,'Estimate'],step))
+  names(lista.temp) <- paste(names(lista.temp),step,sep='_')
+  densidades.AR <- c(densidades.AR, lista.temp)
 }
 
 # Por otro lado, necesitamos hacer la grafica de los CAR, que es la suma de los retornos anormales.
@@ -100,86 +116,109 @@ for(step in steps){
 # dummies temporales para todos los paises. Lo anterior para posteriormente ser sumadas por cada pais para 
 # generar el retorno anormal acumulado t_0+t_1+t_2+t_3+t_4
 
-for(model_name in names(coefficients_disasters_list)){
-  #Vamos a generar una lista para cada modelo
-  var_name <- paste0("coef_vec_",model_name)
-  coef_vec <- c()
-  #reunimos los coeficientes en <coefs>
-  coefs <- coefficients_disasters_list[[model_name]][,"Estimate"]
-  for(step in steps){
-    #seleccionamos solamente los coeficientes que acaben con <step> y lo añadimos a <coef_vec>
-    interest_indices <- grep(paste0(step, "$"),names(coefs)) # eL $ es para dejar explicito que tiene que terminar en <step>
-    interest_coefficients <- coefs[interest_indices]
-    coef_vec <- c(coef_vec, interest_coefficients)
+# if<0> porque mas adelante se realiza una manera mas eficiente de obtener los coeficientes
+if(0){
+  for(model_name in names(coefficients_disasters_list)){
+    #Vamos a generar una lista para cada modelo
+    var_name <- paste0("coef_vec_",model_name)
+    coef_vec <- c()
+    #reunimos los coeficientes en <coefs>
+    coefs <- coefficients_disasters_list[[model_name]][,"Estimate"]
+    for(step in steps){
+      #seleccionamos solamente los coeficientes que acaben con <step> y lo añadimos a <coef_vec>
+      interest_indices <- grep(paste0(step, "$"),names(coefs)) # eL $ es para dejar explicito que tiene que terminar en <step>
+      interest_coefficients <- coefs[interest_indices]
+      coef_vec <- c(coef_vec, interest_coefficients)
+    }
+    # al final asignamos <coef_vec> al nombre especifico por modelo.
+    assign(var_name, coef_vec)
   }
-  # al final asignamos <coef_vec> al nombre especifico por modelo.
-  assign(var_name, coef_vec)
 }
 
+coefficients.dummies.list <- lapply(coefficients_disasters_list, function(x){
+  # Se reunen los coeficientes en <coefs>
+  coefs.temp <- x[,"Estimate"]
+  # Se seleccionan solamente los coeficientes que acaben con <step> para retornarlos a <coefficients.dummies.list>
+  return(coefs.temp[as.numeric(vgrep(paste0(steps, "$"),names(coefs.temp)))])
+})
+
 # Generamos la densidad de los retornos anormales acumulados para cada tipo de desastre
-densidad_CAR_bio <- densidad_CAR(coef_vec_fitsur_Biological,indexes)
-densidad_CAR_cli <- densidad_CAR(coef_vec_fitsur_Climatological,indexes)
-densidad_CAR_geo <- densidad_CAR(coef_vec_fitsur_Geophysical,indexes)
-densidad_CAR_hyd <- densidad_CAR(coef_vec_fitsur_Hydrological,indexes)
-densidad_CAR_met <- densidad_CAR(coef_vec_fitsur_Meteorological,indexes)
+# if<0> porque mas adelante se realiza una manera mas eficiente de obtener las densidades
+if(0){
+  densidad_CAR_bio <- densidad_CAR(coef_vec_fitsur_Biological,indexes)
+  densidad_CAR_cli <- densidad_CAR(coef_vec_fitsur_Climatological,indexes)
+  densidad_CAR_geo <- densidad_CAR(coef_vec_fitsur_Geophysical,indexes)
+  densidad_CAR_hyd <- densidad_CAR(coef_vec_fitsur_Hydrological,indexes)
+  densidad_CAR_met <- densidad_CAR(coef_vec_fitsur_Meteorological,indexes)
+}
+densidades.CAR <- lapply(coefficients.dummies.list, densidad_CAR, indexes)
 
 ### =============================== Graficas de retornos anormales ==================================
 
 #Ya con las densidades de los retornos acumulados y de las dummies t_0, t_1, ..., t_4 podemos graficarlas
-
-labels <- c("Biological","Climatological","Geophysical","Hydrological","Meteorological")  #<<<--- leyendas del grafico
-colors <- c("blue", "tomato", "orange", "darkorchid4", "green")   #<<<--- colores que usara la grafica
-
 # Para los CAR el vector seria
 main_car   <- "Kernel denisty of CAR"  #<<<--- titulo para la grafica
-vector_car <- c("densidad_CAR_bio","densidad_CAR_cli","densidad_CAR_geo","densidad_CAR_hyd", 
-                "densidad_CAR_met") #<<<---vector de elementos a graficar
-grafico_densidad(vector_car,main_car,labels,colors)
+if(nivel.desagregacion == 'tipodesastre') grafico_densidad(densidades.CAR, main=main_car,labels=sub("^fitsur_", "", names(densidades.CAR)))
+if(nivel.desagregacion == 'pais') grafico_densidad(densidades.CAR, main=main_car,labels=sub("^fitcoun_", "", names(densidades.CAR)))
+savePlot(filename=paste0(cd.graficos,'Densidad_',tipo.serie,'_',market,'_',nivel.desagregacion,'_CAR'),type='png')
 
+# Ahora graficar para cada <step>
+for(step in steps){
+  title <- paste0('Kernel Density of AR ',step)
+  # En primer lugar se obtienen  los objetos de <densidades.AR> que se desea graficar
+  dens.AR.keep <- densidades.AR[map_lgl(names(densidades.AR), ~endsWith(.x, step))]
+  names.plot   <- sub("^fitsur_", "", names(dens.AR.keep))
+  names.plot   <- sub("^fitcoun_", "", names(dens.AR.keep))
+  names.plot   <- sub(paste0("_",step,"$"), "", names.plot)
+  grafico_densidad(dens.AR.keep, main= title, labels = sub(paste0("^fitsur_|_t0$"), "", names.plot))
+  savePlot(filename=paste0(cd.graficos,'Densidad_',tipo.serie,'_',market,'_',nivel.desagregacion,'_',step),type='png')
+}
 
-#Para los AR_t_0 seria
-main_t_0   <- "Kernel density of AR t_0"  #<<<--- titulo para la grafica
-vector_t_0 <- c("dens_fitsur_Biological_t0","dens_fitsur_Climatological_t0","dens_fitsur_Geophysical_t0",
-                "dens_fitsur_Hydrological_t0","dens_fitsur_Meteorological_t0") #<<<---vector de elementos a graficar
-grafico_densidad(vector_t_0,main_t_0,labels,colors)
-
-
-#Para los AR_t_1 seria
-main_t_1   <- "Kernel density of AR t_1"  #<<<--- titulo para la grafica
-vector_t_1 <- c("dens_fitsur_Biological_t1","dens_fitsur_Climatological_t1","dens_fitsur_Geophysical_t1",
-                "dens_fitsur_Hydrological_t1","dens_fitsur_Meteorological_t1") #<<<---vector de elementos a graficar
-grafico_densidad(vector_t_1,main_t_1,labels,colors)
-
-
-#Para los AR_t_2 seria
-main_t_2   <- "Kernel density of AR t_2"  #<<<--- titulo para la grafica
-vector_t_2 <- c("dens_fitsur_Biological_t2","dens_fitsur_Climatological_t2","dens_fitsur_Geophysical_t2",
-                "dens_fitsur_Hydrological_t2","dens_fitsur_Meteorological_t2") #<<<---vector de elementos a graficar
-grafico_densidad(vector_t_2,main_t_2,labels,colors)
-
-#Para los AR_t_3 seria
-main_t_3   <- "Kernel density of AR t_3"  #<<<--- titulo para la grafica
-vector_t_3 <- c("dens_fitsur_Biological_t3","dens_fitsur_Climatological_t3","dens_fitsur_Geophysical_t3",
-                "dens_fitsur_Hydrological_t3","dens_fitsur_Meteorological_t3") #<<<---vector de elementos a graficar
-grafico_densidad(vector_t_3,main_t_3,labels,colors)
-
-#Para los AR_t_4 seria
-main_t_4   <- "Kernel density of AR t_4"  #<<<--- titulo para la grafica
-vector_t_4 <- c("dens_fitsur_Biological_t4","dens_fitsur_Climatological_t4","dens_fitsur_Geophysical_t4",
-                "dens_fitsur_Hydrological_t4","dens_fitsur_Meteorological_t4") #<<<---vector de elementos a graficar
-grafico_densidad(vector_t_4,main_t_4,labels,colors)
+# <if(0)> porque arriba ya se programo de una manera mas eficiente
+if(0){
+  #Para los AR_t_0 seria
+  main_t_0   <- "Kernel density of AR t_0"  #<<<--- titulo para la grafica
+  vector_t_0 <- c("dens_fitsur_Biological_t0","dens_fitsur_Climatological_t0","dens_fitsur_Geophysical_t0",
+                  "dens_fitsur_Hydrological_t0","dens_fitsur_Meteorological_t0") #<<<---vector de elementos a graficar
+  grafico_densidad(vector_t_0,main_t_0,labels,colors)
+  
+  
+  #Para los AR_t_1 seria
+  main_t_1   <- "Kernel density of AR t_1"  #<<<--- titulo para la grafica
+  vector_t_1 <- c("dens_fitsur_Biological_t1","dens_fitsur_Climatological_t1","dens_fitsur_Geophysical_t1",
+                  "dens_fitsur_Hydrological_t1","dens_fitsur_Meteorological_t1") #<<<---vector de elementos a graficar
+  grafico_densidad(vector_t_1,main_t_1,labels,colors)
+  
+  
+  #Para los AR_t_2 seria
+  main_t_2   <- "Kernel density of AR t_2"  #<<<--- titulo para la grafica
+  vector_t_2 <- c("dens_fitsur_Biological_t2","dens_fitsur_Climatological_t2","dens_fitsur_Geophysical_t2",
+                  "dens_fitsur_Hydrological_t2","dens_fitsur_Meteorological_t2") #<<<---vector de elementos a graficar
+  grafico_densidad(vector_t_2,main_t_2,labels,colors)
+  
+  #Para los AR_t_3 seria
+  main_t_3   <- "Kernel density of AR t_3"  #<<<--- titulo para la grafica
+  vector_t_3 <- c("dens_fitsur_Biological_t3","dens_fitsur_Climatological_t3","dens_fitsur_Geophysical_t3",
+                  "dens_fitsur_Hydrological_t3","dens_fitsur_Meteorological_t3") #<<<---vector de elementos a graficar
+  grafico_densidad(vector_t_3,main_t_3,labels,colors)
+  
+  #Para los AR_t_4 seria
+  main_t_4   <- "Kernel density of AR t_4"  #<<<--- titulo para la grafica
+  vector_t_4 <- c("dens_fitsur_Biological_t4","dens_fitsur_Climatological_t4","dens_fitsur_Geophysical_t4",
+                  "dens_fitsur_Hydrological_t4","dens_fitsur_Meteorological_t4") #<<<---vector de elementos a graficar
+  grafico_densidad(vector_t_4,main_t_4,labels,colors)
+}
 
 # Grafica de tiempo retornos anormales acumulados  -----------------------------------
 
-coefficients_list <- coefficients_disasters_list  #<<<--- parametro que indica para que lista de coeficientes se quiere
-                                                  #       realizar el grafico, ya sea por tipo de desastre <coefficients_disasters_list>
-                                                  #       o por pais donde sucedio el desastre <coefficients_countries_list>
+coefficients_list <- coefficients_disasters_list  
+
 # Si se desea graficar solamente los CAR para algun(os) tipos de desastres o para algun(os) paises en especifico, se deben escribir en el 
 # parametro <var.interes>. Tienen que tener la misma ortografia que <Tipos.desastres>, en caso de haber escogido <coefficients_disasters_list>
 # o <paises> en caso de haber escogido <coefficients_countries_list>.
 # Por ejemplo, si solo se quiere ver el CAR asociado a Colombia, entonces var.interes <- "Colombia". 
 # Si se desea ver el CAR para todos los paises o todos los tipos de desastres, var.interes <- Tipos.desastres o var.interes <- paises
-var.interes <- Tipos.Desastres
+var.interes <- paises
 
 # Filtrar <coefficients_disasters_list> para que solo incluyan coeficientes para los tipos de desastre o paises incluidos en <var.interes>
 coefficients_list <- coefficients_list[grep(paste(var.interes,collapse = "|"),names(coefficients_list))]
@@ -324,11 +363,8 @@ if(grafico.solo.car){
   # Intento de arreglar el codigo de graficos CAR para mayor eficiencia
   # Escoger solamente los valores estimados
   estimados <- (purrr::map(coefficients_disasters_list, ~ .x[,'Estimate']))
-  # Para un vector de strings, la funcion <grep> busca si contienen un patron determinado
-  # Sin embargo, para poder escoger mas de un patron, se necesita vectorizar la funcion, de este modo podra usarse con <steps>
-  v_grep <- Vectorize(grep, vectorize.args = "pattern")
   # Para los coeficientes <estimados>, buscar si dentro de su nombre se encuentra alguno de los strings contenidos en <steps>
-  results <- lapply(estimados, function(x) v_grep(paste0(steps, "$"),names(x)))
+  results <- lapply(estimados, function(x) vgrep(paste0(steps, "$"),names(x)))
   
   lista.dataframes <- list()
   for(name in names(estimados)){
