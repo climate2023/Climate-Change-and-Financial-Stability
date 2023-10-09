@@ -650,7 +650,7 @@ for (pais in 1:length(paises)){
 ## REGRESION POR PAISES. Los coeficientes, errores estandar, t_Values, p_values y residuales de la estimacion fueron guardados usando el comando
 #  save() con el fin de no tener que correr siempre esta estimacion, por lo cual se usa el if(0).
 # ----COLOCAR <if(1)> SI SE DESEA ESTIMAR EL MODELO por paises ----#
-load.SURpaises = 0       #<<<--- 1 si se carga el SUR paises, 0 si se corre y salva el SUR paises 
+load.SURpaises = 1       #<<<--- 1 si se carga el SUR paises, 0 si se corre y salva el SUR paises 
 if(!load.SURpaises){
   ## Regresion con las dummies por pais. Es importante resaltar que en este caso <paises> indica el pais en el que sucedio el desastre, 
   #  mientras que <countries> indica el pais donde esta el indice (Ejemplo de <countries>: 'Brazil' que corresponde a 'Bovespa') 

@@ -63,7 +63,7 @@ for(estimation_start in estimation_windows){
     # Otras variables exogenas de una base de datos que se quieren incluir. 
     var_exo <- c("gdp_","fdi_")
     
-    load.eventslist <- 0    #<<<<-- 1 si se cargan los datos, 0 si se corre la funcion para estimar 
+    load.eventslist <- 1    #<<<<-- 1 si se cargan los datos, 0 si se corre la funcion para estimar 
     if(!load.eventslist){
       all_events_list <- estimation.event.study(bool.paper = bool_paper, bool.cds=bool_cds,base = base_lagged,data.events = eventos.final,market_returns = "market.returns",
                                                 max.ar = 15,es.start = estimation_start,es.end = estimation_end,add.exo = TRUE,vars.exo = var_exo,GARCH = "sGARCH",

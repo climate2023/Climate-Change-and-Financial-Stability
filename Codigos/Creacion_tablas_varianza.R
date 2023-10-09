@@ -67,7 +67,7 @@ if(1){
 }
 
 # Prueba de filtro  -------------------------------------------------------
-directorio.saved        <- paste0(getwd(),'/Resul_reg_antiguos/')
+directorio.saved        <- paste0(getwd(),'/Resultados_regresion/')
 # directorio.guardar      <- paste0(directorio.saved,'Tablas/') # con cambio de bootstrap las tablas se guardan en otra carpeta
 directorio.guardar      <- paste0(directorio.saved,'Tablas/Nuevas_Tablas_Varianza/') 
 
