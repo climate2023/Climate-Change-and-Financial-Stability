@@ -67,13 +67,13 @@ if(1){
 }
 
 # Los siguientes argumentos van a filtrar los resultados y tablas
-serie             <- 'Indices'      #<<<--- puede ser 'Indices' o 'CDS'
-tipo.estudio      <- 'media'     #<<<--- puede ser 'media' o 'varianza'
-regresor.mercado  <- 'benchmark'    #<<<--- puede ser 'PM' o 'benchmark', para CDS todavia no hay benchmark
+serie             <- 'CDS'      #<<<--- puede ser 'Indices' o 'CDS'
+tipo.estudio      <- 'varianza'     #<<<--- puede ser 'media' o 'varianza'
+regresor.mercado  <- 'PM'    #<<<--- puede ser 'PM' o 'benchmark', para CDS todavia no hay benchmark
 umbrales.evento   <- c(50,100,150)  #<<<--- puede ser 50 100 o 150
 if(tipo.estudio=='media') es.windows <- c(250,375,500) #<<<--- Para media puede ser 250, 375 o 500.
 if(tipo.estudio=='varianza') es.windows <- c(500,750,1000) #<<<--- Para media puede ser 500, 750 o 1000.
-columnas.tabla    <- 'tipodesastre' #<<<--- Las tablas de la media estan guardadas tanto por tipo de desastre como por pais
+columnas.tabla    <- 'pais' #<<<--- Las tablas de la media estan guardadas tanto por tipo de desastre como por pais
 # <columnas.tabla> toma el valor de 'tipodesastre' o 'pais'. Tambien estan guardadas por 'ambas, en cuyo caso <columnas.tabla> toma el valor
 # de 'paistipodesastre'
 table.caar        <- 0 #<<<--- booleano para indicar si las tablas se construiran mostrando el CAAR o el estadistico. 0 para estadistico, 1  para CAAR
@@ -85,6 +85,7 @@ lista.wilcoxon  <- list()
 numero.eventos.wilcoxon <- list()
 lista.bmp       <- list()
 lista.bootstrap <- list()
+numero.eventos.bootstrap <- list()
 indice.lista    <- 0
 for(i in seq_along(umbrales.evento)){
   umbral.del.evento <- umbrales.evento[i]
@@ -94,20 +95,22 @@ for(i in seq_along(umbrales.evento)){
     if(tipo.estudio == 'media') load((file=paste0(getwd(),'/Resultados_regresion/Tablas/Tablas_',serie,'_tra',umbral.del.evento,'_est',
                        estimation.window,'_',tipo.estudio,'_',regresor.mercado,'_',columnas.tabla,'.RData')))
     # Cargamos las tablas con el nuevo bootstrap
-    if(tipo.estudio == 'varianza') load((file=paste0(getwd(),'/Resultados_regresion/Tablas/Nuevas_Tablas_Varianza/Tablas_',serie,'_tra',umbral.del.evento,'_est',
+    if(tipo.estudio == 'varianza') load((file=paste0(getwd(),'/Resultados_regresion/Tablas/Tablas_',serie,'_tra',umbral.del.evento,'_est',
                      estimation.window,'_',tipo.estudio,'_',regresor.mercado,'_',columnas.tabla,'.RData')))
     if(tipo.estudio=='media'){
-      lista.wilcoxon[[indice.lista]]         <- tabla.wilcoxon@dataframe
-      names(lista.wilcoxon)[[indice.lista]]  <- paste('Estimacion',estimation.window,'traslape',umbral.del.evento,sep='_')
-      numero.eventos.wilcoxon[[indice.lista]] <- tabla.wilcoxon@no.eventos
+      lista.wilcoxon[[indice.lista]]                  <- tabla.wilcoxon@dataframe
+      names(lista.wilcoxon)[[indice.lista]]           <- paste('Estimacion',estimation.window,'traslape',umbral.del.evento,sep='_')
+      numero.eventos.wilcoxon[[indice.lista]]         <- tabla.wilcoxon@no.eventos
       names(numero.eventos.wilcoxon)[[indice.lista]]  <- paste('Estimacion',estimation.window,'traslape',umbral.del.evento,sep='_')
       
-      lista.bmp[[indice.lista]] <- tabla.bmp@dataframe
+      lista.bmp[[indice.lista]]        <- tabla.bmp@dataframe
       names(lista.bmp)[[indice.lista]] <- paste('Estimacion',estimation.window,'traslape',umbral.del.evento,sep='_')
     }
     if(tipo.estudio=='varianza'){
-      lista.bootstrap[[indice.lista]] <- dataframe.volatilidad
-      names(lista.bootstrap)[[indice.lista]] <- paste('Estimacion',estimation.window,'traslape',umbral.del.evento,sep='_')
+      lista.bootstrap[[indice.lista]]                 <- tabla.volatilidad@dataframe
+      names(lista.bootstrap)[[indice.lista]]          <- paste('Estimacion',estimation.window,'traslape',umbral.del.evento,sep='_')
+      numero.eventos.bootstrap[[indice.lista]]        <- tabla.volatilidad@no.eventos
+      names(numero.eventos.bootstrap)[[indice.lista]] <- paste('Estimacion',estimation.window,'traslape',umbral.del.evento,sep='_')
     }
   }
 }
@@ -277,25 +280,38 @@ if(tipo.estudio == 'varianza'){
       }
     }
     dataframe.var     <- purrr::map_dfc(lista.interes, ~.x[,nombre.columna])
+    numero.eventos.v  <- purrr::map(numero.eventos.bootstrap, ~.x[nombre.columna])
+    numero.eventos.v  <- unlist(lapply(numero.eventos.v, function(x) as.character(ifelse(is.na(x), '', x))))
     dataframe.var500  <- dataframe.var[,grep('Estimacion_500',colnames(dataframe.var))] # Escoger los datos que se tienen para estimacion con 200 dias
     dataframe.var750  <- dataframe.var[,grep('Estimacion_750',colnames(dataframe.var))] # Escoger los datos que se tienen para estimacion con 300 dias
     dataframe.var1000 <- dataframe.var[,grep('Estimacion_1000',colnames(dataframe.var))] # Escoger los datos que se tienen para estimacion con 500 dias
+    # Eventos para cada dataframe
+    eventos.var500  <- paste('Eventos: ', numero.eventos.v[grep(paste0('Estimacion_', es.windows[1]), names(numero.eventos.v))])
+    eventos.var750  <- paste('Eventos: ', numero.eventos.v[grep(paste0('Estimacion_', es.windows[2]), names(numero.eventos.v))])
+    eventos.var1000 <- paste('Eventos: ', numero.eventos.v[grep(paste0('Estimacion_', es.windows[3]), names(numero.eventos.v))])
+    
     # Retirar nombres de columnas para hacer rbind 
     colnames(dataframe.var500) <- NA
     colnames(dataframe.var750) <- NA
     colnames(dataframe.var1000) <- NA
+    
+    # Agregar el numero de eventos a cada dataframe
+    dataframe.var500  <- rbind(eventos.var500, dataframe.var500)
+    dataframe.var750  <- rbind(eventos.var750, dataframe.var750)
+    dataframe.var1000 <- rbind(eventos.var1000, dataframe.var1000)
+    
     # Juntarlos en un gran dataframe
     dataframe.var.organizado <- rbind(dataframe.var500,dataframe.var750, dataframe.var1000)
     # Nombres de columnas
-    colnames(dataframe.var.organizado) <- c('50','100','200')
+    colnames(dataframe.var.organizado) <- c('50','100','150')
     # Añadir columna de dias de estimacion
-    dataframe.var.organizado$`Estimacion` <- c(rep('',7),500,rep('',14),750,rep('',14),1000,rep('',7)) # se elige asi ya que <dataframe.var200> y <dataframe.var300> son NA
+    dataframe.var.organizado$`Estimacion` <- c(rep('',8),500,rep('',15),750,rep('',15),1000,rep('',7)) # se elige asi ya que <dataframe.var200> y <dataframe.var300> son NA
     # Reordenar las columnas
     dataframe.var.final <- dataframe.var.organizado %>% 
-      mutate('50'= paste(rep(paste0('[0,',0:14,']'),3),`50`),
-             '100'= paste(rep(paste0('[0,',0:14,']'),3),`100`),
-             '200'= paste(rep(paste0('[0,',0:14,']'),3),`200`)) %>% 
-      dplyr::select(Estimacion,`50`,`100`,`200`)
+      mutate('50'= paste(rep(c('',paste0('[0,',0:14,']')),3),`50`),
+             '100'= paste(rep(c('',paste0('[0,',0:14,']')),3),`100`),
+             '150'= paste(rep(c('',paste0('[0,',0:14,']')),3),`150`)) %>% 
+      dplyr::select(Estimacion,`50`,`100`,`150`)
     
     # Exportar a latex
     kable.final <- kable(dataframe.var.final,format='latex', booktabs=T, caption = paste0('Significancia para eventos ', nombre.columna,'. Nota: para ', serie, 
