@@ -449,25 +449,6 @@ grafico_estimates <- function(object,yaxis,title,colors){
     theme(plot.title = element_text(hjust = 0.5),axis.text.x = element_blank(),
           axis.title.x = element_blank())
 }
-#if(0) porque fue mejorada por grafico_estimates_car2
-if(0){
-  grafico_estimates_car <- function(object,yaxis,title,colors){
-    object_car <- object %>% 
-      group_by(group) %>% 
-      summarise(sum_ar = sum(values))
-    
-    ggplot(object_car, aes(x = group, y = sum_ar)) +
-      geom_bar(stat = "identity", fill = color, position = position_dodge(width = 0.8), width = 0.6) +
-      labs(y = yaxis, title = title) +
-      theme(
-        plot.title = element_text(hjust = 0.5),
-        axis.text.x = element_blank(),
-        axis.title.x = element_blank(),
-        panel.background = element_rect(fill = "white"), # Set the background color to white
-        panel.border = element_rect(color = "black", fill = NA) # Add black border around the graph
-      )
-  }
-}
 
 grafico_estimates_car2 <- function(object.list,yaxis,title,colors){
   car.maximo <- 0
@@ -501,14 +482,29 @@ grafico_estimates_car2 <- function(object.list,yaxis,title,colors){
       )+
       geom_hline(yintercept = 0, color = "black", linetype = "dashed") # anhadir linea solida en eje x
   }
-  plots[[length(object.list)]] <- plots[[length(object.list)]] +
-    labs(x='Index')+
-    theme(plot.title = element_text(hjust = 0.5),
-          axis.text.x = element_text(angle = 45, hjust = 1, size = 10),
-          axis.title.x = element_text(hjust=0.5))
+
+  # Para una mejor creacion de graficos, se van a separar en <n> elementos de 6 objetos maximo
+  elementos.por.lista <- 6
+  num.sublistas       <- round(length(plots)/elementos.por.lista,0)
+  # Separar la lista de plots
+  plots.separado <- split(plots, rep(1:num.sublistas, each = elementos.por.lista))
   
-  plot_args <- c(plots, list(nrow = length(plots), ncol = 1, heights = c(rep(1, length(plots) - 1), 1.7)))
-  do.call(grid.arrange, plot_args)
+  # colocar datos en eje x para los ultimos plots de cada sublista
+  for(m in seq_along(plots.separado)){
+    plots.separado[[m]][[length(plots.separado[[m]])]] <- plots.separado[[m]][[length(plots.separado[[m]])]] +
+      labs(x='Index')+
+      theme(plot.title = element_text(hjust = 0.5),
+            axis.text.x = element_text(angle = 45, hjust = 1, size = 10),
+            axis.title.x = element_text(hjust=0.5))
+  }
+  
+  # Crear una lista de argumentos para poder graficar
+  plots_args <- list()
+  for(l in seq_along(plots.separado)){
+    plots_args[[l]] <- c(plots.separado[[l]], list(nrow = length(plots.separado[[l]]), ncol = 1, heights = c(rep(1, length(plots.separado[[l]]) - 1), 1.7)))
+  }
+
+  return(plots_args)
 }
 #---------------------------------------------------------------------------------------#
 
@@ -2188,10 +2184,12 @@ wilcoxon_Pagnottoni <- function(coefficients.list,name.variable,pattern.step,pat
 # ----Argumentos de salida  ----#
 #-- 
 #---------------------------------------------------------------------------------------#
-car_pagnottoni = function(coeffs,indices,interest.vars,average){
+car_pagnottoni = function(coeffs,indices,interest.vars,average,serie.rm){
   # El titulo del grafico se encuentra revisando los nombres de <coeffs> respecto a <interest.vars>. 
   # La siguiente linea busca cual es el tipo de desastre o pais que vamos a graficar
-  plot_title <- interest.vars[sapply(interest.vars, function(value) any(grepl(value, names(coeffs))))]
+  # '_t' se anhade para asegurar que se busquen los coeficientes correctos, ya que para un coeficiente puede salir dos paises
+  # distintps
+  plot_title <- interest.vars[sapply(interest.vars, function(value) any(grepl(paste0(value,'_t'), names(coeffs))))]
   # La longitud de <plot_title> debe ser 1, o si no hay error. Si es mayor a 1 significa que hay alguna mezcla de 
   # coeficientes, ya que tendriamos para dos tipos de desastres o dos paises
   if(length(plot_title) !=1) stop("Hay un error con los coeficientes, por favor revisar que pertenezcan solamente a un tipo de
@@ -2213,17 +2211,23 @@ car_pagnottoni = function(coeffs,indices,interest.vars,average){
       car_matrix <- cbind(car_matrix,as.numeric(cumsum(index.coefs)))
     }
   }
+  
   # Cambiar el nombre de filas y columnas
   colnames(car_matrix) <- indices
   rownames(car_matrix) <- 0:(nrow(car_matrix)-1)
   if(average == FALSE){
-    base::plot(x=rownames(car_matrix),y=car_matrix[,1],type="l",main=plot_title,xlab="Dia relativo al evento",ylab="Retorno Anormal Acumulado (CAR)",
+    # Titulo
+    plot_title <- paste0('CAR relativo al dia del evento. Para ',serie.rm, '. Eventos: ',plot_title)
+    base::plot(x=rownames(car_matrix),y=car_matrix[,1],type="l",main=plot_title,xlab='Dia relativo al evento',ylab="Retorno Anormal Acumulado (CAR)",
                ylim=c(min(car_matrix),max(car_matrix)))
     for(i in 2:ncol(car_matrix)){
       lines(x=rownames(car_matrix), y = car_matrix[,i],type="l")
     }
   }else{
-    base::plot(x=rownames(car_matrix), y = rowMeans(car_matrix),type="l",main=plot_title,xlab="Dia relativo al evento",ylab="Retorno Anormal Acumulado (CAR)")
+    # Titulo
+    plot_title2 <- paste0('CAAR relativo al dia del evento. Para ',serie.rm, '. 
+    Eventos: ',plot_title)
+    base::plot(x=rownames(car_matrix), y = rowMeans(car_matrix),type="l",main=plot_title2,xlab='Dia relativo al evento',ylab="Retorno Anormal Acumulado Promedio (CAAR)")
   }
 }
 #---------------------------------------------------------------------------------------#
@@ -3410,7 +3414,7 @@ grafico_car <- function(events.list, es.window.length, ev.window.length,ev.windo
 # ----Argumentos de salida  ----#
 #-- NA
 #---------------------------------------------------------------------------------------#
-grafico_cav <- function(events.list, es.window.length,ev.window.length){
+grafico_cav <- function(events.list, es.window.length,ev.window.length,serie.rm){
   # Detener la funcion si hay algun elemento que no tenga la clase 'ESmean'
   if (any(!sapply(events.list, inherits, "ESVolatility"))) {
     stop('La lista contiene elementos que no fueron creados con la funcion estimation.event.study.')
@@ -3426,9 +3430,12 @@ grafico_cav <- function(events.list, es.window.length,ev.window.length){
   
   # Graficar el CAAV relativo al dia de evento
   plot(x=names(cav.relativo),y=cav.relativo,type='l',col='red',lwd=1.7,
-       main='CAV relativo al dia del evento',ylab='CAV',xlab='t')
+       main=paste0('CAV relativo al dia del evento. Para ',serie.rm),ylab='CAV',xlab='t')
   abline(a = 0, b = 1, col = "black",lty=2,lwd=1.7)
   abline(h = 0, col = "black", lty=2,lwd = 1.7)
+  legend("topleft", legend = c("Under Null Hypothesis", "Observed Volatility"),
+         col = c("black", "red"), lty = c(2, 1),bty='n')
+
 }
 
 # Revision de la funcion bootstrap.volatility ------------------------------
