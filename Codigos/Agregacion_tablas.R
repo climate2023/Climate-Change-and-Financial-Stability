@@ -241,7 +241,7 @@ if(tipo.estudio == 'media'){
     kable.final <- kable(dataframe.final,format='latex', booktabs=T, caption = paste0('Significancia para eventos ', nombre.columna,'. Nota: para ', serie, 
                                                                                           '. Estudio sobre la ', tipo.estudio, ' utilizando ',regresor.mercado, 
                                                                                           ' como retorno de mercado.'))
-    writeLines(kable.final, paste0(getwd(),'/Resultados_regresion/Tablas_Latex/',nombre.columna,'_', serie, '_',tipo.estudio, '_',regresor.mercado,'.tex')) 
+    writeLines(kable.final, paste0(getwd(),'/Resultados_regresion/Tablas_Latex/Media/',nombre.columna,'_', serie, '_',tipo.estudio, '_',regresor.mercado,'.tex')) 
   }
 }
 
@@ -317,6 +317,6 @@ if(tipo.estudio == 'varianza'){
     kable.final <- kable(dataframe.var.final,format='latex', booktabs=T, caption = paste0('Significancia para eventos ', nombre.columna,'. Nota: para ', serie, 
                                                                            '. Estudio sobre la ', tipo.estudio, ' utilizando ',regresor.mercado, 
                                                                            ' como retorno de mercado.'))
-    writeLines(kable.final, paste0(getwd(),'/Resultados_regresion/Tablas_Latex/',nombre.columna,'_', serie, '_',tipo.estudio, '_',regresor.mercado,'.tex'))
+    writeLines(kable.final, paste0(getwd(),'/Resultados_regresion/Tablas_Latex/Varianza/',nombre.columna,'_', serie, '_',tipo.estudio, '_',regresor.mercado,'.tex'))
   }
 }
