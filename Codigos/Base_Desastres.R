@@ -182,7 +182,7 @@ names(df.tipo.desastre) <- unlist(lapply(df.tipo.desastre, function(x) unique(x$
 
 df.tipo.desastre <- lapply(df.tipo.desastre, function(x){
   x <- x %>% 
-    dplyr::select(c(Start.Date, na_start, End.Date,na_end)) %>% 
+    dplyr::select(c(Start.Date, na_start, End.Date,na_end, Total.Affected)) %>% 
     dplyr::rename(t0 = Start.Date, na.start = na_start, end = End.Date, na.end = na_end) %>% 
     dplyr::arrange(t0)
   return(x)})
@@ -206,11 +206,12 @@ names(df.pais) <- unlist(lapply(df.pais, function(x) unique(x$Country)))
 
 df.pais <- lapply(df.pais, function(x){
   x <- x %>% 
-    dplyr::select(c(Start.Date, na_start, End.Date,na_end)) %>% 
+    dplyr::select(c(Start.Date, na_start, End.Date,na_end,Total.Affected)) %>% 
     dplyr::rename(t0 = Start.Date, na.start = na_start, end = End.Date, na.end = na_end) %>% 
     dplyr::arrange(t0)
   return(x)})
 
+# Escribir los dataframes en excel
 wb.pais <- createWorkbook()
 
 for(i in seq_along(df.pais)) {
