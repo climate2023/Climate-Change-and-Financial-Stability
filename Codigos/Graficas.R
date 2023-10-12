@@ -71,10 +71,18 @@ bool_paper <- T # booleano que toma el valor de T si se quiere revisar el paper 
 no.rezagos.de.desastres <- 15     #<<<--- Numero de rezagos de los desastres <w> (i.e. t0, t1, ..., tw)
 tipo.serie              <- 'indices'  #<<<--- Puede ser 'cds' o 'indices
 market                  <- 'benchmark'   #<<<--- Puede ser 'PM' o 'benchmark', pero si tenemos CDS solamente puede ser PM
-if(tipo.serie == 'cds') indexes     <- c('CDSBrazil','CDSChile','CDSChina','CDSColombia','CDSIndonesia','CDSKorea',
-                                      'CDSMalaysia','CDSMexico','CDSPeru','CDSSouthAfrica','CDSTurkey') #<<<--- Lista de los indices analizados. 
-if(tipo.serie == 'indices') indexes <- c('BIST100','Bovespa','ChinaA50','JSX','KOSPI','S.PBMVIPC','S.PCLXIPSA','SouthAfricaTop40',
+if(market == 'benchmark') retorno.mercado <- 'MSCI'
+if(market == 'PM')        retorno.mercado <- 'Promedio Movil'
+if(tipo.serie == 'cds'){
+  indexes <- c('CDSBrazil','CDSChile','CDSChina','CDSColombia','CDSIndonesia','CDSKorea',
+                                      'CDSMalaysia','CDSMexico','CDSPeru','CDSSouthAfrica','CDSTurkey') #<<<--- Lista de los indices analizados.
+  bdwidth <- 1 #<<<--- bandwidth para los graficos de densidad. Con una banda de 1 se suavizan los kernels para las series de CDS
+}
+if(tipo.serie == 'indices'){
+  indexes <- c('BIST100','Bovespa','ChinaA50','JSX','KOSPI','S.PBMVIPC','S.PCLXIPSA','SouthAfricaTop40',
                                                  'IGBVL','KLCI','COLCAP') # Nombre indices para el paper. JSX es el de Jakarta
+  bdwidth <- 0.3 #<<<--- bandwidth para los graficos de densidad. Con una banda de 0.3 se suavizan los kernels para las series de indices
+}
 nivel.desagregacion <- 'tipodesastre'  # Como se quiere desagregar las graficas, por 'pais' o 'tipodesastre'
 
 # Creacion de una funcion vectorizada de <grep>
@@ -105,9 +113,18 @@ if(0){
 
 densidades.AR <- list()
 for(step in steps){
-  lista.temp <- lapply(coefficients_disasters_list, function(x) dens(x[,'Estimate'],step))
+  lista.temp <- lapply(coefficients_disasters_list, function(x) dens(x[,'Estimate'],step, bdwidth))
   names(lista.temp) <- paste(names(lista.temp),step,sep='_')
   densidades.AR <- c(densidades.AR, lista.temp)
+}
+
+#  Por otro lado, si se desean graficas de CAR hasta t0, t1, t2 ..., se realiza un procedimiento similar
+densidades.CAR <- list()
+for(step in steps){
+  accumulated.steps  <- paste0('t',0:as.numeric(gsub('t','',step)),'$')
+  lista.temp        <- lapply(coefficients_disasters_list, function(x) dens(x[,'Estimate'],accumulated.steps,bdwidth))
+  names(lista.temp) <- paste(names(lista.temp),step,sep='_')
+  densidades.CAR   <- c(densidades.CAR, lista.temp)
 }
 
 # Por otro lado, necesitamos hacer la grafica de los CAR, que es la suma de los retornos anormales.
@@ -135,38 +152,47 @@ if(0){
   }
 }
 
-coefficients.dummies.list <- lapply(coefficients_disasters_list, function(x){
-  # Se reunen los coeficientes en <coefs>
-  coefs.temp <- x[,"Estimate"]
-  # Se seleccionan solamente los coeficientes que acaben con <step> para retornarlos a <coefficients.dummies.list>
-  return(coefs.temp[as.numeric(vgrep(paste0(steps, "$"),names(coefs.temp)))])
-})
-
-# Generamos la densidad de los retornos anormales acumulados para cada tipo de desastre
-# if<0> porque mas adelante se realiza una manera mas eficiente de obtener las densidades
+# <if(0)> porque ya se realiza la densidad del CAR en el codigo de la linea 116
 if(0){
-  densidad_CAR_bio <- densidad_CAR(coef_vec_fitsur_Biological,indexes)
-  densidad_CAR_cli <- densidad_CAR(coef_vec_fitsur_Climatological,indexes)
-  densidad_CAR_geo <- densidad_CAR(coef_vec_fitsur_Geophysical,indexes)
-  densidad_CAR_hyd <- densidad_CAR(coef_vec_fitsur_Hydrological,indexes)
-  densidad_CAR_met <- densidad_CAR(coef_vec_fitsur_Meteorological,indexes)
+  coefficients.dummies.list <- lapply(coefficients_disasters_list, function(x){
+    # Se reunen los coeficientes en <coefs>
+    coefs.temp <- x[,"Estimate"]
+    # Se seleccionan solamente los coeficientes que acaben con <step> para retornarlos a <coefficients.dummies.list>
+    return(coefs.temp[as.numeric(vgrep(paste0(steps, "$"),names(coefs.temp)))])
+  })
+  
+  # Generamos la densidad de los retornos anormales acumulados para cada tipo de desastre
+  # if<0> porque mas adelante se realiza una manera mas eficiente de obtener las densidades
+  if(0){
+    densidad_CAR_bio <- densidad_CAR(coef_vec_fitsur_Biological,indexes)
+    densidad_CAR_cli <- densidad_CAR(coef_vec_fitsur_Climatological,indexes)
+    densidad_CAR_geo <- densidad_CAR(coef_vec_fitsur_Geophysical,indexes)
+    densidad_CAR_hyd <- densidad_CAR(coef_vec_fitsur_Hydrological,indexes)
+    densidad_CAR_met <- densidad_CAR(coef_vec_fitsur_Meteorological,indexes)
+  }
+  densidades.CAR <- lapply(coefficients.dummies.list, densidad_CAR, indexes)
 }
-densidades.CAR <- lapply(coefficients.dummies.list, densidad_CAR, indexes)
 
 ### =============================== Graficas de retornos anormales ==================================
 
 # <if(0)> cuando no se quiera correr el codigo de las graficas de retornos anormales. <if(1)> cuando si se desee
-if(0){
+if(1){
   # Establecer un directorio para los graficos de densidad de retornos anormales
   cd.retornos.anormales <- paste0(cd.graficos,'Dens_AR/')
   #Ya con las densidades de los retornos acumulados y de las dummies t_0, t_1, ..., t_4 podemos graficarlas
   # Para los CAR el vector seria
-  main_car   <- "Kernel denisty of CAR"  #<<<--- titulo para la grafica
-  if(nivel.desagregacion == 'tipodesastre') grafico_densidad(densidades.CAR, main=main_car,labels=sub("^fitsur_", "", names(densidades.CAR)))
-  if(nivel.desagregacion == 'pais') grafico_densidad(densidades.CAR, main=main_car,labels=sub("^fitcoun_", "", names(densidades.CAR)))
-  savePlot(filename=paste0(cd.retornos.anormales,'Densidad_',tipo.serie,'_',market,'_',nivel.desagregacion,'_CAR'),type='png')
+  for(step in steps){
+    main_car <- paste0('Kernel Density of CAR ',step) #<<<--- titulo grafica
+    # En primer lugar se obtienen  los objetos de <densidades.AR> que se desea graficar
+    dens.CAR.keep <- densidades.CAR[map_lgl(names(densidades.CAR), ~endsWith(.x, step))]
+    names.plot   <- sub("^fitsur_", "", names(dens.CAR.keep))
+    names.plot   <- sub("^fitcoun_", "", names(dens.CAR.keep))
+    names.plot   <- sub(paste0("_",step,"$"), "", names.plot)
+    grafico_densidad(dens.CAR.keep, main= main_car, labels = sub(paste0("^fitsur_|_t0$"), "", names.plot))
+    savePlot(filename=paste0(cd.retornos.anormales,'Densidad_',tipo.serie,'_',market,'_',nivel.desagregacion,'_',step),type='png')
+  }
   
-  # Ahora graficar para cada <step>
+  # Ahora graficar los AR para cada <step>
   for(step in steps){
     title <- paste0('Kernel Density of AR ',step)
     # En primer lugar se obtienen  los objetos de <densidades.AR> que se desea graficar
@@ -271,13 +297,22 @@ if(0){
       eventos.separados        <- c(unlist(lapply(v.lista.separada, length)),sum(unlist(lapply(v.lista.separada, length)))) 
       names(eventos.separados) <- c(names(unlist(lapply(v.lista.separada, length))),'Todos')
       
-      # Graficas CAV ------------------------------------------------------------
+      # Graficas CAV (separadas) ------------------------------------------------------------
       for(i in seq_along(v.lista.separada)){
         element <- v.lista.separada[[i]]
         name    <- names(v.lista.separada)[i] 
         png(filename=paste0(cd.cav,tipo.serie,'_',market,'_',name,'_CAV_Est_',ventana.estimacion,'_tra_',ventana.traslape,'.png'))
-        grafico_cav(element,as.numeric(ventana.estimacion),vol_ev_window, serie.rm = paste(str_to_title(tipo.serie),market))
+        grafico_cav(element,as.numeric(ventana.estimacion),vol_ev_window, serie.rm = paste(str_to_title(tipo.serie),retorno.mercado))
         title(paste0(name,'. ','Estimacion: ',ventana.estimacion,'. Traslape: ',ventana.traslape),line=0.75)
+        dev.off()
+      }
+      
+      # Graficas CAV (agregadas) -------------------------------------------------------------
+      if(columna.agrupar == 'Disaster.Subgroup'){
+        png(filename=paste0(cd.cav,'Ag/',tipo.serie,'_',market,'_CAV_Est_',ventana.estimacion,'_tra_',ventana.traslape,'.png'))
+        grafico_cav_agregado(volatility_results, v.lista.separada, as.numeric(ventana.estimacion),
+                                                                     vol_ev_window,serie.rm = paste(str_to_title(tipo.serie),retorno.mercado))
+        title(paste0('Estimacion: ',ventana.estimacion,'. Traslape: ',ventana.traslape),line=0.75)
         dev.off()
       }
     }

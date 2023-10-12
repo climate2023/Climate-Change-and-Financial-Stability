@@ -349,13 +349,23 @@ model_equation.LF <- function(database, country, ind, var.exo, var.exo.pais, Lag
 # ----Argumentos de entrada ----#
 #-- fit : modelo estimado al que se le puede sacar coeficientes
 #-- step: pasos adelante despues del evento
+#-- bandwidth : bandwidth para la densidad
 # ----Argumentos de salida  ----#
 #-- densidad: densidad kernel de los coeficientes del modelo estimado
 #---------------------------------------------------------------------------------------#
-dens <- function(fit, step){
-  interest_indices <- grep(step,names(fit))
-  interest_coefficients <- fit[interest_indices]
-  densidad <- density((interest_coefficients))
+# Creacion de una funcion vectorizada de <grep>
+vgrep <- Vectorize(grep, vectorize.args = 'pattern')
+dens <- function(fit, step,bandwidth){
+  interest_indices    <- (vgrep(step,names(fit)))
+  coeficientes        <- fit[interest_indices]
+  coeficientes.matrix <- matrix(coeficientes, nrow(interest_indices),ncol(interest_indices))
+  # interest_coefficients <- fit[interest_indices]
+  # Cada fila de <coeficientes.matrix> corresponde a una serie, mientras que cada columna corresponde a un dia
+  # t0,t1,t2,...
+  # Si hay mas de una columna, entonces se desea primero sumar por filas para obtener el CAR agregado hasta ese dia
+  if(ncol(coeficientes.matrix) == 1) interest_coefficients <- coeficientes.matrix
+  if(ncol(coeficientes.matrix) > 1)  interest_coefficients <- rowSums(coeficientes.matrix)
+  densidad <- density(interest_coefficients, bw = bandwidth)
   return(densidad)
 }
 #---------------------------------------------------------------------------------------#
@@ -380,7 +390,7 @@ densidad_CAR <- function(x,indices){
     #Agrega la suma (el CAR) en un vector, para luego hallar la densidad
     CAR <- c(CAR,sum_of_coefficients)
   }
-  densidad_C <- density(CAR)
+  densidad_C <- density(CAR, bw = 0.3)
   return(densidad_C)
 }
 #---------------------------------------------------------------------------------------#
