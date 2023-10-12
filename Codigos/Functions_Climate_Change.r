@@ -154,7 +154,7 @@ create_dummies <- function(excel_file, base.de.retornos, no.rezagos, bool.overla
       t_0.overlap <- rep(0, nrow(base.de.retornos))
       t_0.overlap[dummies.overlap.t0[,'indices']] <- 1
       }
-    }
+    
     
     #Por otro lado, para formar las dummies t_1, t_2, t_3 y t_4 se usan rezagos de t_0, ya que en esta funcion
     #se asume que el n-paso adelante del evento es igual al n-ésimo día hábil después de t_0.
@@ -3486,6 +3486,62 @@ grafico_cav <- function(events.list, es.window.length,ev.window.length,serie.rm)
   legend("topleft", legend = c("Under Null Hypothesis", "Observed Volatility"),
          col = c("black", "red"), lty = c(2, 1),bty='n')
 
+}
+
+#---------------------------------- 32. grafico_cav_agregado  ------------------------------------#
+# Graficar la volatilidad anormal acumulada relativa al dia de evento para distintos tipos de desastre en
+# la misma grafica
+#---------------------------------------------------------------------------------------#
+# ----Argumentos de entrada ----#
+#-- aggregated.events.list      : lista prveniente de la funcion <volatility_event_study>, que contiene todos los desastres
+#-- disagg.events.list          : lista compuesta por listas provenientes de la funcion <volatility_event_study>, que contiene cada una
+#                                 los desastres de un tipo específico ( geofisico, hidrologico o meteorologico)
+#-- es.window.length : longitud ventana estimacion
+#-- ev.window.length : longitud ventana evento 
+# ----Argumentos de salida  ----#
+#-- NA
+#---------------------------------------------------------------------------------------#
+grafico_cav_agregado <- function(aggregated.events.list, disagg.events.list, es.window.length,ev.window.length,serie.rm){
+  # Detener la funcion si hay algun elemento que no tenga la clase 'ESVolatility' en <aggregated.events.list>
+  if (any(!sapply(aggregated.events.list, inherits, "ESVolatility"))) stop('La lista contiene elementos que no fueron creados con la funcion estimation.event.study.')
+  # Detener la funcion si dentro de cualquier elemento de <disagg.events.list> hay algun elemento que no sea "ESVolatility"
+  stop_flag <- lapply(disagg.events.list, function(x) {
+    any(!sapply(x, inherits, "ESVolatility"))
+  })
+  if (any(unlist(stop_flag))) {
+    stop('La lista contiene elementos que no fueron creados con la funcion estimation.event.study.')
+  }
+  
+  # Generar una sola lista, que incluira las listas separadas por tipo de desastre y la lista que contiene todos los desastres
+  full.list                        <- disagg.events.list 
+  full.list[[length(full.list)+1]] <- aggregated.events.list
+  names(full.list)                 <- c(names(disagg.events.list),'Todos')
+  
+  # Calculo CAV para cada elemento de <full.list>
+  cavs.relativos <- list()
+  for(k in seq_along(full.list)) {
+    epsilon      <- data.frame(purrr::map(full.list[[k]], ~ coredata(.x@residuales_evento)))[1:ev.window.length,]
+    sigma_cuad   <- data.frame(purrr::map(full.list[[k]], ~ coredata(.x@variance_forecast)))[1:ev.window.length,]
+    Mt           <- mt_function(epsilon,sigma_cuad)
+    cav.relativo <- cumsum(Mt) #- (1:length(Mt))
+    names(cav.relativo) <- 0:(length(Mt)-1)
+    cavs.relativos[[k]] <- cav.relativo
+  }
+  names(cavs.relativos) <- names(full.list)
+  
+  # Graficar el CAAV relativo al dia de evento
+  # Definir los colores
+  colors <- brewer.pal(n=length(cavs.relativos), name='Set1')
+  plot(x=names(cavs.relativos[[1]]),y=cavs.relativos[[1]],type='l',col='red',lwd=1,
+       main=paste0('CAV relativo al dia del evento. Para ',serie.rm),ylab='CAV',xlab='t')
+  if(length(cavs.relativos)>1) for(p in 2:length(cavs.relativos)){
+    lines(cavs.relativos[[p]],type='l',col=colors[[p]],lwd=1)
+  }
+
+  abline(a = 0, b = 1, col = "black",lty=2,lwd=1.7)
+  abline(h = 0, col = "black", lty=2,lwd = 1.7)
+  legend("topleft", legend = c("Under Null Hypothesis", paste0("Observed Volatility: ",names(cavs.relativos))),
+         col = c("black", colors), lty = c(2,rep(1,length(cavs.relativos))),bty='n')
 }
 
 # Revision de la funcion bootstrap.volatility ------------------------------
