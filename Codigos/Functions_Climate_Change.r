@@ -72,12 +72,11 @@ days <- function(x, m, months, dates, startstring=1, endstring=7){
 #-- excel_file: un archivo excel que contiene los dias correspondientes a las dummies
 #-- base.de.retornos   : serie de tiempo, se usara su indice para generar las dummies
 #-- no.rezagos : Numero de rezagos de la primera dummy (t_0) se interpretan como n dias despues del desastre
-#-- first.calendar.days.tobe.evaluated: numero de dias despues del evento a ser evaluados
 # ----Argumentos de salida  ----#
 #-- xts_dummies: Array con las dummies de todos los tipos de desastres (o paises) de tres dominsiones, donde la primera es el tipo 
 #                de desastre (o el pais), la segunda el indice de fechas y la tercera los pasos adelante del desastre (0,...,no.rezagos) 
 #---------------------------------------------------------------------------------------#
-create_dummies <- function(excel_file, base.de.retornos, no.rezagos, first.calendar.days.tobe.evaluated){
+create_dummies <- function(excel_file, base.de.retornos, no.rezagos, bool.overlap = F, overlap.window =NULL) {
   #Lee el nombre de las hojas del archivo, cada hoja corresponde a un tipo de desastre
   sheet_names      <- excel_sheets(excel_file)
   xts_dummies      <- array(NA,dim=c(length(sheet_names), nrow(base.de.retornos), no.rezagos+2), 
@@ -86,23 +85,74 @@ create_dummies <- function(excel_file, base.de.retornos, no.rezagos, first.calen
   for(sheet_name in sheet_names) {
     #lee la hoja especifica
     current_sheet <- openxlsx::read.xlsx(excel_file, sheet = sheet_name, detectDates = TRUE)
-    #Selecciona la columna t0 del archivo excel
-    dummies_t0    <- current_sheet$t0
-    #Se inicializa en ceros 
-    t_0 <- c(rep(0,nrow(base.de.retornos)))
+    current_sheet <-  current_sheet %>% 
+      dplyr::filter(between(t0, index(base.de.retornos)[1],tail(index(base.de.retornos),1)))
     
-    ##Para generar las dummies, se utiliza un loop que evalua si el dia del desastre esta dentro de indice de
-    # base.de.retornos. Si el dia esta, establece 1 en la posicion de ese dia.
-    # Si no se encuentra, evalua si el dia calendario siguiente está en la base de base.de.retornos, si se encuentra establece 1
-    # en ese dia. Así sucesivamente hasta encontrar el dia transable mas cercano al dia del desastre. 
-    # El maximo no. de dias evaluados es <first.calendar.days.tobe.evaluated>
-    for(i in 1:length(dummies_t0)){
-      for(j in 0:first.calendar.days.tobe.evaluated){
-        if((as.Date(dummies_t0[i])+j) %in% index(base.de.retornos)){
-          index_f <- which(index(base.de.retornos) == (as.Date(dummies_t0[i])+j)) 
-          t_0[index_f] <- 1
-          break
+    # Se realiza un procedimiento cuando <bool.overlap> == F, el cual es asignar 1 a la dummy t0 siempre que haya un
+    # desastre.
+    if(bool.overlap == F){
+      #Selecciona la columna t0 del archivo excel
+      dummies_t0    <- current_sheet$t0
+      #Se inicializa en ceros 
+      t_0 <- c(rep(0,nrow(base.de.retornos)))
+      
+      ##Para generar las dummies, se utiliza un loop que evalua si el dia del desastre esta dentro de indice de
+      # base.de.retornos. Si el dia esta, establece 1 en la posicion de ese dia.
+      # Si no se encuentra, evalua si el dia calendario siguiente está en la base de base.de.retornos, si se encuentra establece 1
+      # en ese dia. Así sucesivamente hasta encontrar el dia transable mas cercano al dia del desastre. 
+      for(i in 1:length(dummies_t0)){
+        for(j in 0:nrow(base.de.retornos)){
+          if((as.Date(dummies_t0[i])+j) %in% index(base.de.retornos)){
+            index_f <- which(index(base.de.retornos) == (as.Date(dummies_t0[i])+j)) 
+            t_0[index_f] <- 1
+            break
+          }
         }
+      }
+    }else{
+      # Cuando <bool.overlap> == T, se asignara 1 a la dummy <t_0> solamente para los eventos mas significativos
+      # de acuerdo con una ventana de traslape <overlap.window>. Se comienza seleccionando el evento mas significativo
+      # en terminos de personas afectadas. Luego, en orden de numero de afectados se van seleccionando los eventos, asegurando
+      # que no esten dentro de +-<overlap.window> de otro evento mas significativo.
+      # Tambien se va a generar una dummy <t_overlap>, donde 1 se asigne a los eventos que no estan siendo considerados en <t_0>
+      #Selecciona la columna t0 del archivo excel
+      current_sheet     <- current_sheet %>% arrange(desc(Total.Affected)) # ordenar base por orden de personas afectadas
+      # Generar el indice que corresponde con <index(base.de.retornos)> para cada desastre, si el dia no se encuentra
+      # entonces se busca el dia transable mas cercano al desastre
+      indices.des <- c()
+      for(p in 1:nrow(current_sheet)){
+        for(j in 0:nrow(base.de.retornos)){
+          if((as.Date(current_sheet[p,'t0'])+j) %in% index(base.de.retornos)){
+            indices.des[p] <- which(index(base.de.retornos) == (as.Date(current_sheet[p,'t0'])+j)) 
+            break
+          }
+        }
+      }
+      current_sheet$indices <- indices.des
+      
+      considered.events <- c(1) # en <considered.events> va a agregarse los indices de los eventos que no se traslapan.
+      ventanas.traslape <- (current_sheet[considered.events,'indices']-bool.overlap):(current_sheet[considered.events,'indices']+bool.overlap)
+      if(nrow(current_sheet > 1)) for(m in 2:nrow(current_sheet)){
+        evento.iteracion <- current_sheet[m,]
+        # <inicio.ventanas.traslape>indica para cada evento considerado el indice inicial donde no se va a considerar mas eventos
+        # Por ejemplo, si se considero un evento en el indice 4000 y la ventana de traslape es 50, en <inicio.ventanas.traslape> habra
+        # un 3950.
+        if(!(evento.iteracion$indices %in% ventanas.traslape)){
+          considered.events <- c(considered.events, m)
+          ventanas.traslape <- c(ventanas.traslape, (current_sheet[m, 'indices']-bool.overlap):(current_sheet[m, 'indices']+bool.overlap))
+        }
+      }
+      not.considered.events <- setdiff(1:nrow(current_sheet),considered.events)
+      
+      dummies.interest.t0  <- current_sheet[considered.events,c('t0','indices')]
+      dummies.overlap.t0   <- current_sheet[not.considered.events,c('t0','indices')]
+      #Se inicializa en ceros 
+      t_0 <- c(rep(0,nrow(base.de.retornos)))
+      t_0[dummies.interest.t0[,'indices']] <- 1
+      
+      # Se genera otra dummy para los eventos de traslape
+      t_0.overlap <- rep(0, nrow(base.de.retornos))
+      t_0.overlap[dummies.overlap.t0[,'indices']] <- 1
       }
     }
     
