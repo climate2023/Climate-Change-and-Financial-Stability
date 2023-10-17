@@ -534,10 +534,10 @@ if(is.null(dia.inicial)){
 #                  <na.end>   : dummy que toma el valor de 1 si se supuso que el ultimo dia del evento fue el ultimo dia del mes y 0 en otro caso
 if(!bool_paper){
   dummies <- create_dummies(excel_file=paste0(Dir,"emdata_dummies_arregladas.xlsx"), 
-                            Retornos, no.rezagos=no.rezagos.de.desastres, first.calendar.days.tobe.evaluated = 10 ) 
+                            Retornos, no.rezagos=no.rezagos.de.desastres) 
 }else{
   dummies <- create_dummies(excel_file=paste0(Dir,"emdata_dummies_cds.xlsx"), 
-                            Retornos, no.rezagos=no.rezagos.de.desastres, first.calendar.days.tobe.evaluated = 10 ) 
+                            Retornos, no.rezagos=no.rezagos.de.desastres) 
 }
 
 Tipos.Desastres <- dimnames(dummies)[[1]]
@@ -575,7 +575,7 @@ base_datos <- merge(base_datos, Crecimiento_PIB, Crecimiento_FDI)
 # if(0) dado que se utilizo el comando <save> para guardar los modelos. Los elementos guardados seran <models_disasters_list> y 
 # <resid_disasters_list>, que incluyen por un lado los modelos estimados y por el otro los residuales.
 # ----COLOCAR <if(1)> SI SE DESEA ESTIMAR EL MODELO ----#
-load.SUR  = 1           #<<<<-- 1 si se carga el SUR inicial, 0 si se corre y salva el SUR inicial
+load.SUR  = 0           #<<<<-- 1 si se carga el SUR inicial, 0 si se corre y salva el SUR inicial
 if(bool_cds){tipo.serie <- 'cds'}else{tipo.serie <- 'indices'}
 if(promedio.movil){market <- 'PM' }else{market <- 'benchmark'}
 if(!load.SUR){
@@ -615,11 +615,9 @@ if(!load.SUR){
 #         <na_start> : dummy que toma el valor de 1 si se supuso que el dia del evento era el primero del mes y 0 en otro caso
 #         <t0>       : dia del desastre
 if(!bool_paper){
-  dummies_countries <- create_dummies(excel_file=paste0(Dir,"emdata_dummies_countries.xlsx"),Retornos, no.rezagos=no.rezagos.de.desastres,
-                                      first.calendar.days.tobe.evaluated = 10)  ## Genera un array de dimensiones 104, 4828, 6
+  dummies_countries <- create_dummies(excel_file=paste0(Dir,"emdata_dummies_countries.xlsx"),Retornos, no.rezagos=no.rezagos.de.desastres)  ## Genera un array de dimensiones 104, 4828, 6
 }else{
-  dummies_countries <- create_dummies(excel_file=paste0(Dir,"dummies_countries_cds.xlsx"),Retornos, no.rezagos=no.rezagos.de.desastres,
-                                      first.calendar.days.tobe.evaluated = 10)
+  dummies_countries <- create_dummies(excel_file=paste0(Dir,"dummies_countries_cds.xlsx"),Retornos, no.rezagos=no.rezagos.de.desastres)
 }
 # Las bases de datos tienen 2 columnas que interesan, <Country>, que indica el pais, y <t0> que indica el 
 # dia de los desastres en ese pais.

@@ -121,10 +121,10 @@ for(step in steps){
 #  Por otro lado, si se desean graficas de CAR hasta t0, t1, t2 ..., se realiza un procedimiento similar
 densidades.CAR <- list()
 for(step in steps){
-  accumulated.steps  <- paste0('t',0:as.numeric(gsub('t','',step)),'$')
+  accumulated.steps <- paste0('t',0:as.numeric(gsub('t','',step)),'$')
   lista.temp        <- lapply(coefficients_disasters_list, function(x) dens(x[,'Estimate'],accumulated.steps,bdwidth))
   names(lista.temp) <- paste(names(lista.temp),step,sep='_')
-  densidades.CAR   <- c(densidades.CAR, lista.temp)
+  densidades.CAR    <- c(densidades.CAR, lista.temp)
 }
 
 # Por otro lado, necesitamos hacer la grafica de los CAR, que es la suma de los retornos anormales.
@@ -180,21 +180,25 @@ if(1){
   # Establecer un directorio para los graficos de densidad de retornos anormales
   cd.retornos.anormales <- paste0(cd.graficos,'Dens_AR/')
   #Ya con las densidades de los retornos acumulados y de las dummies t_0, t_1, ..., t_4 podemos graficarlas
-  # Para los CAR el vector seria
-  for(step in steps){
-    main_car <- paste0('Kernel Density of CAR ',step) #<<<--- titulo grafica
-    # En primer lugar se obtienen  los objetos de <densidades.AR> que se desea graficar
-    dens.CAR.keep <- densidades.CAR[map_lgl(names(densidades.CAR), ~endsWith(.x, step))]
-    names.plot   <- sub("^fitsur_", "", names(dens.CAR.keep))
-    names.plot   <- sub("^fitcoun_", "", names(dens.CAR.keep))
-    names.plot   <- sub(paste0("_",step,"$"), "", names.plot)
-    grafico_densidad(dens.CAR.keep, main= main_car, labels = sub(paste0("^fitsur_|_t0$"), "", names.plot))
-    savePlot(filename=paste0(cd.retornos.anormales,'Densidad_',tipo.serie,'_',market,'_',nivel.desagregacion,'_',step),type='png')
+  
+  # if(0) porque ya se grafica el CAR para cada step en el codigo que sigue
+  if(0){
+    # Para los CAR el vector seria
+    for(step in steps){
+      main_car <- paste0('Kernel Density of CAR ',step) #<<<--- titulo grafica
+      # En primer lugar se obtienen  los objetos de <densidades.AR> que se desea graficar
+      dens.CAR.keep <- densidades.CAR[map_lgl(names(densidades.CAR), ~endsWith(.x, step))]
+      names.plot   <- sub("^fitsur_", "", names(dens.CAR.keep))
+      names.plot   <- sub("^fitcoun_", "", names(dens.CAR.keep))
+      names.plot   <- sub(paste0("_",step,"$"), "", names.plot)
+      grafico_densidad(dens.CAR.keep, main= main_car, labels = sub(paste0("^fitsur_|_t0$"), "", names.plot))
+      #savePlot(filename=paste0(cd.retornos.anormales,'Densidad_',tipo.serie,'_',market,'_',nivel.desagregacion,'_',step),type='png')
+    }
   }
   
-  # Ahora graficar los AR para cada <step>
+  # Ahora graficar los AR para cada <step> acumulados
   for(step in steps){
-    title <- paste0('Kernel Density of AR ',step)
+    title <- paste0('Kernel Density of CAR ',step, '. ',str_to_title(tipo.serie),' ', retorno.mercado)
     # En primer lugar se obtienen  los objetos de <densidades.AR> que se desea graficar
     dens.AR.keep <- densidades.AR[map_lgl(names(densidades.AR), ~endsWith(.x, step))]
     names.plot   <- sub("^fitsur_", "", names(dens.AR.keep))

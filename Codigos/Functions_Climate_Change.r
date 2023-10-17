@@ -2244,7 +2244,7 @@ wilcoxon_Pagnottoni <- function(coefficients.list,name.variable,pattern.step,pat
 # ----Argumentos de salida  ----#
 #-- 
 #---------------------------------------------------------------------------------------#
-car_pagnottoni = function(coeffs,indices,interest.vars,average,serie.rm){
+car_pagnottoni = function(coeffs,indices,interest.vars,average,serie.rm,pattern){
   # El titulo del grafico se encuentra revisando los nombres de <coeffs> respecto a <interest.vars>. 
   # La siguiente linea busca cual es el tipo de desastre o pais que vamos a graficar
   # '_t' se anhade para asegurar que se busquen los coeficientes correctos, ya que para un coeficiente puede salir dos paises
@@ -2260,8 +2260,6 @@ car_pagnottoni = function(coeffs,indices,interest.vars,average,serie.rm){
     # <indice> y se ordenan en orden cronologico, teniendo en cuenta que por construccion, t0 es el dia
     # del evento, t1 es el dia siguiente, t2 dos dias despues, ...
     index.coefs <- coeffs[startsWith(names(coeffs), indice)]
-    names       <- sort(names(index.coefs), decreasing = FALSE)
-    index.coefs <- index.coefs[names]
     # Generar matriz de CAR's, donde cada columna sera un indice y las filas seran los CAR para [t0,t0],[t0,t1],
     # [t0,t2],... El numero de filas de la matriz sera igual al numero de elementos en <index.coefs>
     if(is.null(car_matrix)) {
