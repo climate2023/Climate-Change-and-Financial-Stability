@@ -61,7 +61,7 @@ if(1){
   source(paste0(getwd(),'/Codigos/Functions_Climate_Change.r')) # Source de las funciones
   Dir         = paste0(getwd(),'/Bases/') #Directorio de datos, se supone que el subdirectorio <Bases> existe
   cd.graficos = paste0(getwd(),'/Graficos_Paper/') # Directorio para las imagenes
-  Tipos.Desastres  <- c("Biological","Climatological","Geophysical","Hydrological","Meteorological")  #<<<--- Tipos de desastres considerados
+  Tipos.Desastres  <- c("Geophysical","Hydrological","Meteorological")  #<<<--- Tipos de desastres considerados
   paises   <- c('Brazil','Chile','China','Colombia','Indonesia','Korea','Malaysia','Mexico','Peru',
                    'SouthAfrica','Turkey') 
 }
@@ -318,6 +318,16 @@ if(0){
                                                                      vol_ev_window,serie.rm = paste(str_to_title(tipo.serie),retorno.mercado))
         title(paste0('Estimacion: ',ventana.estimacion,'. Traslape: ',ventana.traslape),line=0.75)
         dev.off()
+      }
+        
+
+      # Kernel CAV --------------------------------------------------------------
+      # Para el kernel CAV se necesita que <columna.agrupar> sea 'Ambas', para asi poder encontrar el CAV para varios paises para
+      # cierto tipo de desastre
+      cd.kernel.cav <- paste0(cd.graficos,'Kernel_CAV/')
+      if(columna.agrupar == 'Ambas'){
+        # Volver reproducible
+        v.lista.geofisico <- (v.lista.separada[grepl(Tipos.Desastres[3],names(v.lista.separada))])
       }
     }
   }

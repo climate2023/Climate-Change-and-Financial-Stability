@@ -3697,4 +3697,112 @@ bootstrap.volatility2 <- function(volatility.list,es.window.length,ev.window.len
   return(resultado)
 }
 
+#---------------------------------- 32. kernel.cav  ------------------------------------#
+# Funcion que genera el kernel de la densidad para todos los tipos de desastres y tambien para la totalidad
+# de desastres. Es necesaria una lista agregada, y otra desagregada a un nivel de tipo.desastre-pais
+#---------------------------------------------------------------------------------------#
+# ----Argumentos de entrada ----#
+#-- tipos.de.desastres : vector que indicara el nombre de los tipos de desastres a tener en cuenta
+#-- lista.desagregada  : lista de estimaciones del modelo arima-garch desagregada a nivel tipo.desastre-pais, 
+#                        que incluye varias listas de elementos "ESVolatility"
+#-- lista.agregada     : lista agregada de todos los desastres a tener en cuenta
+#-- columna.pais       : string que indica el nombre de la columna de paises. Por construccion del elemento "ESVolatility" 
+#                        se tomara el default como 'Country'
+#-- ev.window.length   : tamaño maximo ventana de evento
+# ----Argumentos de salida  ----#
+#-- 
+#---------------------------------------------------------------------------------------#
+kernel.cav <- function(tipos.de.desastres, lista.desagregada, lista.agregada,columna.pais = 'Country') {
+  
+  # Primero vamos a generar una lista, donde cada elemento va a contener listas de los desastres ocurridos en cada pais
+  # y tambien en todos los paises
+  lista.listas        <- list()
+  for(l in seq_along(tipos.de.desastres)){
+    lista.listas[[l]] <- lista.desagregada[grepl(tipos.de.desastres[l],names(lista.desagregada))]
+  }
+  lista.listas[[(length(lista.listas)+1)]] <- split(lista.agregada, 
+                                                    sapply(lista.agregada, function(x) x@info.evento[[columna.pais]]))
+  names(lista.listas) <- c(tipos.de.desastres,'Todos')
+  
+  # Ahora toca encontrar la volatilidad anormal acumulada para cada lista del objeto <lista.listas>
+  cavs.relativos <- list()
+  for(p in seq_along(lista.listas)){
+    cavs.relativos[[p]] <- lapply(lista.listas[[p]], function(x){
+      epsilon      <- data.frame(purrr::map(x, ~ coredata(.x@residuales_evento)))[1:ev.window.length,]
+      sigma_cuad   <- data.frame(purrr::map(x, ~ coredata(.x@variance_forecast)))[1:ev.window.length,]
+      Mt           <- mt_function(epsilon,sigma_cuad)
+      cav.relativo <- cumsum(Mt)
+      names(cav.relativo) <- 0:(length(Mt)-1)
+      return(cav.relativo)
+    })
+  }
+  names(cavs.relativos) <- names(lista.listas)
+  # <cavs.relativos> es una lista de vectores. Cada vector es de tamaño <ev.window.length> y mide la volatilidad anormal
+  # acumulada para cada dia en la ventana de evento. Por ejemplo, el primer elemento de cada vector es la volatilidad anormal
+  # del dia del evento, el segundo elemento de cada vector es la volatilidad anormal acumulada para el dia del evento y el dia 
+  # siguiente ...
+  
+  # Para poder calcular el kernel para un dia determinado de la ventana de evento, se debe crear un objeto que agrupe el CAV asociado
+  # a un dia especifico para todos los paises.  Por ejemplo, si hubo eventos geofisicos en brazil, colombia y china, y se quiere revisar el efecto
+  # de una ventana desde el dia del evento a 4 dias despues, se debe crear un vector del CAV de brazil, colombia y china, para esa ventana de evento
+  # Por otro lado, como tenemos multiples ventanas de evento, desde 1 dia de duracion hasta <ev.window.length> dias de duracion, en vez de crear varios 
+  # vectores, podemos crear una matriz para cada tipo de desastre, donde la fila signifique la longitud de la ventana, y la columna indique el pais
+  cavs.ventana.evento <- lapply(cavs.relativos, function(x){
+    ventanas.evento <- names(x[[1]])
+    return.element  <- matrix(as.numeric(unlist(purrr::map_df(x,~.x[ventanas.evento]))),
+                              nrow=length(ventanas.evento),ncol=length(x),byrow=T)
+    return(return.element)
+  })
+  
+  # Ya con las matrices dentro de <cavs.ventana.evento>, se puede hallar el kernel de los CAV, teniendo en cuenta que cada fila indica una longitud
+  # distinta de la ventana de evento, y seran los indicados para los kernels
 
+  # Hallamos el kernel para todas las longitudes de ventana de evento
+  for(ventana.evento in 1:ev.window.length){
+    # Hallar el ancho de banda optimo para cada elemento de <cavs.ventana.evento>
+    anchos.optimos <- lapply(cavs.ventana.evento, function(x){
+      ancho.banda <- 1
+      while(T){
+        # Encontrar una sola moda siguiendo el criterio de la segunda derivada, la cual tiene que pasar de positivo a negativo
+        # una sola vez
+        if(length(which(abs(diff(sign(diff(density(x[ventana.evento,],bw=ancho.banda)$y)))) == 2)) == 1){
+          break
+        }
+        ancho.banda <- ancho.banda + 1
+      }
+      return(ancho.banda)
+    })
+    
+    # Sacar las densidades kernel con el ancho de banda optimo para cada elemento en <cavs.ventana.evento>
+    densidades <- list()
+    for(y in seq_along(cavs.ventana.evento)) densidades[[y]] <- density(cavs.ventana.evento[[y]][ventana.evento,], bw = anchos.optimos[[y]])
+    names(densidades) <- names(cavs.ventana.evento)
+    
+    # Establecer los limites de plot de acuerdo con las densidades
+    maximo.x <- max(unlist(lapply(densidades, function(x) max(x$x))))
+    minimo.x <- min(unlist(lapply(densidades, function(x) min(x$x))))
+    maximo.y <- max(unlist(lapply(densidades, function(x) max(x$y))))
+    minimo.y <- min(unlist(lapply(densidades, function(x) min(x$y))))
+  
+    # Colores para graficar
+    # Se determinan los colores para graficar
+    colors <- brewer.pal(n=length(densidades), name='Set1')
+    png(filename=paste0(cd.kernel.cav,tipo.serie,'_',market,'_CAV_Est_',ventana.estimacion,'_tra_',ventana.traslape,'_ev_',ventana.evento,'.png'),
+        width = 800,height = 800)
+    plot(densidades[[1]], col=colors[1],lwd=2,
+         main = paste0('Cumulative Abnormal Volatility (CAV) Kernel relative to the disaster date. For CDS. Event window: [0,',(ventana.evento-1),']'),
+         xlim = c(minimo.x, maximo.x), ylim = c(minimo.y,maximo.y))
+    # Agregar los demas plots
+    if(length(densidades)>1) for(k in 2:length(densidades)){
+      lines(densidades[[k]], col= colors[k],lwd=2)
+    }
+    abline(v=ventana.evento,lty=2)
+    
+    legend("topright", 
+           legend    = c("Under Null Hypothesis (No Effect on Volatility)", paste0("Kernel CAV: ",c('Hydrological','Meteorological','Geophysical','All'))),
+           col       = c("black",colors), 
+           lty       = c(2,rep(1,length(cavs.relativos))),bty = 'n')
+    title(paste0('Estimacion: ',ventana.estimacion,'. Traslape: ',ventana.traslape,'. Para ',tipo.serie, ' con ', market),line=0.75)
+    dev.off()
+  }
+}
