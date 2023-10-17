@@ -3509,7 +3509,7 @@ grafico_cav <- function(events.list, es.window.length,ev.window.length,serie.rm)
 # ----Argumentos de salida  ----#
 #-- NA
 #---------------------------------------------------------------------------------------#
-grafico_cav_agregado <- function(aggregated.events.list, disagg.events.list, es.window.length,ev.window.length,serie.rm){
+grafico_cav_agregado <- function(aggregated.events.list, disagg.events.list, es.window.length,ev.window.length,serie.rm, significancia = 0.05){
   # Detener la funcion si hay algun elemento que no tenga la clase 'ESVolatility' en <aggregated.events.list>
   if (any(!sapply(aggregated.events.list, inherits, "ESVolatility"))) stop('La lista contiene elementos que no fueron creados con la funcion estimation.event.study.')
   # Detener la funcion si dentro de cualquier elemento de <disagg.events.list> hay algun elemento que no sea "ESVolatility"
@@ -3525,31 +3525,79 @@ grafico_cav_agregado <- function(aggregated.events.list, disagg.events.list, es.
   full.list[[length(full.list)+1]] <- aggregated.events.list
   names(full.list)                 <- c(names(disagg.events.list),'Todos')
   
-  # Calculo CAV para cada elemento de <full.list>
-  cavs.relativos <- list()
+  # Calculo CAV para cada elemento de <full.list> junto a intervalo de confianza de la distribucion
+  cavs.relativos           <- list()
+  sup.intervalos.confianza <- list()
   for(k in seq_along(full.list)) {
     epsilon      <- data.frame(purrr::map(full.list[[k]], ~ coredata(.x@residuales_evento)))[1:ev.window.length,]
     sigma_cuad   <- data.frame(purrr::map(full.list[[k]], ~ coredata(.x@variance_forecast)))[1:ev.window.length,]
     Mt           <- mt_function(epsilon,sigma_cuad)
     cav.relativo <- cumsum(Mt) #- (1:length(Mt))
     names(cav.relativo) <- 0:(length(Mt)-1)
-    cavs.relativos[[k]] <- cav.relativo
+  
+    # Para comprender mejor la distribucion ver Mnasri y Nechi (2016), quienes expresan que \sum_{t=n_1}^{n_2} Mt(N-1) sigue una chi
+    # cuadrado con (N-1)(n_2-n_1+1) grados de libertad
+    # Primero es necesario obtener N, que es el numero de desastres
+    N               <- length(full.list[[k]])
+    degrees.freedom <- (N-1)*(1:length(cav.relativo)) # Grados de libertad para cada ventana de evento segun Mnasri y Nechi
+    # Generamos el pvalue a un nivel de significancia <significancia>, recordando que el test es de cola derecha
+    sup.intervalo.confianza        <- (qchisq((1- significancia), degrees.freedom))/(N-1)
+    names(sup.intervalo.confianza) <- names(cav.relativo)
+    
+    sup.intervalos.confianza[[k]] <- sup.intervalo.confianza
+    cavs.relativos[[k]]           <- cav.relativo
   }
-  names(cavs.relativos) <- names(full.list)
+  names(cavs.relativos)           <- names(full.list)
+  names(sup.intervalos.confianza) <- names(full.list)
+  
+  # Sin embargo, para las graficas queremos que la lista tenga de primer lugar a 'Todos' y luego si el resto, para poder graficar
+  # <Todos> con mas grosor
+  ordered.names            <- c('Todos',names(disagg.events.list))
+  cavs.relativos           <- cavs.relativos[ordered.names]
+  sup.intervalos.confianza <- sup.intervalos.confianza[ordered.names]
   
   # Graficar el CAAV relativo al dia de evento
+  # Por tema de escala, lo mejor es buscar el maximo de los maximos de <cavs.relativos>
+  maximo.escalay <- max(unlist(lapply(cavs.relativos, max)))
+  
   # Definir los colores
-  colors <- brewer.pal(n=length(cavs.relativos), name='Set1')
-  plot(x=names(cavs.relativos[[1]]),y=cavs.relativos[[1]],type='l',col='red',lwd=1,
-       main=paste0('CAV relativo al dia del evento. Para ',serie.rm),ylab='CAV',xlab='t')
+  colors <- c('#000000',brewer.pal(n=(length(cavs.relativos)-1), name='Set1'))
+  plot(x=names(cavs.relativos[[1]]),y=cavs.relativos[[1]],type='l',col=colors[1],lwd=3,
+       main=paste0('CAV relativo al dia del evento. Para ',serie.rm),ylab='CAV',xlab='t',
+       ylim = c(0,maximo.escalay))
   if(length(cavs.relativos)>1) for(p in 2:length(cavs.relativos)){
-    lines(cavs.relativos[[p]],type='l',col=colors[[p]],lwd=1)
+    lines(x = names(cavs.relativos[[1]]), cavs.relativos[[p]],type='l',col=colors[[p]],lwd=2)
   }
-
-  abline(a = 0, b = 1, col = "black",lty=2,lwd=1.7)
-  abline(h = 0, col = "black", lty=2,lwd = 1.7)
-  legend("topleft", legend = c("Under Null Hypothesis", paste0("Observed Volatility: ",names(cavs.relativos))),
-         col = c("black", colors), lty = c(2,rep(1,length(cavs.relativos))),bty='n')
+  
+  # Rellenar la zona de los intervalos de confianza
+  shading.alpha = 0.15 #<<<--- parametro para hacer mas transparente las areas de IC
+  for(m in seq_along(sup.intervalos.confianza)){
+    polygon(x = c(names(cavs.relativos[[1]]), rev(names(cavs.relativos[[1]]))),
+            y = c(sup.intervalos.confianza[[m]], rev((0:(length(cavs.relativos[[1]])-1)))),
+            col = adjustcolor(colors[m], alpha.f = shading.alpha), lty=2)
+  }
+  
+  # anadir rectas del intervalo de confianza con un nivel de <significancia>
+  for(l in seq_along(sup.intervalos.confianza)){
+    lines(x = names(cavs.relativos[[1]]), sup.intervalos.confianza[[l]],type='l',lty = 2,col=colors[[l]],lwd=1)
+  }
+  
+  # Anadir la recta de la hipotesis nula
+  abline(a = 0, b = 1, col = "black",lty=2,lwd=1.5)
+  # legend("topleft", legend = c("Under Null Hypothesis (No Effect)", paste0("Observed Volatility: ",names(cavs.relativos))),
+  #        col = c("black", colors), lty = c(2,rep(1,length(cavs.relativos))),bty='n',cex = 0.9, pt.cex = 0.9,
+  #        y.intersp = 1)
+  legend("topleft", 
+         legend    = c("Under Null Hypothesis (No Effect)", paste0("Observed Volatility: ",names(cavs.relativos)),
+                               paste0((1 - significancia)*100,'% C.I: ', names(cavs.relativos))),
+         col       = c("black", colors, rep(NA,length(cavs.relativos))), 
+         lty       = c(2,rep(1,length(cavs.relativos)),rep(NA,length(cavs.relativos))),
+         fill      = c(rep(NA,(1+length(cavs.relativos))),adjustcolor(colors, alpha.f = shading.alpha)), 
+         border    = c(rep(NA,(1+length(cavs.relativos))),colors),
+         pch       = c(rep(NA,(1+length(cavs.relativos))),rep(15,length(cavs.relativos))),
+         bty       ='n', 
+         y.intersp = 1)
+  
 }
 
 # Revision de la funcion bootstrap.volatility ------------------------------
