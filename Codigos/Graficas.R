@@ -69,8 +69,8 @@ if(1){
 # Parametros --------------------------------------------------------------
 bool_paper <- T # booleano que toma el valor de T si se quiere revisar el paper que vamos a escribir, F para Pagnottoni
 no.rezagos.de.desastres <- 15     #<<<--- Numero de rezagos de los desastres <w> (i.e. t0, t1, ..., tw)
-tipo.serie              <- 'indices'  #<<<--- Puede ser 'cds' o 'indices
-market                  <- 'benchmark'   #<<<--- Puede ser 'PM' o 'benchmark', pero si tenemos CDS solamente puede ser PM
+tipo.serie              <- 'cds'  #<<<--- Puede ser 'cds' o 'indices
+market                  <- 'PM'   #<<<--- Puede ser 'PM' o 'benchmark', pero si tenemos CDS solamente puede ser PM
 if(market == 'benchmark') retorno.mercado <- 'MSCI'
 if(market == 'PM')        retorno.mercado <- 'Promedio Movil'
 if(tipo.serie == 'cds'){
@@ -83,7 +83,7 @@ if(tipo.serie == 'indices'){
                                                  'IGBVL','KLCI','COLCAP') # Nombre indices para el paper. JSX es el de Jakarta
   bdwidth <- 0.3 #<<<--- bandwidth para los graficos de densidad. Con una banda de 0.3 se suavizan los kernels para las series de indices
 }
-nivel.desagregacion <- 'tipodesastre'  # Como se quiere desagregar las graficas, por 'pais' o 'tipodesastre'
+nivel.desagregacion <- 'pais.tipodesastre'  # Como se quiere desagregar las graficas, por 'pais' o 'tipodesastre', ambas es 'pais.tipodesastre'
 
 # Creacion de una funcion vectorizada de <grep>
 vgrep <- Vectorize(grep, vectorize.args = 'pattern')
@@ -111,20 +111,23 @@ if(0){
   }
 }
 
-densidades.AR <- list()
-for(step in steps){
-  lista.temp <- lapply(coefficients_disasters_list, function(x) dens(x[,'Estimate'],step, bdwidth))
-  names(lista.temp) <- paste(names(lista.temp),step,sep='_')
-  densidades.AR <- c(densidades.AR, lista.temp)
-}
-
-#  Por otro lado, si se desean graficas de CAR hasta t0, t1, t2 ..., se realiza un procedimiento similar
-densidades.CAR <- list()
-for(step in steps){
-  accumulated.steps <- paste0('t',0:as.numeric(gsub('t','',step)),'$')
-  lista.temp        <- lapply(coefficients_disasters_list, function(x) dens(x[,'Estimate'],accumulated.steps,bdwidth))
-  names(lista.temp) <- paste(names(lista.temp),step,sep='_')
-  densidades.CAR    <- c(densidades.CAR, lista.temp)
+# No existen resultados del SUR desagregados por pais y tipo de desastre al tiempo
+if(nivel.desagregacion != 'pais.tipodesastre'){
+  densidades.AR <- list()
+  for(step in steps){
+    lista.temp <- lapply(coefficients_disasters_list, function(x) dens(x[,'Estimate'],step, bdwidth))
+    names(lista.temp) <- paste(names(lista.temp),step,sep='_')
+    densidades.AR <- c(densidades.AR, lista.temp)
+  }
+  
+  #  Por otro lado, si se desean graficas de CAR hasta t0, t1, t2 ..., se realiza un procedimiento similar
+  densidades.CAR <- list()
+  for(step in steps){
+    accumulated.steps <- paste0('t',0:as.numeric(gsub('t','',step)),'$')
+    lista.temp        <- lapply(coefficients_disasters_list, function(x) dens(x[,'Estimate'],accumulated.steps,bdwidth))
+    names(lista.temp) <- paste(names(lista.temp),step,sep='_')
+    densidades.CAR    <- c(densidades.CAR, lista.temp)
+  }
 }
 
 # Por otro lado, necesitamos hacer la grafica de los CAR, que es la suma de los retornos anormales.
@@ -243,64 +246,65 @@ if(0){
     grafico_densidad(vector_t_4,main_t_4,labels,colors)
   }
 }
+
 ### =============================== Graficas CAV==================================
 
-#  <if(0)> cuando no se quiera correr el codigo de las graficas de CAV. <if(1)> cuando si se desee
-if(0){
-  # Se crea un tipo de objeto S4 para guardar la tabla de la media, y aparte el numero de eventos para cada pais
-  setClass('Tabla.varianza', slots = list(dataframe = 'data.frame', no.eventos = 'numeric'))
-  # Directorio para imagenes de CAV
-  cd.cav <- paste0(cd.graficos,'CAV/')
-    
-  # Prueba de filtro  -------------------------------------------------------
-  directorio.saved        <- paste0(getwd(),'/Resultados_regresion/')
-  # Parametros --------------------------------------------------------------
-  tipo.estudio            <- 'varianza' #<<<--- Puede ser de 'media' o 'varianza'
-  vol_ev_window           <- 15  #<<<--- Tamaño de la ventana de evento
-  if(nivel.desagregacion=='pais')           columna.agrupar <- 'Country'  #<<<--- Columna del evento por la cual se quiere separar la lista de regresiones para las tablas/graficas
-  if(nivel.desagregacion == 'tipodesastre') columna.agrupar <- 'Disaster.Subgroup'
+# Se crea un tipo de objeto S4 para guardar la tabla de la media, y aparte el numero de eventos para cada pais
+setClass('Tabla.varianza', slots = list(dataframe = 'data.frame', no.eventos = 'numeric'))
+# Directorio para imagenes de CAV
+cd.cav <- paste0(cd.graficos,'CAV/')
   
-  ventanas.estimacion <- c(500, 750, 1000)
-  ventanas.traslape   <- c('50', '100', '150')   #<<<--- Puede ser 50, 100 o 150   (Importante que sea string)
-  for(ventana.estimacion in ventanas.estimacion){
-    for(ventana.traslape in ventanas.traslape){
-      # Volatility event study --------------------------------------------------
-      # load de los objetos de la varianza
-      load(paste0(directorio.saved,tipo.serie,'_tra',ventana.traslape,'_est',ventana.estimacion,'_',tipo.estudio,'_',market,'.RData'))
-      # Eliminar objetos NA
-      volatility_results <- suppressWarnings(purrr::discard(volatility_results,is.na))
-      
-      # Filtracion de los resultados -------------------------------------------
-      # Dejar solo los eventos que hayan sucedido en algun pais de <paises>
-      volatility_results <- volatility_results[purrr::map(volatility_results,~.x@info.evento$Country) %in% paises]
-      
-      # Separar la lista dependiendo de una columna en especifico introducida por el usuario 
-      if(columna.agrupar != 'Ambas') v.lista.separada <- split(volatility_results, sapply(volatility_results, function(x) x@info.evento[[columna.agrupar]]))
-      # Generar listas distintas para cada valor de la <columna.agrupar>, en caso de querer utilizarlas mas adelante
-      # for (i in seq_along(v.lista.separada)) assign(paste0("v.list.", names(v.lista.separada)[i]), v.lista.separada[[i]])
-      # Cuando <columna.agrupar> == <'Ambas'> toca tener un trato especial
-      if(columna.agrupar == 'Ambas'){
-        # En primer lugar por cada desastre se necesita una combinacion del pais y el tipo de desastre
-        # Para eso creamos una funcion, solo para mejor lectura
-        crear.columna <- function(df) {
-          df <- df %>%
-            mutate(Desastre.Pais = paste0(Country, Disaster.Subgroup))
-          return(df)
-        }
-        volatility_results <- purrr::map(volatility_results, function(s4_object) {
-          s4_object@info.evento <- crear.columna(s4_object@info.evento)
-          return(s4_object)
-        })
-        # Ahora si podemos separar <volatility_results> en listas dependiendo del desastre y el pais donde sucedio
-        v.lista.separada <- split(volatility_results, sapply(volatility_results, function(x) x@info.evento[['Desastre.Pais']]))
-        # Por otro lado, como la especificacion de Bialkowski (2008) ecuacion 5 esta hecha para mas de un evento, solamente se van
-        # a guardar los elementos de <v.lista.separada> que contengan mas de un desastre
-        v.lista.separada <- purrr::keep(v.lista.separada, ~(length(.x) > 1))
+# Prueba de filtro  -------------------------------------------------------
+directorio.saved        <- paste0(getwd(),'/Resultados_regresion/')
+# Parametros --------------------------------------------------------------
+tipo.estudio            <- 'varianza' #<<<--- Puede ser de 'media' o 'varianza'
+vol_ev_window           <- 15  #<<<--- Tamaño de la ventana de evento
+if(nivel.desagregacion == 'pais')              columna.agrupar <- 'Country'  #<<<--- Columna del evento por la cual se quiere separar la lista de regresiones para las tablas/graficas
+if(nivel.desagregacion == 'tipodesastre')      columna.agrupar <- 'Disaster.Subgroup'
+if(nivel.desagregacion == 'pais.tipodesastre') columna.agrupar <- 'Ambas'
+ventanas.estimacion <- c(500, 750, 1000)
+ventanas.traslape   <- c('50', '100', '150')   #<<<--- Puede ser 50, 100 o 150   (Importante que sea string)
+for(ventana.estimacion in ventanas.estimacion){
+  for(ventana.traslape in ventanas.traslape){
+    # Volatility event study --------------------------------------------------
+    # load de los objetos de la varianza
+    load(paste0(directorio.saved,tipo.serie,'_tra',ventana.traslape,'_est',ventana.estimacion,'_',tipo.estudio,'_',market,'.RData'))
+    # Eliminar objetos NA
+    volatility_results <- suppressWarnings(purrr::discard(volatility_results,is.na))
+    
+    # Filtracion de los resultados -------------------------------------------
+    # Dejar solo los eventos que hayan sucedido en algun pais de <paises>
+    volatility_results <- volatility_results[purrr::map(volatility_results,~.x@info.evento$Country) %in% paises]
+    
+    # Separar la lista dependiendo de una columna en especifico introducida por el usuario 
+    if(columna.agrupar != 'Ambas') v.lista.separada <- split(volatility_results, sapply(volatility_results, function(x) x@info.evento[[columna.agrupar]]))
+    # Generar listas distintas para cada valor de la <columna.agrupar>, en caso de querer utilizarlas mas adelante
+    # for (i in seq_along(v.lista.separada)) assign(paste0("v.list.", names(v.lista.separada)[i]), v.lista.separada[[i]])
+    # Cuando <columna.agrupar> == <'Ambas'> toca tener un trato especial
+    if(columna.agrupar == 'Ambas'){
+      # En primer lugar por cada desastre se necesita una combinacion del pais y el tipo de desastre
+      # Para eso creamos una funcion, solo para mejor lectura
+      crear.columna <- function(df) {
+        df <- df %>%
+          mutate(Desastre.Pais = paste0(Country, Disaster.Subgroup))
+        return(df)
       }
-      
-      eventos.separados        <- c(unlist(lapply(v.lista.separada, length)),sum(unlist(lapply(v.lista.separada, length)))) 
-      names(eventos.separados) <- c(names(unlist(lapply(v.lista.separada, length))),'Todos')
-      
+      volatility_results <- purrr::map(volatility_results, function(s4_object) {
+        s4_object@info.evento <- crear.columna(s4_object@info.evento)
+        return(s4_object)
+      })
+      # Ahora si podemos separar <volatility_results> en listas dependiendo del desastre y el pais donde sucedio
+      v.lista.separada <- split(volatility_results, sapply(volatility_results, function(x) x@info.evento[['Desastre.Pais']]))
+      # Por otro lado, como la especificacion de Bialkowski (2008) ecuacion 5 esta hecha para mas de un evento, solamente se van
+      # a guardar los elementos de <v.lista.separada> que contengan mas de un desastre
+      v.lista.separada <- purrr::keep(v.lista.separada, ~(length(.x) > 1))
+    }
+    
+    eventos.separados        <- c(unlist(lapply(v.lista.separada, length)),sum(unlist(lapply(v.lista.separada, length)))) 
+    names(eventos.separados) <- c(names(unlist(lapply(v.lista.separada, length))),'Todos')
+    
+    # if(0) si no se quiere graficar CAV relativo al evento, if(1) si se desea
+    if(0){
       # Graficas CAV (separadas) ------------------------------------------------------------
       for(i in seq_along(v.lista.separada)){
         element <- v.lista.separada[[i]]
@@ -319,15 +323,20 @@ if(0){
         title(paste0('Estimacion: ',ventana.estimacion,'. Traslape: ',ventana.traslape),line=0.75)
         dev.off()
       }
-        
+    }
 
-      # Kernel CAV --------------------------------------------------------------
-      # Para el kernel CAV se necesita que <columna.agrupar> sea 'Ambas', para asi poder encontrar el CAV para varios paises para
-      # cierto tipo de desastre
-      cd.kernel.cav <- paste0(cd.graficos,'Kernel_CAV/')
+    # Kernel CAV --------------------------------------------------------------
+    # Para el kernel CAV se necesita que <columna.agrupar> sea 'Ambas', para asi poder encontrar el CAV para varios paises para
+    # cierto tipo de desastre
+    # if(0) si no se desea graficar el kernel de CAV. if(1) si se desea. Podria parametrizarse todas las flags
+    cd.kernel.cav <- paste0(cd.graficos,'Kernel_CAV/')
+    if(1){
       if(columna.agrupar == 'Ambas'){
-        # Volver reproducible
-        v.lista.geofisico <- (v.lista.separada[grepl(Tipos.Desastres[3],names(v.lista.separada))])
+        # La funcion kernel CAV grafica los kernel de la volatilidad anormal acumulada dependiendo del tipo de 
+        # desastre. Ademas, guarda automaticamente los graficos
+        kernel.cav(tipos.de.desastres = Tipos.Desastres, lista.desagregada = v.lista.separada, lista.agregada = volatility_results, 
+                   estimation.window = ventana.estimacion, overlap.window = ventana.traslape, series = str_to_title(tipo.serie), 
+                   market.variable = retorno.mercado)
       }
     }
   }

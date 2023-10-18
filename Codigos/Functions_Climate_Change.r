@@ -3708,11 +3708,20 @@ bootstrap.volatility2 <- function(volatility.list,es.window.length,ev.window.len
 #-- lista.agregada     : lista agregada de todos los desastres a tener en cuenta
 #-- columna.pais       : string que indica el nombre de la columna de paises. Por construccion del elemento "ESVolatility" 
 #                        se tomara el default como 'Country'
-#-- ev.window.length   : tamaño maximo ventana de evento
+#-- ev.window.length   : tamano maximo ventana de evento
+#-- estimation.window  : tamano de la ventana de estimacion
+#-- overlap.window     : tamano ventana traslape
+#-- series             : serie a graficar
+#-- market.variable    : variable de retorno de mercado
 # ----Argumentos de salida  ----#
 #-- 
 #---------------------------------------------------------------------------------------#
-kernel.cav <- function(tipos.de.desastres, lista.desagregada, lista.agregada,columna.pais = 'Country') {
+kernel.cav <- function(tipos.de.desastres, lista.desagregada, lista.agregada,columna.pais = 'Country',
+                       estimation.window, overlap.window, series, market.variable) {
+  
+  setClass("ESVolatility",slots=list(coefficients = "numeric",goodness_of_fit = "numeric",res_estandar_estimacion="xts",
+                                     res_no_estandar_estimacion="xts",variance_forecast="xts",residuales_evento="xts",
+                                     info.evento = 'data.frame'))
   
   # Primero vamos a generar una lista, donde cada elemento va a contener listas de los desastres ocurridos en cada pais
   # y tambien en todos los paises
@@ -3724,7 +3733,21 @@ kernel.cav <- function(tipos.de.desastres, lista.desagregada, lista.agregada,col
                                                     sapply(lista.agregada, function(x) x@info.evento[[columna.pais]]))
   names(lista.listas) <- c(tipos.de.desastres,'Todos')
   
-  # Ahora toca encontrar la volatilidad anormal acumulada para cada lista del objeto <lista.listas>
+  # Ahora toca encontrar la volatilidad anormal acumulada para cada lista del objeto <lista.listas>, pero antes se debe calcular el numero
+  # maximo de la ventana de evento. Los objetos mas desagregados en lista.listas son de clase <ESVolatility>, los cuales cuentan con un slot llamado
+  # volatility_forecast, que tiene la longitud del tamano maximo de la ventana de evento. 
+  # Por tanto, toca usar <lapply> para acceder a los objetos 'ESVolatility' y poder obtener la ventana de evento que se encuentra en todos los desastres
+  tamano.ventanas.evento <- lapply(lista.listas, function(x){
+    object <- lapply(x, function(vol.obj){
+      lista <- purrr::map(vol.obj, ~.x@variance_forecast)
+      tamano.ventana.evento <- unique(unlist(lapply(lista, length)))
+      return(tamano.ventana.evento)
+    })
+    return(unique(unlist(object)))
+  })
+  
+  ev.window.length <- unique(unlist(tamano.ventanas.evento))
+  
   cavs.relativos <- list()
   for(p in seq_along(lista.listas)){
     cavs.relativos[[p]] <- lapply(lista.listas[[p]], function(x){
@@ -3787,11 +3810,11 @@ kernel.cav <- function(tipos.de.desastres, lista.desagregada, lista.agregada,col
     # Colores para graficar
     # Se determinan los colores para graficar
     colors <- brewer.pal(n=length(densidades), name='Set1')
-    png(filename=paste0(cd.kernel.cav,tipo.serie,'_',market,'_CAV_Est_',ventana.estimacion,'_tra_',ventana.traslape,'_ev_',ventana.evento,'.png'),
+    png(filename=paste0(cd.kernel.cav,tipo.serie,'_',market,'_CAV_Est_',ventana.estimacion,'_tra_',ventana.traslape,'_t',ventana.evento,'.png'),
         width = 800,height = 800)
     plot(densidades[[1]], col=colors[1],lwd=2,
          main = paste0('Cumulative Abnormal Volatility (CAV) Kernel relative to the disaster date. For CDS. Event window: [0,',(ventana.evento-1),']'),
-         xlim = c(minimo.x, maximo.x), ylim = c(minimo.y,maximo.y))
+         xlim = c(minimo.x, maximo.x), ylim = c(minimo.y,maximo.y), xlab = 'Cumulative Abnormal Return (CAV)')
     # Agregar los demas plots
     if(length(densidades)>1) for(k in 2:length(densidades)){
       lines(densidades[[k]], col= colors[k],lwd=2)
@@ -3802,7 +3825,7 @@ kernel.cav <- function(tipos.de.desastres, lista.desagregada, lista.agregada,col
            legend    = c("Under Null Hypothesis (No Effect on Volatility)", paste0("Kernel CAV: ",c('Hydrological','Meteorological','Geophysical','All'))),
            col       = c("black",colors), 
            lty       = c(2,rep(1,length(cavs.relativos))),bty = 'n')
-    title(paste0('Estimacion: ',ventana.estimacion,'. Traslape: ',ventana.traslape,'. Para ',tipo.serie, ' con ', market),line=0.75)
+    title(paste0('Estimation window: ',estimation.window,' days. Overlap window: ',overlap.window,' days. For ',series, ' with ', market.variable),line=0.75)
     dev.off()
   }
 }
