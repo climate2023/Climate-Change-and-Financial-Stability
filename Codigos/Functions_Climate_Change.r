@@ -3801,31 +3801,65 @@ kernel.cav <- function(tipos.de.desastres, lista.desagregada, lista.agregada,col
     for(y in seq_along(cavs.ventana.evento)) densidades[[y]] <- density(cavs.ventana.evento[[y]][ventana.evento,], bw = anchos.optimos[[y]])
     names(densidades) <- names(cavs.ventana.evento)
     
+    # Se necesita poder hacer la grafica de densidad truncada
+    # Aparte nos interesa saber la mediana de la distribucion usando <datawizard::weighted_median>
+    densidades.truncadas <- list()
+    medianas             <- list()
+    for(u in seq_along(densidades)){
+      x.support                 <- densidades[[u]]$x
+      densidad.x                <- ifelse(x.support < (-1*ventana.evento),0, densidades[[u]]$y)
+      densidad.truncada         <- NULL
+      densidad.truncada$x       <- ifelse(x.support < (-1*ventana.evento), NA, x.support)
+      densidad.truncada$y       <- densidad.x
+      densidades.truncadas[[u]] <- densidad.truncada
+      medianas[[u]]             <- weighted_median(x.support[x.support > (-1*ventana.evento)],
+                                                   densidades[[u]]$y[x.support > (-1*ventana.evento)])
+    }
+    names(densidades.truncadas) <- names(densidades)
+    names(medianas)             <- names(densidades)
+    
     # Establecer los limites de plot de acuerdo con las densidades
-    maximo.x <- max(unlist(lapply(densidades, function(x) max(x$x))))
-    minimo.x <- min(unlist(lapply(densidades, function(x) min(x$x))))
-    maximo.y <- max(unlist(lapply(densidades, function(x) max(x$y))))
-    minimo.y <- min(unlist(lapply(densidades, function(x) min(x$y))))
+    maximo.x <- max(unlist(lapply(densidades.truncadas, function(x) max(x$x,na.rm=T))))
+    minimo.x <- min(unlist(lapply(densidades.truncadas, function(x) min(x$x,na.rm=T))))
+    maximo.y <- max(unlist(lapply(densidades.truncadas, function(x) max(x$y,na.rm=T))))
+    minimo.y <- min(unlist(lapply(densidades.truncadas, function(x) min(x$y,na.rm=T))))
   
     # Colores para graficar
     # Se determinan los colores para graficar
     colors <- brewer.pal(n=length(densidades), name='Set1')
     png(filename=paste0(cd.kernel.cav,tipo.serie,'_',market,'_CAV_Est_',ventana.estimacion,'_tra_',ventana.traslape,'_t',ventana.evento,'.png'),
         width = 800,height = 800)
-    plot(densidades[[1]], col=colors[1],lwd=2,
+    plot(densidades.truncadas[[1]], col=colors[1],lwd=2, type='l',
          main = paste0('Cumulative Abnormal Volatility (CAV) Kernel relative to the disaster date. For CDS. Event window: [0,',(ventana.evento-1),']'),
-         xlim = c(minimo.x, maximo.x), ylim = c(minimo.y,maximo.y), xlab = 'Cumulative Abnormal Return (CAV)')
+         xlim = c(minimo.x, maximo.x), ylim = c(minimo.y, (maximo.y + 0.015*maximo.y)), 
+         xlab = 'Cumulative Abnormal Return (CAV)', ylab = 'Density',
+         yaxs = 'i')
     # Agregar los demas plots
-    if(length(densidades)>1) for(k in 2:length(densidades)){
-      lines(densidades[[k]], col= colors[k],lwd=2)
+    if(length(densidades.truncadas)>1) for(k in 2:length(densidades.truncadas)){
+      lines(densidades.truncadas[[k]], col= colors[k],lwd=2,type='l')
     }
     abline(v=ventana.evento,lty=2)
     
+    # Agregar las areas sombreadas, debajo de la curva despues de la mediana
+    shading.alpha = 0.15 #<<<--- parametro para hacer mas transparente las areas de IC
+    for(m in seq_along(medianas)){
+      polygon(x = c(densidades.truncadas[[m]]$x[densidades.truncadas[[m]]$x >= medianas[[m]]],medianas[[m]]),
+              y = c(densidades.truncadas[[m]]$y[densidades.truncadas[[m]]$x >= medianas[[m]]], 0),
+              col = adjustcolor(colors[[m]],alpha.f = shading.alpha), border= colors[[m]],lty=2)
+    }
+    
+    # Se genera el nombre de las lineas para la leyenda, lo unico importante es que 'Todos' va a ser reemplazado por 'All'
+    names.legend <- ifelse(names(medianas) == 'Todos', 'All', names(medianas))
+    
     legend("topright", 
-           legend    = c("Under Null Hypothesis (No Effect on Volatility)", paste0("Kernel CAV: ",c('Hydrological','Meteorological','Geophysical','All'))),
-           col       = c("black",colors), 
-           lty       = c(2,rep(1,length(cavs.relativos))),bty = 'n')
-    title(paste0('Estimation window: ',estimation.window,' days. Overlap window: ',overlap.window,' days. For ',series, ' with ', market.variable),line=0.75)
+           legend    = c("Under Null Hypothesis (No Effect on Volatility)", paste0("Kernel CAV: ", names.legend),
+                         paste0("Median: ",names.legend)),
+           col       = c("black",colors, colors), 
+           lty       = c(2,rep(1,length(cavs.relativos)), rep(2,length(cavs.relativos))),
+           bty = 'n')
+    # TRaduccion variable <market.variable>
+    market.variable.english <- ifelse(market.variable == 'Promedio Movil', 'Moving Average',market.variable)
+    title(paste0('Estimation window: ',estimation.window,' days. Overlap window: ',overlap.window,' days. For ',series, ' with ', market.variable.english),line=0.75)
     dev.off()
   }
 }
