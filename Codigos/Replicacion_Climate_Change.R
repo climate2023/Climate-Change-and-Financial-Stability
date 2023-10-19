@@ -584,6 +584,7 @@ if(!load.SUR){
   #models_disasters_list = list()
   coefficients_disasters_list = list()
   resid_disasters_list  = list() 
+  var_cov_list          = list()
   for(disaster in Tipos.Desastres){
     for(i in 1:length(countries)){
       var.exo                =  c('market.returns', c(paste0('Int_D_', disaster), paste0(disaster,'_t', 0:no.rezagos.de.desastres)) )
@@ -596,13 +597,14 @@ if(!load.SUR){
     coefficients_disasters_list[[name]]   <- summary(get(name))$coefficients
     resid_disasters_list[[name]]          <- resid(get(name))
     #models_disasters_list[[name]] <- get(name)
+    var_cov_list[[name]]                  <- get(name)$coefCov
   } 
   # Guardar datos --------------------------------------------------------------#
   #--- Guardado de los modelos por tipo de desastre , mas la base de retornos---#
   saved.day = today() #<<<--- dia del <save>,  en formato yyyy-mm-dd
   # 1. En el objeto <Resultados_Desastres_today()> se guardan elementos claves para poder graficar, incluyendo
   # los resultados de las regresion SUR
-  save(coefficients_disasters_list, resid_disasters_list, fitted_models, Retornos,
+  save(coefficients_disasters_list, resid_disasters_list, fitted_models, Retornos, var_cov_list,
        file=paste0('Resultados_SUR/Resultados_Desastres_',tipo.serie,'_',market,'.RData')) 
 } else load(paste0('Resultados_SUR/Resultados_Desastres_',tipo.serie,'_',market,'.RData')) #del save 1.
 
@@ -648,7 +650,7 @@ for (pais in 1:length(paises)){
 ## REGRESION POR PAISES. Los coeficientes, errores estandar, t_Values, p_values y residuales de la estimacion fueron guardados usando el comando
 #  save() con el fin de no tener que correr siempre esta estimacion, por lo cual se usa el if(0).
 # ----COLOCAR <if(1)> SI SE DESEA ESTIMAR EL MODELO por paises ----#
-load.SURpaises = 1       #<<<--- 1 si se carga el SUR paises, 0 si se corre y salva el SUR paises 
+load.SURpaises = 0       #<<<--- 1 si se carga el SUR paises, 0 si se corre y salva el SUR paises 
 if(!load.SURpaises){
   ## Regresion con las dummies por pais. Es importante resaltar que en este caso <paises> indica el pais en el que sucedio el desastre, 
   #  mientras que <countries> indica el pais donde esta el indice (Ejemplo de <countries>: 'Brazil' que corresponde a 'Bovespa') 
@@ -661,6 +663,7 @@ if(!load.SURpaises){
   #models_countries_list      = list()
   coefficients_countries_list = list() 
   resid_countries_list        = list() 
+  var_cov_list                = list()
   for(pais in paises){ #Loop de paises
     eqsystem2                 = list()
     for(i in 1:length(countries)){ #Loop de stock indexes + paises del indice
@@ -674,12 +677,14 @@ if(!load.SURpaises){
     #models_countries_list[[name2]] <- get(name2)
     coefficients_countries_list[[name2]]   <- summary(get(name2))$coefficients
     resid_countries_list[[name2]]          <- resid(get(name2))
+    var_cov_list[[name2]]                  <- get(name)$coefCov
   }
   # Guardar datos --------------------------------------------------------------#
   saved.day = today()  #<<<--- dia del <save>, formato yyyy-mm-dd
   # 1. En el objeto Resultados_Desastres_today() se guardan elementos claves para poder graficar, incluyendo
   # los resultados de las dos regresiones SUR
-  save(coefficients_countries_list,Retornos,file=paste0('Resultados_SUR/Resultados_Desastres_Paises_',tipo.serie,'_',market,'.RData')) 
+  save(coefficients_countries_list,Retornos, var_cov_list,
+       file=paste0('Resultados_SUR/Resultados_Desastres_Paises_',tipo.serie,'_',market,'.RData')) 
   # 2. En el objeto Residuos_paises_today() se guardan los residuos de la segunda regresion (por pais), los cuales son muy 
   # pesados y no se pueden cargar
   save(resid_countries_list, file=paste0('Resultados_SUR/Residuos/Residuos_paises_',tipo.serie,'_',market,'.RData'))
@@ -690,18 +695,18 @@ if(!load.SURpaises){
 }
 
 if(0){
-# Test de Wilcoxon --------------------------------------------------------
-
-steps <- paste('t',(0:no.rezagos.de.desastres),sep='')  # vector con los días adelante del evento, hace referencia a como termina el nombre de las dummies
-
-Por_tipo_desastre <- FALSE #<<<--- Variable bool. <FALSE> indica que se quiere revisar los CAR por pais donde sucedio el desastre. 
-#      <TRUE> indica que se quiere ver por tipo de desastre
-
-if(Por_tipo_desastre){ 
-  name_column <- "Type_of_disaster"
-  resultado <- wilcoxon_Pagnottoni(coefficients_disasters_list,name_column,steps,indexes,Tipos.Desastres);resultado
-}else{
-  name_column <- "Country"
-  resultado <- wilcoxon_Pagnottoni(coefficients_countries_list,name_column,steps,indexes,paises);resultado
-}
+  # Test de Wilcoxon --------------------------------------------------------
+  
+  steps <- paste('t',(0:no.rezagos.de.desastres),sep='')  # vector con los días adelante del evento, hace referencia a como termina el nombre de las dummies
+  
+  Por_tipo_desastre <- FALSE #<<<--- Variable bool. <FALSE> indica que se quiere revisar los CAR por pais donde sucedio el desastre. 
+  #      <TRUE> indica que se quiere ver por tipo de desastre
+  
+  if(Por_tipo_desastre){ 
+    name_column <- "Type_of_disaster"
+    resultado <- wilcoxon_Pagnottoni(coefficients_disasters_list,name_column,steps,indexes,Tipos.Desastres);resultado
+  }else{
+    name_column <- "Country"
+    resultado <- wilcoxon_Pagnottoni(coefficients_countries_list,name_column,steps,indexes,paises);resultado
+  }
 }
