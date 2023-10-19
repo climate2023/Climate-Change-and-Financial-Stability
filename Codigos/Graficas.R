@@ -84,7 +84,7 @@ if(tipo.serie == 'indices'){
                                                  'IGBVL','KLCI','COLCAP') # Nombre indices para el paper. JSX es el de Jakarta
   bdwidth <- 0.3 #<<<--- bandwidth para los graficos de densidad. Con una banda de 0.3 se suavizan los kernels para las series de indices
 }
-nivel.desagregacion <- 'pais.tipodesastre'  # Como se quiere desagregar las graficas, por 'pais' o 'tipodesastre', ambas es 'pais.tipodesastre'
+nivel.desagregacion <- 'tipodesastre'  # Como se quiere desagregar las graficas, por 'pais' o 'tipodesastre', ambas es 'pais.tipodesastre'
 
 # Creacion de una funcion vectorizada de <grep>
 vgrep <- Vectorize(grep, vectorize.args = 'pattern')
@@ -305,23 +305,26 @@ for(ventana.estimacion in ventanas.estimacion){
     names(eventos.separados) <- c(names(unlist(lapply(v.lista.separada, length))),'Todos')
     
     # if(0) si no se quiere graficar CAV relativo al evento, if(1) si se desea
-    if(0){
+    if(1){
       # Graficas CAV (separadas) ------------------------------------------------------------
       for(i in seq_along(v.lista.separada)){
         element <- v.lista.separada[[i]]
         name    <- names(v.lista.separada)[i] 
-        png(filename=paste0(cd.cav,tipo.serie,'_',market,'_',name,'_CAV_Est_',ventana.estimacion,'_tra_',ventana.traslape,'.png'))
-        grafico_cav(element,as.numeric(ventana.estimacion),vol_ev_window, serie.rm = paste(str_to_title(tipo.serie),retorno.mercado))
+        png(filename=paste0(cd.cav,tipo.serie,'_',market,'_',name,'_CAV_Est_',ventana.estimacion,'_tra_',ventana.traslape,'.png'),
+            width = 800, height = 800)
+        grafico_cav(element,as.numeric(ventana.estimacion),vol_ev_window,serie.rm = paste(str_to_title(tipo.serie),retorno.mercado))
         title(paste0(name,'. ','Estimacion: ',ventana.estimacion,'. Traslape: ',ventana.traslape),line=0.75)
         dev.off()
       }
       
       # Graficas CAV (agregadas) -------------------------------------------------------------
       if(columna.agrupar == 'Disaster.Subgroup'){
-        png(filename=paste0(cd.cav,'Ag/',tipo.serie,'_',market,'_CAV_Est_',ventana.estimacion,'_tra_',ventana.traslape,'.png'))
-        grafico_cav_agregado(volatility_results, v.lista.separada, as.numeric(ventana.estimacion),
-                                                                     vol_ev_window,serie.rm = paste(str_to_title(tipo.serie),retorno.mercado))
-        title(paste0('Estimacion: ',ventana.estimacion,'. Traslape: ',ventana.traslape),line=0.75)
+        png(filename=paste0(cd.cav,'Ag/',tipo.serie,'_',market,'_CAV_Est_',ventana.estimacion,'_tra_',ventana.traslape,'.png'),
+            width = 800, height = 800 )
+        grafico_cav_agregado(aggregated.events.list = volatility_results, disagg.events.list = v.lista.separada, 
+                             es.window.length = as.numeric(ventana.estimacion), ev.window.length = vol_ev_window, 
+                             serie = str_to_title(tipo.serie), rm = retorno.mercado)
+        title(paste0('Estimacion window: ',ventana.estimacion,'. Overlap window: ',ventana.traslape,'. Disasters for all countries'),line=0.75)
         dev.off()
       }
     }
@@ -331,7 +334,7 @@ for(ventana.estimacion in ventanas.estimacion){
     # cierto tipo de desastre
     # if(0) si no se desea graficar el kernel de CAV. if(1) si se desea. Podria parametrizarse todas las flags
     cd.kernel.cav <- paste0(cd.graficos,'Kernel_CAV/')
-    if(1){
+    if(0){
       if(columna.agrupar == 'Ambas'){
         # La funcion kernel CAV grafica los kernel de la volatilidad anormal acumulada dependiendo del tipo de 
         # desastre. Ademas, guarda automaticamente los graficos

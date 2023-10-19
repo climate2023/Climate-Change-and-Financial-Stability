@@ -3509,7 +3509,7 @@ grafico_cav <- function(events.list, es.window.length,ev.window.length,serie.rm)
 # ----Argumentos de salida  ----#
 #-- NA
 #---------------------------------------------------------------------------------------#
-grafico_cav_agregado <- function(aggregated.events.list, disagg.events.list, es.window.length,ev.window.length,serie.rm, significancia = 0.05){
+grafico_cav_agregado <- function(aggregated.events.list, disagg.events.list, es.window.length,ev.window.length,serie,rm, significancia = 0.05){
   # Detener la funcion si hay algun elemento que no tenga la clase 'ESVolatility' en <aggregated.events.list>
   if (any(!sapply(aggregated.events.list, inherits, "ESVolatility"))) stop('La lista contiene elementos que no fueron creados con la funcion estimation.event.study.')
   # Detener la funcion si dentro de cualquier elemento de <disagg.events.list> hay algun elemento que no sea "ESVolatility"
@@ -3562,8 +3562,11 @@ grafico_cav_agregado <- function(aggregated.events.list, disagg.events.list, es.
   
   # Definir los colores
   colors <- c('#000000',brewer.pal(n=(length(cavs.relativos)-1), name='Set1'))
+  # Cambiar el idioma de <rm>
+  rm.english <- ifelse(rm == 'Promedio Movil', 'Moving Average', rm)
   plot(x=names(cavs.relativos[[1]]),y=cavs.relativos[[1]],type='l',col=colors[1],lwd=3,
-       main=paste0('CAV relativo al dia del evento. Para ',serie.rm),ylab='CAV',xlab='t',
+       main=paste0('Cumulative Abnormal Volatility (CAV) relative to the disaster date. For ',serie, ' with ', rm.english),
+       ylab='Cumulative Abnormal Volatility (CAV)',xlab='Day relative to the disaster date',
        ylim = c(0,maximo.escalay))
   if(length(cavs.relativos)>1) for(p in 2:length(cavs.relativos)){
     lines(x = names(cavs.relativos[[1]]), cavs.relativos[[p]],type='l',col=colors[[p]],lwd=2)
@@ -3574,7 +3577,7 @@ grafico_cav_agregado <- function(aggregated.events.list, disagg.events.list, es.
   for(m in seq_along(sup.intervalos.confianza)){
     polygon(x = c(names(cavs.relativos[[1]]), rev(names(cavs.relativos[[1]]))),
             y = c(sup.intervalos.confianza[[m]], rev((0:(length(cavs.relativos[[1]])-1)))),
-            col = adjustcolor(colors[m], alpha.f = shading.alpha), lty=2)
+            col = adjustcolor(colors[m], alpha.f = shading.alpha), border = F)
   }
   
   # anadir rectas del intervalo de confianza con un nivel de <significancia>
@@ -3583,21 +3586,24 @@ grafico_cav_agregado <- function(aggregated.events.list, disagg.events.list, es.
   }
   
   # Anadir la recta de la hipotesis nula
-  abline(a = 0, b = 1, col = "black",lty=2,lwd=1.5)
+  abline(a = 0, b = 1, col = "black",lty=3,lwd=1.5)
   # legend("topleft", legend = c("Under Null Hypothesis (No Effect)", paste0("Observed Volatility: ",names(cavs.relativos))),
   #        col = c("black", colors), lty = c(2,rep(1,length(cavs.relativos))),bty='n',cex = 0.9, pt.cex = 0.9,
   #        y.intersp = 1)
+  # Cambiar el idioma de la leyenda, 'Todos' por 'All'
+  names(cavs.relativos) <- ifelse(names(cavs.relativos)== 'Todos', 'All', names(cavs.relativos))
+  
   legend("topleft", 
-         legend    = c("Under Null Hypothesis (No Effect)", paste0("Observed Volatility: ",names(cavs.relativos)),
-                               paste0((1 - significancia)*100,'% C.I: ', names(cavs.relativos))),
-         col       = c("black", colors, rep(NA,length(cavs.relativos))), 
-         lty       = c(2,rep(1,length(cavs.relativos)),rep(NA,length(cavs.relativos))),
-         fill      = c(rep(NA,(1+length(cavs.relativos))),adjustcolor(colors, alpha.f = shading.alpha)), 
-         border    = c(rep(NA,(1+length(cavs.relativos))),colors),
-         pch       = c(rep(NA,(1+length(cavs.relativos))),rep(15,length(cavs.relativos))),
+         legend    = c("Under Null Hypothesis (No Volatility Effect)", paste0("Observed Volatility: ",names(cavs.relativos)),
+                       paste0((1 - significancia)*100,'% Percentile: ', names(cavs.relativos)),
+                       paste0((1 - significancia)*100,'% C.I: ', names(cavs.relativos))),
+         col       = c("black", colors, colors, rep(NA,length(cavs.relativos))), 
+         lty       = c(3,rep(1,length(cavs.relativos)),rep(2,length(cavs.relativos)),rep(NA,length(cavs.relativos))),
+         fill      = c(rep(NA,(1+length(cavs.relativos))),rep(NA,(length(cavs.relativos))),adjustcolor(colors, alpha.f = shading.alpha)), 
+         border    = c(rep(NA,(1+length(cavs.relativos))),rep(NA,(length(cavs.relativos))),colors),
+         pch       = c(rep(NA,(1+length(cavs.relativos))),rep(NA,(length(cavs.relativos))),rep(15,length(cavs.relativos))),
          bty       ='n', 
          y.intersp = 1)
-  
 }
 
 # Revision de la funcion bootstrap.volatility ------------------------------
