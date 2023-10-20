@@ -70,8 +70,8 @@ if(1){
 # Parametros --------------------------------------------------------------
 bool_paper <- T # booleano que toma el valor de T si se quiere revisar el paper que vamos a escribir, F para Pagnottoni
 no.rezagos.de.desastres <- 15     #<<<--- Numero de rezagos de los desastres <w> (i.e. t0, t1, ..., tw)
-tipo.serie              <- 'indices'  #<<<--- Puede ser 'cds' o 'indices
-market                  <- 'benchmark'   #<<<--- Puede ser 'PM' o 'benchmark', pero si tenemos CDS solamente puede ser PM
+tipo.serie              <- 'cds'  #<<<--- Puede ser 'cds' o 'indices
+market                  <- 'PM'   #<<<--- Puede ser 'PM' o 'benchmark', pero si tenemos CDS solamente puede ser PM
 if(market == 'benchmark') retorno.mercado <- 'MSCI'
 if(market == 'PM')        retorno.mercado <- 'Promedio Movil'
 if(tipo.serie == 'cds'){
@@ -305,7 +305,7 @@ for(ventana.estimacion in ventanas.estimacion){
     names(eventos.separados) <- c(names(unlist(lapply(v.lista.separada, length))),'Todos')
     
     # if(0) si no se quiere graficar CAV relativo al evento, if(1) si se desea
-    if(1){
+    if(0){
       # Graficas CAV (separadas) ------------------------------------------------------------
       for(i in seq_along(v.lista.separada)){
         element <- v.lista.separada[[i]]
@@ -349,7 +349,7 @@ for(ventana.estimacion in ventanas.estimacion){
 # Grafica de tiempo retornos anormales acumulados  -----------------------------------
 
 #  <if(0)> cuando no se quiera correr el codigo de las graficas de CAR. <if(1)> cuando si se desee
-if(0) {
+if(1) {
   # Directorio para imagenes de CAR
   cd.car <- paste0(cd.graficos,'CAR/')
   coefficients_list <- coefficients_disasters_list  
@@ -364,22 +364,27 @@ if(0) {
   
   # Filtrar <coefficients_disasters_list> para que solo incluyan coeficientes para los tipos de desastre o paises incluidos en <var.interes>
   coefficients_list <- coefficients_list[grep(paste(var.interes,collapse = "|"),names(coefficients_list))]
+  # Realizar lo mismo con la matriz de varianzas y covarianzas
+  var_cov_list      <- var_cov_list[grep(paste(var.interes,collapse = "|"),names(coefficients_list))]  
+  # Tanto la matriz de varcovar y los coeficientes deben ser del mismo modelo estimado
+  if(!identical(names(var_cov_list),names(coefficients_list))) stop('Matriz de varianzas y covarianzas no corresponde a coeficientes estimados')
   
   for(w in seq_along(coefficients_list)){
     # Los coeficientes estan en la columna <Estimate>
-    model <- coefficients_list[[w]]
-    coefficients <- model[,"Estimate"]
-    # Seleccionar solo los que pertenecen a una dummy
-    interest.index        <- str_ends(names(coefficients),paste(steps,collapse="|"))
-    coefficients.interest <- coefficients[interest.index]
+    model         <- coefficients_list[[w]]
+    coefficients  <- model[,"Estimate"]
+    matrix.varcov <- var_cov_list[[w]]
     # Nombre del modelo
     name.model <- names(unlist(vgrep(var.interes,names(coefficients_list)[w])))
     # <car_pagnottoni> genera la grafica de los CAR dependiendo de dia relativo al evento
-    png(filename=paste0(cd.car,tipo.serie,'_',market,'_',name.model,'_CAR','.png'))
-    car_pagnottoni(coefficients.interest,indices = indexes,interest.vars = var.interes,average = TRUE,serie.rm = paste(str_to_title(tipo.serie),market))
+    png(filename=paste0(cd.car,tipo.serie,'_',market,'_',name.model,'_CAR','.png'), width = 500,height = 500)
+    car_pagnottoni(coefficients, matrix.varcov,indices = indexes,interest.vars = var.interes,
+                   average = TRUE,serie =str_to_title(tipo.serie), variable.mercado = retorno.mercado, 
+                   pattern = steps)
     dev.off()
   }
 }
+
 if(0){
 ## ============================== Graficos A.3 de densidad de los retornos ========================================
 densidad_retornos <- apply(Retornos, MARGIN = 2, FUN = density)

@@ -2237,6 +2237,7 @@ wilcoxon_Pagnottoni <- function(coefficients.list,name.variable,pattern.step,pat
 #---------------------------------------------------------------------------------------#
 # ----Argumentos de entrada ----#
 #--   coeffs          : vector numerico con coeficientes
+#--   var.cov         : matriz varianzas covarianzas de los estimadores
 #--   indices         : vector con nombres de indices 
 #--   interest.vars   : string que indica los tipos de desastres o paises que se encuentran en <coeffs>
 #--   average         : booleano, <TRUE> indica que se quiere graficar solamente el promedio de los CAR
@@ -2244,11 +2245,15 @@ wilcoxon_Pagnottoni <- function(coefficients.list,name.variable,pattern.step,pat
 # ----Argumentos de salida  ----#
 #-- 
 #---------------------------------------------------------------------------------------#
-car_pagnottoni = function(coeffs,indices,interest.vars,average,serie.rm,pattern){
+car_pagnottoni = function(coeffs,var.cov,indices,interest.vars,average,serie, variable.mercado,
+                          pattern, significance = 0.05){
   # El titulo del grafico se encuentra revisando los nombres de <coeffs> respecto a <interest.vars>. 
   # La siguiente linea busca cual es el tipo de desastre o pais que vamos a graficar
   # '_t' se anhade para asegurar que se busquen los coeficientes correctos, ya que para un coeficiente puede salir dos paises
   # distintps
+  # Sin embargo, toca traducir primero las variables del titulo
+  if(serie == 'Indices') serie <- 'Stock Indexes'
+  if(variable.mercado == 'Promedio Movil') variable.mercado <- 'Moving Average'
   plot_title <- interest.vars[sapply(interest.vars, function(value) any(grepl(paste0(value,'_t'), names(coeffs))))]
   # La longitud de <plot_title> debe ser 1, o si no hay error. Si es mayor a 1 significa que hay alguna mezcla de 
   # coeficientes, ya que tendriamos para dos tipos de desastres o dos paises
@@ -2260,6 +2265,12 @@ car_pagnottoni = function(coeffs,indices,interest.vars,average,serie.rm,pattern)
     # <indice> y se ordenan en orden cronologico, teniendo en cuenta que por construccion, t0 es el dia
     # del evento, t1 es el dia siguiente, t2 dos dias despues, ...
     index.coefs <- coeffs[startsWith(names(coeffs), indice)]
+    # De <index.coefs> se obtienen todos los coeficientes que comienzan con <indice>, pero tambien es importante
+    # encontrar aquellos solametne para las dummies temporales, que deben ser exactamente de la misma longitud que <pattern>
+    vgrep <- Vectorize(grep, 'pattern')
+    index.coefs <- index.coefs[unlist(vgrep(paste0(pattern,'$'), names(index.coefs)))]
+    if(length(index.coefs) != length(pattern)) stop('Incorrecto numero de coeficientes')
+    
     # Generar matriz de CAR's, donde cada columna sera un indice y las filas seran los CAR para [t0,t0],[t0,t1],
     # [t0,t2],... El numero de filas de la matriz sera igual al numero de elementos en <index.coefs>
     if(is.null(car_matrix)) {
@@ -2282,10 +2293,48 @@ car_pagnottoni = function(coeffs,indices,interest.vars,average,serie.rm,pattern)
       lines(x=rownames(car_matrix), y = car_matrix[,i],type="l")
     }
   }else{
-    # Titulo
-    plot_title2 <- paste0('CAAR relativo al dia del evento. Para ',serie.rm, '. 
-    Eventos: ',plot_title)
-    base::plot(x=rownames(car_matrix), y = rowMeans(car_matrix),type="l",main=plot_title2,xlab='Dia relativo al evento',ylab="Retorno Anormal Acumulado Promedio (CAAR)")
+    # Titulo 
+    plot_title2 <- paste0('CAAR relative to disaster date. For ',serie, ' using ', variable.mercado, '. 
+    Events considered: ',plot_title)
+    # Generar Intervalo de Confianza para la grafica
+    ic.lowers <- c()
+    ic.uppers <- c()
+    for(k in seq_along(steps)){
+      vgrepl  <- Vectorize(grepl, 'pattern')
+      w       <- vgrepl(paste0('t',0:(k-1),'$'),names(coeffs))
+      w.vec   <- as.numeric(apply(w,1,any))*(1/length(indices)) # Matriz para obtener CAAR
+      betahat <- as.numeric(w.vec%*%coeffs)
+      sd      <- sqrt(w.vec%*%var.cov%*%w.vec)
+      
+      # intervalo de confianza
+      v.critico <- qnorm(1-significance)
+      ic.lowers[k]  <- betahat - v.critico*sd
+      ic.uppers[k]  <- betahat + v.critico*sd
+    }
+    
+    # Para el grafico necesitamos el valor maximo y minimos en y de los intervalos de confianza
+    y.maximo <- max(ic.uppers)
+    y.minimo <- min(ic.lowers)
+    
+    plot(x=rownames(car_matrix), y = rowMeans(car_matrix),type="l",main=plot_title2,xlab='Day relative to disaster date',
+         ylab="Cumulative Average Abnormal Return (CAAR)", col='red', ylim = c(y.minimo, y.maximo),lwd=2)
+    abline(h=0, lty=3, col='black')
+    shading.alpha = 0.15
+    polygon(x=c(rownames(car_matrix),rev(rownames(car_matrix))),y = c(ic.lowers,rev(ic.uppers)),
+            col=adjustcolor('red',alpha.f = shading.alpha),border = NA)
+    lines(x=rownames(car_matrix), y = ic.lowers, lty=2, col='red')
+    lines(x=rownames(car_matrix), y = ic.uppers, lty=2, col='red')
+    
+    legend("topleft", 
+           legend    = c("CAAR", paste0((1-significance)*100,'th percentile'), paste0((1-significance)*100,'% C.I')),
+           col       = c("red", 'red',adjustcolor('red',alpha.f = shading.alpha)), 
+           lty       = c(1, 2, NA),
+           lwd       = c(2, 2, NA),
+           fill      = c(rep(NA,2), adjustcolor('red', alpha.f = shading.alpha)), 
+           border    = c(rep(NA,2), 'red'),
+           pch       = c(rep(NA,2), 15),
+           bty       ='n', 
+           y.intersp = 1)
   }
 }
 #---------------------------------------------------------------------------------------#
