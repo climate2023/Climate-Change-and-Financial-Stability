@@ -3900,21 +3900,23 @@ kernel.cav <- function(tipos.de.desastres, lista.desagregada, lista.agregada,col
     for(m in seq_along(medianas)){
       polygon(x = c(densidades.truncadas[[m]]$x[densidades.truncadas[[m]]$x >= medianas[[m]]],medianas[[m]]),
               y = c(densidades.truncadas[[m]]$y[densidades.truncadas[[m]]$x >= medianas[[m]]], 0),
-              col = adjustcolor(colors[[m]],alpha.f = shading.alpha), border= colors[[m]],lty=2)
+              col = adjustcolor(colors[[m]],alpha.f = shading.alpha), border= colors[[m]],lty=3, lwd=2)
     }
     
     # Se genera el nombre de las lineas para la leyenda, lo unico importante es que 'Todos' va a ser reemplazado por 'All'
     names.legend <- ifelse(names(medianas) == 'Todos', 'All', names(medianas))
     
     legend("topright", 
-           legend    = c("Under Null Hypothesis (No Effect on Volatility)", paste0("Kernel CAV: ", names.legend),
-                         paste0("Median: ",names.legend)),
-           col       = c("black",colors, colors), 
-           lty       = c(2,rep(1,length(cavs.relativos)), rep(2,length(cavs.relativos))),
+           legend    = c("Under Null Hypothesis (No Effect on Volatility)", paste0("Kernel CAV: ", names.legend)),
+           col       = c("black",colors), 
+           lty       = c(2,rep(1,length(cavs.relativos))),
            bty = 'n')
+    texto <- 'Dotted lines correspond to the median of the respective kernel'
+    mtext(texto,side = 1, line = 2, cex = 0.9)
     # TRaduccion variable <market.variable>
     market.variable.english <- ifelse(market.variable == 'Promedio Movil', 'Moving Average',market.variable)
-    title(paste0('Estimation window: ',estimation.window,' days. Overlap window: ',overlap.window,' days. For ',series, ' with ', market.variable.english),line=0.75)
+    market.variable.title   <- ifelse(series == 'Cds', '', paste0(' with ', market.variable.english))
+    title(paste0('Estimation window: ',estimation.window,' days. Overlap window: ',overlap.window,' days. For ',series, market.variable.title),line=0.75)
     dev.off()
   }
 }

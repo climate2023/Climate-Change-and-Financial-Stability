@@ -9,53 +9,12 @@ if(1){
   cat("\014")
   #
   # Cargar librerias --------------------------------------------------------
-  
-  library(tidyverse)
-  library(xts)
-  library(timeDate)
-  library(zoo)
-  library(tempdisagg)
-  library(tsbox)
-  library(datawizard)
-  library(quantmod)
-  library(timeSeries)
-  library(forecast)
-  library(nlme)
-  library(seasonal)   
-  library(openxlsx)
-  library(urca)
-  library(fable)
-  library(lmtest)
-  library(moments)
-  library(stargazer)
-  library(Hmisc)
-  library(scales)
-  library(vars)
-  library(smoots)
-  library(dynlm)
-  library(systemfit)
-  library(ks)
-  library(knitr)
-  library(gridExtra)
-  library(stringr)
-  library(maps)
-  library(mapproj)
-  library(ggthemes)
-  library(tmap)
-  library(sf)
-  library(ggsci)
-  library(classInt)
-  library(gnFit)
-  library(rugarch)
-  library(knitr)
-  library(kableExtra)
-  library(janitor) # Para manejo de tablas descriptivas
-  library(xtable)  # Para exportar tablas a latex 
-  library(RColorBrewer)
-  library(tools)
-  library(writexl)  # Para crear excel
-  library(readxl)
-  library(bizdays);library('RQuantLib') # Revisar si las series contienen dias festivos
+  require(pacman)
+  p_load(tidyverse, xts, timeDate, zoo, tempdisagg, tsbox, quantmod, timeSeries, forecast, nlme, seasonal, 
+         openxlsx, urca, fable, lmtest, moments, stargazer, Hmisc, scales, vars, smoots, dynlm, systemfit,
+         ks, knitr, gridExtra, stringr, maps, mapproj, ggthemes, tmap, sf, ggsci, classInt, gnFit, rugarch,
+         kableExtra, janitor, xtable, RColorBrewer, tools, writexl, readxl, readxl, bizdays, RQuantLib, gplots,
+         datawizard)
   
   # Cargar funciones --------------------------------------------------------
   
