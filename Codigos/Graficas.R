@@ -43,7 +43,7 @@ if(tipo.serie == 'indices'){
                                                  'IGBVL','KLCI','COLCAP') # Nombre indices para el paper. JSX es el de Jakarta
   bdwidth <- 0.3 #<<<--- bandwidth para los graficos de densidad. Con una banda de 0.3 se suavizan los kernels para las series de indices
 }
-nivel.desagregacion <- 'pais.tipodesastre'  # Como se quiere desagregar las graficas, por 'pais' o 'tipodesastre', ambas es 'pais.tipodesastre'
+nivel.desagregacion <- 'tipodesastre'  # Como se quiere desagregar las graficas, por 'pais' o 'tipodesastre', ambas es 'pais.tipodesastre'
 
 # Creacion de una funcion vectorizada de <grep>
 vgrep <- Vectorize(grep, vectorize.args = 'pattern')

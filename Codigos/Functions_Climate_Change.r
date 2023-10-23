@@ -3613,8 +3613,9 @@ grafico_cav_agregado <- function(aggregated.events.list, disagg.events.list, es.
   colors <- c('#000000',brewer.pal(n=(length(cavs.relativos)-1), name='Set1'))
   # Cambiar el idioma de <rm>
   rm.english <- ifelse(rm == 'Promedio Movil', 'Moving Average', rm)
+  rm.english <- ifelse(serie == 'Cds', '', paste0(' with ', rm.english))
   plot(x=names(cavs.relativos[[1]]),y=cavs.relativos[[1]],type='l',col=colors[1],lwd=3,
-       main=paste0('Cumulative Abnormal Volatility (CAV) relative to the disaster date. For ',serie, ' with ', rm.english),
+       main=paste0('Cumulative Abnormal Volatility (CAV) relative to the disaster date. For ',serie, rm.english),
        ylab='Cumulative Abnormal Volatility (CAV)',xlab='Day relative to the disaster date',
        ylim = c(0,maximo.escalay))
   if(length(cavs.relativos)>1) for(p in 2:length(cavs.relativos)){
