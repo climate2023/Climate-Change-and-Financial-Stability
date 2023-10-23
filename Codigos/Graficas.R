@@ -70,7 +70,7 @@ if(1){
 # Parametros --------------------------------------------------------------
 bool_paper <- T # booleano que toma el valor de T si se quiere revisar el paper que vamos a escribir, F para Pagnottoni
 no.rezagos.de.desastres <- 15     #<<<--- Numero de rezagos de los desastres <w> (i.e. t0, t1, ..., tw)
-tipo.serie              <- 'cds'  #<<<--- Puede ser 'cds' o 'indices
+tipo.serie              <- 'indices'  #<<<--- Puede ser 'cds' o 'indices
 market                  <- 'PM'   #<<<--- Puede ser 'PM' o 'benchmark', pero si tenemos CDS solamente puede ser PM
 if(market == 'benchmark') retorno.mercado <- 'MSCI'
 if(market == 'PM')        retorno.mercado <- 'Promedio Movil'
@@ -84,7 +84,7 @@ if(tipo.serie == 'indices'){
                                                  'IGBVL','KLCI','COLCAP') # Nombre indices para el paper. JSX es el de Jakarta
   bdwidth <- 0.3 #<<<--- bandwidth para los graficos de densidad. Con una banda de 0.3 se suavizan los kernels para las series de indices
 }
-nivel.desagregacion <- 'tipodesastre'  # Como se quiere desagregar las graficas, por 'pais' o 'tipodesastre', ambas es 'pais.tipodesastre'
+nivel.desagregacion <- 'pais.tipodesastre'  # Como se quiere desagregar las graficas, por 'pais' o 'tipodesastre', ambas es 'pais.tipodesastre'
 
 # Creacion de una funcion vectorizada de <grep>
 vgrep <- Vectorize(grep, vectorize.args = 'pattern')
@@ -334,7 +334,7 @@ for(ventana.estimacion in ventanas.estimacion){
     # cierto tipo de desastre
     # if(0) si no se desea graficar el kernel de CAV. if(1) si se desea. Podria parametrizarse todas las flags
     cd.kernel.cav <- paste0(cd.graficos,'Kernel_CAV/')
-    if(0){
+    if(1){
       if(columna.agrupar == 'Ambas'){
         # La funcion kernel CAV grafica los kernel de la volatilidad anormal acumulada dependiendo del tipo de 
         # desastre. Ademas, guarda automaticamente los graficos

@@ -3885,7 +3885,7 @@ kernel.cav <- function(tipos.de.desastres, lista.desagregada, lista.agregada,col
     png(filename=paste0(cd.kernel.cav,tipo.serie,'_',market,'_CAV_Est_',ventana.estimacion,'_tra_',ventana.traslape,'_t',ventana.evento,'.png'),
         width = 800,height = 800)
     plot(densidades.truncadas[[1]], col=colors[1],lwd=2, type='l',
-         main = paste0('Cumulative Abnormal Volatility (CAV) Kernel relative to the disaster date. For CDS. Event window: [0,',(ventana.evento-1),']'),
+         main = paste0('Cumulative Abnormal Volatility (CAV) Kernel relative to the disaster date. Event window: [0,',(ventana.evento-1),']'),
          xlim = c(minimo.x, maximo.x), ylim = c(minimo.y, (maximo.y + 0.015*maximo.y)), 
          xlab = 'Cumulative Abnormal Return (CAV)', ylab = 'Density',
          yaxs = 'i')
