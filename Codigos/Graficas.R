@@ -139,7 +139,7 @@ if(0){
 ### =============================== Graficas de retornos anormales ==================================
 
 # <if(0)> cuando no se quiera correr el codigo de las graficas de retornos anormales. <if(1)> cuando si se desee
-if(0){
+if(1){
   # Establecer un directorio para los graficos de densidad de retornos anormales
   cd.retornos.anormales <- paste0(cd.graficos,'Dens_AR/')
   #Ya con las densidades de los retornos acumulados y de las dummies t_0, t_1, ..., t_4 podemos graficarlas
@@ -167,7 +167,8 @@ if(0){
     names.plot   <- sub("^fitsur_", "", names(dens.AR.keep))
     names.plot   <- sub("^fitcoun_", "", names(dens.AR.keep))
     names.plot   <- sub(paste0("_",step,"$"), "", names.plot)
-    grafico_densidad(dens.AR.keep, main= title, labels = sub(paste0("^fitsur_|_t0$"), "", names.plot))
+    grafico_densidad(vector = dens.AR.keep, main= title, 
+                     labels = sub(paste0("^fitsur_|_t0$"), "", names.plot))
     savePlot(filename=paste0(cd.retornos.anormales,'Densidad_',tipo.serie,'_',market,'_',nivel.desagregacion,'_',step),type='png')
   }
   

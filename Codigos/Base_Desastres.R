@@ -182,7 +182,7 @@ names(df.tipo.desastre) <- unlist(lapply(df.tipo.desastre, function(x) unique(x$
 
 df.tipo.desastre <- lapply(df.tipo.desastre, function(x){
   x <- x %>% 
-    dplyr::select(c(Start.Date, na_start, End.Date,na_end, Total.Affected)) %>% 
+    dplyr::select(c(Start.Date, na_start, End.Date,na_end, Total.Affected, Country)) %>% 
     dplyr::rename(t0 = Start.Date, na.start = na_start, end = End.Date, na.end = na_end) %>% 
     dplyr::arrange(t0)
   return(x)})
