@@ -1,3 +1,6 @@
+# El siguiente codigo busca encontrar cuales combinaciones de  pais-tipodesastre no tienen desastres en el analisis de la media, 
+# y cuales tienen solamente uno. Se hara principalmente para las ventanas de estimacion y traslape de interes, es decir 250 E - 50 T y 500 E - 50 T
+
 if(1){
   # Generar la clase ESVolatility, para poder manejar los resultados de la estimacion para la varianza
   setClass("ESVolatility",slots=list(coefficients = "numeric",goodness_of_fit = "numeric",res_estandar_estimacion="xts",
@@ -95,8 +98,8 @@ max_abnormal_returns     <- 15   #<<<--- No. dias maximos despues del evento par
 length_car_window        <- 15   #<<<--- Ventana para calcular el CAR (por ejemplo 5 significa [0,+5], donde 0 es el dia del evento)
 length_event_window      <- length_car_window + 1 # Longitud ventana de evento es 1 mas <length_car_window>
 
-ventanas.estimacion      <- c('250','375','500')   #<<<--- Puede ser 250, 375 o 500   (Importante que sea string)
-ventanas.traslape        <- c('50','100','150')   #<<<--- Puede ser 50, 100 o 150   (Importante que sea string)
+ventanas.estimacion      <- c('250','500')   #<<<--- Puede ser 250, 375 o 500   (Importante que sea string)
+ventanas.traslape        <- c('50')   #<<<--- Puede ser 50, 100 o 150   (Importante que sea string)
 table.caar              <- 0 #<<<--- booleano para indicar si las tablas se construiran mostrando el CAAR o el estadistico. 0 para estadistico, 1  para CAAR
 
 for(ventana.estimacion in ventanas.estimacion){
@@ -159,111 +162,7 @@ for(ventana.estimacion in ventanas.estimacion){
       # Combinaciones sin evento
       nombres.sin.eventos <- setdiff(posibles.combinaciones, nombres.listas)
     }
-    
-    # Se observo que generalmente, el dia del evento el retorno es positivo, pero en adelante es negativo. Falta explicar porque podria
-    # ser que el retorno en el dia del evento sea positivo,mientras que para el resto de la ventana de evento es negativo.
-    # Por lo anterior, el CAR va a ser menor si se elimina el dia del evento de la ventana de evento y solo se miran los dias posteriores
-    inicio.ventana.evento <- 1 #<<<--- indica en que dia comenzara la ventana de evento <0> si se desea que inicie el dia del desastre, 
-    # 1 si se desea el dia siguiente, 2 si se desea 2 dias despues ...
-    
-    # Graficas CAR ------------------------------------------------------------
-    for(i in seq_along(lista.separada)){
-      element <- lista.separada[[i]]
-      name    <- names(lista.separada)[i]  
-      grafico_car(element,length_estimation_window,length_event_window,inicio.ventana.evento)
-      title(name,line=0.75)
-    }
-    grafico_car(all.events.list,length_estimation_window,length_event_window,inicio.ventana.evento)
-    
-    # Wilcoxon --------------------------------------------------------------
-    # Usamos la funcion <wilcoxon.jp.test> para realizar la prueba de Wilcoxon asociada a los <CAR> 
-    # Dataframe con muchas ventanas
-    matrix.wilcoxon <- matrix(nrow=(max_abnormal_returns- inicio.ventana.evento+1),ncol=(length(lista.separada)+1))
-    for(i in seq_along(lista.separada)){
-      abnormal <- cumsum(rowMeans(purrr::map_dfc(lista.separada[[i]], 
-                                                 ~ (.x@retornos$Abnormal)[(length_estimation_window+1+inicio.ventana.evento):(max_abnormal_returns+1+length_estimation_window)])))
-      for(j in (1:(max_abnormal_returns+1-inicio.ventana.evento))){
-        # El siguiente codigo genera las tablas de Wilcoxon, presentando el CAAR y el pvalue asociado. if(0) para presentar 
-        if(table.caar) matrix.wilcoxon[j,i] <- paste(round(abnormal[j],2),
-                                      wilcoxon.jp.test(data.list = lista.separada[[i]],es.window.length = length_estimation_window,
-                                                       ev.window.length = j,ev.window.begin = inicio.ventana.evento,tail = cola)$Significancia)
-        # El siguiente codigo genera las tablas de Wilcoxon, presentando el estadistico de Wilcoxon y el pvalue asociado
-        if(!table.caar){
-          prueba <- wilcoxon.jp.test(data.list = lista.separada[[i]],es.window.length = length_estimation_window,
-                                   ev.window.length = j,ev.window.begin = inicio.ventana.evento,tail = cola)
-          matrix.wilcoxon[j,i] <- paste(prueba$Estadistico, prueba$Significancia)
-        }
-      }
-    }
-    
-    k <- length(lista.separada)+1
-    for(j in (1:(max_abnormal_returns+1-inicio.ventana.evento))){ 
-      abnormal <- cumsum(rowMeans(purrr::map_dfc(all.events.list, 
-                                                 ~ (.x@retornos$Abnormal)[(length_estimation_window+1+inicio.ventana.evento):(max_abnormal_returns+1+length_estimation_window)])))
-      # El siguiente codigo genera las tablas de Wilcoxon, presentando el CAAR y el pvalue asociado. if(0) para presentar 
-      if(table.caar) matrix.wilcoxon[j,k] <- paste(round(abnormal[j],2),
-                                    wilcoxon.jp.test(all.events.list,length_estimation_window,j,inicio.ventana.evento,tail = cola)$Significancia)
-      # El siguiente codigo genera las tablas de Wilcoxon, presentando el estadistico de Wilcoxon y el pvalue asociado
-      if(!table.caar){
-        prueba2 <-  wilcoxon.jp.test(all.events.list,length_estimation_window,j,inicio.ventana.evento,tail = cola)
-        matrix.wilcoxon[j,k] <- paste(prueba2$Estadistico, prueba2$Significancia)
-      }
-    }
-    
-    colnames(matrix.wilcoxon) <- c(names(lista.separada),'Todos')
-    Ventana                   <- 1:(max_abnormal_returns+1- inicio.ventana.evento)
-    matrix.wilcoxon           <- cbind(Ventana,matrix.wilcoxon)
-    dataframe.wilcoxon <- data.frame(matrix.wilcoxon)
-    
-    # BMP Savickas para media con GARCH ---------------------------------------
-    # Dataframe con muchas ventanas
-    matrix.bmp <- matrix(nrow=(max_abnormal_returns-inicio.ventana.evento+1),ncol=(length(lista.separada)+1))
-    for(i in seq_along(lista.separada)){
-      for(j in (1:(max_abnormal_returns+1-inicio.ventana.evento))){
-        # Se realiza el mismo procedimiento que con Wilcoxon
-        if(table.caar) {
-          matrix.bmp[j,i] <- paste(round(mean(colSums(data.frame(purrr::map(lista.separada[[i]],~coredata(.x@retornos$Abnormal[(length_estimation_window+1+inicio.ventana.evento):(length_estimation_window+j+inicio.ventana.evento)]))))),2),
-                                   bmp_savickas(lista.separada[[i]],length_estimation_window,j,inicio.ventana.evento,tail = cola)$Significancia)
-        }
-        if(!table.caar) {
-          prueba.bmp <- bmp_savickas(lista.separada[[i]],length_estimation_window,j,inicio.ventana.evento,tail = cola)
-          matrix.bmp[j,i] <- paste(round(prueba.bmp$Estadistico,2), prueba.bmp$Significancia)
-        }
-      } 
-    }
-    
-    k <- length(lista.separada)+1
-    for(j in (1:(max_abnormal_returns+1-inicio.ventana.evento))){
-      if(table.caar) {
-        matrix.bmp[j,k] <- paste(round(mean(colSums(data.frame(purrr::map(all.events.list,~coredata(.x@retornos$Abnormal[(length_estimation_window+1+inicio.ventana.evento):(length_estimation_window+j+inicio.ventana.evento)]))))),2),
-                                 bmp_savickas(all.events.list,length_estimation_window,j,inicio.ventana.evento, tail=cola)$Significancia)
-      }
-      if(!table.caar) {
-        prueba2.bmp <- bmp_savickas(all.events.list,length_estimation_window,j,inicio.ventana.evento, tail=cola)
-        matrix.bmp[j,k] <- paste(round(prueba2.bmp$Estadistico,2), prueba2.bmp$Significancia)
-      }
-    } 
-      
-    colnames(matrix.bmp) <- c(names(lista.separada),'Todos')
-    Ventana              <- 1:(max_abnormal_returns+1- inicio.ventana.evento)
-    matrix.bmp           <- cbind(Ventana,matrix.bmp)
-    dataframe.bmp <- data.frame(matrix.bmp)
-    
-    # Adicion de numero de eventos --------------------------------------------
-    # Tanto <dataframe.wilcoxon> como <dataframe.bmp> cuentan con los mismos paises y el mismo numero de desastres por cada pais
-    # Se genera un vector con el numero de desastres por cada pais y el total de desastres
-    numero.total.desastres        <- length(all.events.list)
-    names(numero.total.desastres) <- 'Todos'
-    numero.desastres              <- c(unlist(lapply(lista.separada,length)), numero.total.desastres)
-    # Se crean objetos de tipo <Tabla.media>, donde se guarda un dataframe y el numero de desastres
-    tabla.bmp      <- new('Tabla.media', dataframe = dataframe.bmp, no.eventos = numero.desastres)
-    tabla.wilcoxon <- new('Tabla.media', dataframe = dataframe.wilcoxon, no.eventos = numero.desastres)
-    
-    # Guardar las tablas de significancia. No es necesario agregar el tipo de test ya que podemos guardar ambas tablas
-    if(columna.agrupar=='Disaster.Subgroup') agrupacion <- 'tipodesastre'
-    if(columna.agrupar=='Country') agrupacion <- 'pais'
-    if(columna.agrupar == 'Ambas') agrupacion <- 'paistipodesastre'
-    save(tabla.bmp,
-         tabla.wilcoxon,file=paste0(directorio.guardar,'Tablas_',tipo.serie,'_tra',ventana.traslape,'_est',ventana.estimacion,'_',tipo.estudio,'_',regresor.mercado,'_',agrupacion,'.RData'))
+    print(paste0('Estimacion ', ventana.estimacion,'. Traslape ', ventana.traslape,' no hay desastres para: ',paste0(nombres.sin.eventos, collapse=' - ')))
+    print(paste0('Estimacion ', ventana.estimacion,'. Traslape ', ventana.traslape,' hay solamente un desastre para: ',paste0(names(lista.un.evento),collapse= ' - ')))
   }
 }
