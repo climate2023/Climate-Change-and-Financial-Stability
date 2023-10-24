@@ -25,7 +25,6 @@ source(paste0(getwd(),'/Codigos/Functions_Climate_Change.r')) # Source de las fu
 bool_paper <- T #<<<--- Parametro que indica si se carga la base de datos que utilizaremos o los retornos de Pagnottoni (2022). 
 # <T> si se desea la base de datos para el paper. <F> si los retornos de Pagnottoni
 bool_cds   <- T  #<<<--- Parametro que indice si se hara el analisis sobre los CDS (<TRUE>) y <F> si se realizara sobre los stocks
-
 promedio.movil <- T #<<<-- parametro (booleano) para que el usuario decida cual sera el retorno de mercado, <T> si es el promedio movil de 
 # de los retornos de los indices, <F> si es otra variable
 
@@ -444,6 +443,33 @@ if(0){
 # rezagos. Modelamos cada retorno siguiendo un modelo AR(p), siendo p = 0 a 20, y elegimos el modelo segun el 
 # criterio de Akaike
 
+# if(0) porque se corrige la eficiencia del codigo en la linea 474
+if(0){
+  ## Loop para obtener las matrices de rezagos para cada <indice>
+  if(!is.null(dia.inicial)){
+    for(indice in indexes){
+      var_name <- paste0("lags_",indice)
+      Lags     <- lag_function(base_retornos,indice,AR.m=20, MA.m=0, d=0, bool=TRUE, metodo="CSS",dia.inicial)
+      assign(var_name,Lags)
+    }
+  }else{
+    for(indice in indexes){
+      var_name <- paste0("lags_",indice)
+      Lags     <- lag_function(base_retornos,indice,AR.m=20, MA.m=0, d=0, bool=TRUE, metodo="CSS",dia.inicial)
+      Lags     <- Lags[complete.cases(Lags)]
+      assign(var_name,Lags)
+      # Falta reducir las bases <base_retornos>, <market.returns>,<gdp_growth_base>, <fdi_growth_base>, <mercado.retornos> 
+      # y todas las de rezagos para que tengan la misma cantidad de datos
+      # Guardar el indice mas reducido entre todas las matrices de rezagos, comparando con el indice de <market.returns>,
+      # que es la serie con el indice mas reducido hasta el momento
+      indice.mas.reducido <- min(length(index(market.returns)),length(index(base_retornos)),
+                                 length(index(fdi_growth_base)),length(index(gdp_growth_base)))
+      indice_mas_reducido <- index(tail(base_retornos,indice.mas.reducido))
+      if(length(index(Lags))<length(index(market.returns))) indice_mas_reducido <- index(Lags)
+    }
+  }
+}
+
 ## Loop para obtener las matrices de rezagos para cada <indice>
 if(!is.null(dia.inicial)){
   for(indice in indexes){
@@ -452,75 +478,103 @@ if(!is.null(dia.inicial)){
     assign(var_name,Lags)
   }
 }else{
-  for(indice in indexes){
-    var_name <- paste0("lags_",indice)
-    Lags     <- lag_function(base_retornos,indice,AR.m=20, MA.m=0, d=0, bool=TRUE, metodo="CSS",dia.inicial)
-    Lags     <- Lags[complete.cases(Lags)]
-    assign(var_name,Lags)
-    # Falta reducir las bases <base_retornos>, <market.returns>,<gdp_growth_base>, <fdi_growth_base>, <mercado.retornos> 
-    # y todas las de rezagos para que tengan la misma cantidad de datos
-    # Guardar el indice mas reducido entre todas las matrices de rezagos, comparando con el indice de <market.returns>,
-    # que es la serie con el indice mas reducido hasta el momento
-    indice.mas.reducido <- min(length(index(market.returns)),length(index(base_retornos)),
-                               length(index(fdi_growth_base)),length(index(gdp_growth_base)))
-    indice_mas_reducido <- index(tail(base_retornos,indice.mas.reducido))
-    if(length(index(Lags))<length(index(market.returns))) indice_mas_reducido <- index(Lags)
-  }
+  # Se reemplaza el ciclo for con un lapply
+  lags.database <- lapply(indexes, function(x){
+    lags.temp <- lag_function(base_retornos, x, AR.m=20, MA.m=0, d=0, bool=TRUE, metodo="CSS",dia.inicial)
+    lags.temp <- lags.temp[complete.cases(lags.temp)]
+    return(lags.temp)
+  })
+  names(lags.database) <- indexes
+  
+  # Ahora tenemos que generar el indice comun entre todas las bases de datos. Para eso, primero tenemos que comprobar 
+  # que todas tengan la misma fecha en el ultimo dato, ya que nunca se manipulo el fin de la serie
+  last.index <- as.Date(unlist(lapply(lags.database, function(x) as.character(tail(index(x),1)))))
+  if(all(last.index == last.index[1]) == F) stop('Hay mas datos en una base de rezagos.')
+  # Si no se detiene el codigo, se pasa a revisar con las demas bases que se tienen
+  flag <- identical(unique(last.index),tail(index(base_retornos),1), tail(index(market.returns),1),
+                    tail(index(fdi_growth_base),1),tail(index(gdp_growth_base),1))
+  if(flag == F) stop('Alguna base tiene mas datos al final de la serie')
+  
+  # Ya una vez comprobado que la ultima fecha es la misma para todas las bases, se reducen las bases segun aquella
+  # que tenga menos datos
+  indice.mas.reducido <- min(unlist(lapply(lags.database, function(x) length(index(x)))), length(index(market.returns)),
+                             length(index(base_retornos)),length(index(fdi_growth_base)),length(index(gdp_growth_base)))
+  # Como todas las bases tienen el mismo dato al final, se puede seleccionar el indice de <base_retornos> para los ultimos
+  # <indice.mas.reducido> datos
+  fechas.mas.reducidas <- tail(index(base_retornos), indice.mas.reducido)
 }
 
+# Por ultimo, si <dia.inicial> es NULL se reducen las bases de acuerdo con <fechas.mas.reducidas>
 if(is.null(dia.inicial)){
-  #Reducir las bases de datos segun <indice_mas_reducido>
-  Retornos             <- base_retornos[indice_mas_reducido,]
-  market.returns <- market.returns[indice_mas_reducido,]
-  #mercado.retornos     <- mercado.retornos[indice_mas_reducido,]
-  Crecimiento_PIB      <- gdp_growth_base[indice_mas_reducido,]
-  Crecimiento_FDI      <- fdi_growth_base[indice_mas_reducido,]
-  for(indice in indexes){
-    lag_base         <- get(paste0("lags_",indice))
-    lag_base_reduced <- lag_base[indice_mas_reducido,]
-    name             <- paste0("lags_",indice)
-    assign(name, lag_base_reduced)
-  }
+  Retornos        <- base_retornos[fechas.mas.reducidas,]
+  market.returns  <- market.returns[fechas.mas.reducidas,]
+  Crecimiento_PIB <- gdp_growth_base[fechas.mas.reducidas,]
+  Crecimiento_FDI <- fdi_growth_base[fechas.mas.reducidas,]
+  lags.database   <- lapply(lags.database, function(x) x[fechas.mas.reducidas,])
 }
 
-# Dummies corregidas ------------------------------------------------------
+# Dummies por pais --------------------------------------------------------
 
-# Corremos la función <create_dummies> sobre el archivo que contiene las fechas de las dummies
+# Corremos la función <dummies_por_pais> sobre el archivo que contiene las fechas de las dummies
 # El archivo excel al cual se hace referencia enseguida tiene 5 hojas: una por cada tipo de desastre (Biological, Climatological, Geophysical, Hydrological y 
 # meteorological). En cada una de las hojas tenemos cuatro columnas:
 #                  <t0>       : corresponde al dia en el que sucedio un desastre
 #                  <na.start> : dummy que toma el valor de 1 si se supuso que el dia del evento fue el primer dia del mes y 0 en otro caso
 #                  <end>      : corresponde al ultimo dia del desastre
 #                  <na.end>   : dummy que toma el valor de 1 si se supuso que el ultimo dia del evento fue el ultimo dia del mes y 0 en otro caso
+#                  <Total.Affected> : total afectados por el desastre
+#                  <Country>        : pais donde sucedio el desastre 
 if(!bool_paper){
-  dummies <- create_dummies(excel_file=paste0(Dir,"emdata_dummies_arregladas.xlsx"), 
+  dummies <- dummies_por_pais(excel_file=paste0(Dir,"emdata_dummies_arregladas.xlsx"), 
                             Retornos, no.rezagos=no.rezagos.de.desastres) 
 }else{
-  dummies <- create_dummies(excel_file=paste0(Dir,"emdata_dummies_cds.xlsx"), 
+  dummies <- dummies_por_pais(excel_file=paste0(Dir,"emdata_dummies_cds.xlsx"), 
                             Retornos, no.rezagos=no.rezagos.de.desastres) 
 }
 
-Tipos.Desastres <- dimnames(dummies)[[1]]
-# Calculo de interacciones entre D y Rmt
-names.int    = paste0('Int_D_', Tipos.Desastres)
-# <interactions> sera una matriz con el mismo numero de filas que <Retornos> y su numero de columnas es length(dimnames(<dummies>)[[1]])
-interactions = matrix( NA, nrow(Retornos), length(Tipos.Desastres), dimnames=list(as.character(index(Retornos)), names.int))
-for (tip.desast in 1:ncol(interactions))
-  interactions[,tip.desast] =  as.numeric(market.returns) * dummies[tip.desast,,'D']
+# Por construccion de la funcion <dummies>, el nombre de cada columna de <dummies> incluye el tipo de desastre,
+# seguido de underscore, luego el nombre del pais donde sucedio el desastre, seguido de underscore, y por ultimo, el dia
+# relativo a la ventana de evento, donde t0 es el dia del desastre (o D para la dummy de toda la ventana de evento )
+# Por tanto, podemos obtener los tipos de desastres usando el nombre de columnas de <dummies>
+Tipos.Desastres <- unique(unlist(purrr::map(strsplit(colnames(dummies),'_'), ~.x[1])))
+
+# Viendo la base de datos de <dummies> vemos que las variables D dependen del tipo de desastre, mientras que en la regresion
+# a estimar esta agregado, es decir solamente depende del pais, y ya no del tipo de desastre. Para poder lograrlo
+# tenemos que crear una variable dummy por cada pais, que tome el valor de 1 en todos los dias que cualquiera de las 3 variables D
+# (geophysical, hydrological y meteorological) sea 1, y 0 en otro caso
+# Primero obtenemos todas las variables que terminen en _D y creamos un dataframe solo para ellas
+colnames.D <- colnames(dummies)[grep('_D$', colnames(dummies))]
+dummies.D  <- dummies[,colnames.D]
+
+# Generamos el xts del resto de variables
+colnames.not.D <- setdiff(colnames(dummies),colnames.D)
+dummies.not.D  <- dummies[,colnames.not.D] 
+
+# Calculamos la variable D para cada pais, sin importar el tipo de desastre
+dummies.D.country <- lapply(countries, function(x){
+  dummies.temp             <- dummies.D[,grep(x, colnames(dummies.D))]
+  dummies.temp.D           <- (rowSums(dummies.temp)!=0) +0
+  dummies.temp.D           <- xts(dummies.temp.D, order.by = index(dummies.temp))
+  colnames(dummies.temp.D) <- paste0(x,'_D')
+  return(dummies.temp.D)
+})
+dummies.D.country <- do.call(merge, dummies.D.country)
+
+# Realizar la interaccion entre la variable dummy D y la variable Rmt
+dummies.interaction <- as.xts(apply(dummies.D.country, MARGIN = 2, function(x) x * as.numeric(market.returns)),
+                              order.by = index(dummies.D.country))
+colnames(dummies.interaction) <- paste0(unlist(purrr::map(str_split(colnames(dummies.interaction),'_'), ~.x[1])),'_Interaction')
+
+# Se juntan las dos bases de dummies
+dummies.final <- merge(dummies.not.D, dummies.interaction)
 
 # Base de datos con todas las variables usadas en la estimacion -----------
 
 # El siguiente codigo junta las bases de datos principales en una sola. De este modo tenemos que <base_datos> tiene el mismo numero
 # de filas que <Retornos>, y sus columnas son todas las series de indices bursatiles que se encuentran en <Retornos>, <market.returns>,
-# todas las interacciones generadas en el codigo anterior, las 5 dummies por cada tipo de desastre, las serie de crecimiento de producto interno
-# bruto y del indice de desarrollo financiero para todos los paises de <countries>
-base_datos <- merge(Retornos,market.returns, as.xts(interactions[,paste0('Int_D_',Tipos.Desastres)],order.by= index(Retornos)))
-for (desas in 1:length(Tipos.Desastres)){
-  dummies.desas           = as.xts(dummies[desas,,paste0('t',0:no.rezagos.de.desastres)], order.by= index(Retornos))
-  colnames(dummies.desas) = paste0(Tipos.Desastres[desas],'_',colnames(dummies.desas))
-  base_datos              = merge(base_datos, dummies.desas)
-}
-base_datos <- merge(base_datos, Crecimiento_PIB, Crecimiento_FDI)
+# las variables dummies, las serie de crecimiento de producto interno bruto y del indice de desarrollo financiero para todos los paises de <countries>
+base_datos <- merge(Retornos, market.returns, dummies.final, do.call(cbind, lags.database),
+                    Crecimiento_PIB, Crecimiento_FDI)
 
 # Estimacion del modelo SUR -----------------------------------------------
 
@@ -539,134 +593,27 @@ load.SUR  = 0           #<<<<-- 1 si se carga el SUR inicial, 0 si se corre y sa
 if(bool_cds){tipo.serie <- 'cds'}else{tipo.serie <- 'indices'}
 if(promedio.movil){market <- 'PM' }else{market <- 'benchmark'}
 if(!load.SUR){
-  eqsystem              = list()
-  fitted_models         = c()
-  #models_disasters_list = list()
-  coefficients_disasters_list = list()
-  resid_disasters_list  = list() 
-  var_cov_list          = list()
-  for(disaster in Tipos.Desastres){
-    for(i in 1:length(countries)){
-      var.exo                =  c('market.returns', c(paste0('Int_D_', disaster), paste0(disaster,'_t', 0:no.rezagos.de.desastres)) )
-      eqsystem[[indexes[i]]]    =  model_equation.LF(database=base_datos, countries[i], indexes[i],
-                                                     var.exo=var.exo,  var.exo.pais=c('gdp','fdi'),  Lags='lags')
-    }
-    name          = paste0("fitsur_", disaster)
-    fitted_models = c(fitted_models, name)
-    assign(name, systemfit(eqsystem, method="SUR"))
-    coefficients_disasters_list[[name]]   <- summary(get(name))$coefficients
-    resid_disasters_list[[name]]          <- resid(get(name))
-    #models_disasters_list[[name]] <- get(name)
-    var_cov_list[[name]]                  <- get(name)$coefCov
-  } 
-  # Guardar datos --------------------------------------------------------------#
-  #--- Guardado de los modelos por tipo de desastre , mas la base de retornos---#
-  saved.day = today() #<<<--- dia del <save>,  en formato yyyy-mm-dd
-  # 1. En el objeto <Resultados_Desastres_today()> se guardan elementos claves para poder graficar, incluyendo
-  # los resultados de las regresion SUR
-  save(coefficients_disasters_list, resid_disasters_list, fitted_models, Retornos, var_cov_list,
-       file=paste0('Resultados_SUR/Resultados_Desastres_',tipo.serie,'_',market,'.RData')) 
-} else load(paste0('Resultados_SUR/Resultados_Desastres_',tipo.serie,'_',market,'.RData')) #del save 1.
-
-# Segunda regresion, por paises en vez de por tipo de desastre ------------
-
-## Regresion con dummies de paises ===
-# El archivo excel que se esta cargando a continuacion tiene 104 hojas, donde cada una hace referencia a un pais analizado por Pagnottoni.
-# Cada hoja tiene 3 columnas que nos interesan:
-#         <Country>  : el nombre del pais
-#         <na_start> : dummy que toma el valor de 1 si se supuso que el dia del evento era el primero del mes y 0 en otro caso
-#         <t0>       : dia del desastre
-if(!bool_paper){
-  dummies_countries <- create_dummies(excel_file=paste0(Dir,"emdata_dummies_countries.xlsx"),Retornos, no.rezagos=no.rezagos.de.desastres)  ## Genera un array de dimensiones 104, 4828, 6
-}else{
-  dummies_countries <- create_dummies(excel_file=paste0(Dir,"dummies_countries_cds.xlsx"),Retornos, no.rezagos=no.rezagos.de.desastres)
-}
-# Las bases de datos tienen 2 columnas que interesan, <Country>, que indica el pais, y <t0> que indica el 
-# dia de los desastres en ese pais.
-# Sin embargo, con la funcion <create_dummies> se genera un array de dimensiones 104, 4828, 6; 104 hace referencia al numero de hojas del archivo
-# excel (cada hoja representa un pais), 4828 es el mismo numero de filas que <Retornos> y 6 hace referencia a las 6 dummies (t0,...,t4,D)
-
-# Eliminar espacios en los nombres del array
-dimnames(dummies_countries)[[1]] <- gsub(" ","",dimnames(dummies_countries)[[1]])
-## Generamos un vector de los nombres de los paises
-paises <- dimnames(dummies_countries)[[1]]
-
-# Calculo de interacciones entre D y Rmt (Rmt:<market.returns>)
-names.countries.int    = paste0('Int_D_', dimnames(dummies_countries)[[1]])
-interactions.countries = matrix( NA, nrow(Retornos), length(dimnames(dummies_countries)[[1]]), dimnames=list(as.character(index(Retornos)), names.countries.int))
-for (tip.desast in 1:ncol(interactions.countries))
-  interactions.countries[,tip.desast] =  as.numeric(market.returns) * dummies_countries[tip.desast,,'D']
-
-# Adicion de variables a la base de datos ---------------------------------
-
-# En el siguiente codigo se agregan las interacciones por paises a la <base_datos>, y posteriormente se agregan las dummies por cada pais.
-base_datos <- merge(base_datos, as.xts(interactions.countries,order.by= index(Retornos)))
-for (pais in 1:length(paises)){
-  dummies.pais           = as.xts(dummies_countries[pais,,paste0('t',0:no.rezagos.de.desastres)], order.by= index(Retornos))
-  colnames(dummies.pais) = paste0(paises[pais],'_',colnames(dummies.pais))
-  base_datos             = merge(base_datos, dummies.pais)
-}
-
-## REGRESION POR PAISES. Los coeficientes, errores estandar, t_Values, p_values y residuales de la estimacion fueron guardados usando el comando
-#  save() con el fin de no tener que correr siempre esta estimacion, por lo cual se usa el if(0).
-# ----COLOCAR <if(1)> SI SE DESEA ESTIMAR EL MODELO por paises ----#
-load.SURpaises = 0       #<<<--- 1 si se carga el SUR paises, 0 si se corre y salva el SUR paises 
-if(!load.SURpaises){
-  ## Regresion con las dummies por pais. Es importante resaltar que en este caso <paises> indica el pais en el que sucedio el desastre, 
-  #  mientras que <countries> indica el pais donde esta el indice (Ejemplo de <countries>: 'Brazil' que corresponde a 'Bovespa') 
-  
-  # Con el objetivo de guardar los objetos en un archivo .RData se crean las listas <resid_countries_list>, que contiene los residuales del 
-  # modelo de cada <pais>, y <coefficients_countries_list>, que contiene los coeficientes del modelo de cada <pais>. La lista <coefficients_countries_list>
-  # se creo para buscar guardar objetos que pesaran menos, si se guardara <models_countries_list> esta pesaria 13 Gb..
-  
-  fitted_models2              = c()   # inicializar un vector que guardara los nombres de los modelos
-  #models_countries_list      = list()
-  coefficients_countries_list = list() 
-  resid_countries_list        = list() 
-  var_cov_list                = list()
-  for(pais in paises){ #Loop de paises
-    eqsystem2                 = list()
-    for(i in 1:length(countries)){ #Loop de stock indexes + paises del indice
-      var.exo2                =  c('market.returns', c(paste0('Int_D_', pais), paste0(pais,'_t', 0:no.rezagos.de.desastres)))
-      eqsystem2[[indexes[i]]]    =  model_equation.LF(database=base_datos, countries[i], indexes[i], 
-                                                      var.exo=var.exo2,  var.exo.pais=c('gdp','fdi'),  Lags='lags')
-    }
-    name2          = paste0("fitcoun_", pais) # genera el nombre de cada modelo depediendo del <pais>
-    fitted_models2 = c(fitted_models2, name2)
-    assign(name2, systemfit(eqsystem2, method="SUR"))
-    #models_countries_list[[name2]] <- get(name2)
-    coefficients_countries_list[[name2]]   <- summary(get(name2))$coefficients
-    resid_countries_list[[name2]]          <- resid(get(name2))
-    var_cov_list[[name2]]                  <- get(name)$coefCov
+  # Creamos una lista para guardar el sistema de ecuaciones
+  eqsystem <- list()
+  # Tenemos una ecuacion para cada serie en <indexes>
+  for(k in seq_along(indexes)){
+    # Establecer la serie
+    serie.k <- indexes[k]
+    # Establecer el pais relacionado con la serie para obtener las variables exogenas
+    pais  <- reverse.matching(serie.k, bool.cds = bool_cds, bool.paper = bool_paper)
+    # Guardar nombres de columnas que corresponden a <serie.k>
+    variables.por.serie  <- colnames(base_datos)[grep(serie.k, colnames(base_datos))]
+    # Guardar nombres de columnas que corresponden a <pais>
+    variables.por.pais   <- colnames(base_datos)[grep(pais, colnames(base_datos))]
+    # Guardar todas las variables en un solo vector
+    variables.serie.pais <- unique(c(variables.por.serie,variables.por.pais))
+    # Excluir a <serie.k> ya que es la variable endongena
+    variables.exogenas   <- variables.serie.pais[variables.serie.pais != serie.k]
+    # Por ultimo, falta agregar el retorno de mercado
+    variables.exogenas   <- c('market.returns', variables.exogenas)
+    # Generar la formula para <serie.k>
+    eqsystem[[serie.k]]  <- as.formula(paste0(serie.k, ' ~ ' ,paste(variables.exogenas, collapse = ' + ')))
   }
-  # Guardar datos --------------------------------------------------------------#
-  saved.day = today()  #<<<--- dia del <save>, formato yyyy-mm-dd
-  # 1. En el objeto Resultados_Desastres_today() se guardan elementos claves para poder graficar, incluyendo
-  # los resultados de las dos regresiones SUR
-  save(coefficients_countries_list,Retornos, var_cov_list,
-       file=paste0('Resultados_SUR/Resultados_Desastres_Paises_',tipo.serie,'_',market,'.RData')) 
-  # 2. En el objeto Residuos_paises_today() se guardan los residuos de la segunda regresion (por pais), los cuales son muy 
-  # pesados y no se pueden cargar
-  save(resid_countries_list, file=paste0('Resultados_SUR/Residuos/Residuos_paises_',tipo.serie,'_',market,'.RData'))
-} else{
-  load(paste0('Resultados_SUR/Resultados_Desastres_Paises_',tipo.serie,'_',market,'.RData')) #del save 1. 
-  # load(paste0('Resultados_SUR/Residuos/Residuos_paises_',tipo.serie,'_',market,'.RData'))  ## del save 2. 
-  # Solo puede correrlo JP, ya que los residuos estsn en su PC y  pesan demasiado para mandarlos por github
-}
-
-if(0){
-  # Test de Wilcoxon --------------------------------------------------------
-  
-  steps <- paste('t',(0:no.rezagos.de.desastres),sep='')  # vector con los días adelante del evento, hace referencia a como termina el nombre de las dummies
-  
-  Por_tipo_desastre <- FALSE #<<<--- Variable bool. <FALSE> indica que se quiere revisar los CAR por pais donde sucedio el desastre. 
-  #      <TRUE> indica que se quiere ver por tipo de desastre
-  
-  if(Por_tipo_desastre){ 
-    name_column <- "Type_of_disaster"
-    resultado <- wilcoxon_Pagnottoni(coefficients_disasters_list,name_column,steps,indexes,Tipos.Desastres);resultado
-  }else{
-    name_column <- "Country"
-    resultado <- wilcoxon_Pagnottoni(coefficients_countries_list,name_column,steps,indexes,paises);resultado
-  }
+  estimated.sur <- systemfit(eqsystem, data = base_datos, method = 'SUR')
+  save(estimated.sur, file = paste0(getwd(), '/Resultados_SUR/Nuevo_SUR/Resultado_SUR_',tipo.serie,'_',market,'.RData'))
 }

@@ -800,6 +800,48 @@ matching <- function(pais,bool.cds,bool.paper){
 }
 #---------------------------------------------------------------------------------------#
 
+#---------------------------------- 15. reverse.matching  ------------------------------------#
+# Hacer matching entre el pais y el nombre del indice, pero el argumento es la serie, con el fin de crear el sistema de ecuaciones para el SUR
+#---------------------------------------------------------------------------------------#
+# ----Argumentos de entrada ----#
+#-- serie    : nombre de la serie
+#-- bool.cds: booleano donde T indica que se hara el matching con los nombres de las series de 
+#             CDS y F que se haran con los nombres de las series de Pagnottoni
+# ----Argumentos de salida  ----#
+#-- pais: pais respectivo a la serie
+#---------------------------------------------------------------------------------------#
+reverse.matching <- function(serie,bool.cds,bool.paper){
+  if(bool.paper & bool.cds){
+    countryByindex <- list(
+      CDSBrazil = 'Brazil', CDSChile = 'Chile',  CDSChina = 'China', CDSColombia = 'Colombia', CDSIndonesia = 'Indonesia',
+      CDSKorea = 'Korea', CDSMalaysia = 'Malaysia', CDSMexico = 'Mexico', CDSPeru = 'Peru', CDSSouthAfrica = 'SouthAfrica',
+      CDSTurkey = 'Turkey')
+  }
+  if(bool.paper &!bool.cds){
+    countryByindex <- list(
+      Bovespa = 'Brazil', S.PCLXIPSA = 'Chile',  ChinaA50 = 'China', COLCAP = 'Colombia', JSX = 'Indonesia',
+      KOSPI = 'Korea', KLCI = 'Malaysia', S.PBMVIPC = 'Mexico', IGBVL = 'Peru', SouthAfricaTop40 = 'SouthAfrica',
+      BIST100 = 'Turkey')
+  }
+  if(!bool.paper){
+    countryByindex <- list(
+      S.PASX200 = 'Australia', BEL20 ='Belgium',Bovespa = 'Brazil', S.PTSXComposite = 'Canada', S.PCLXIPSA = 'Chile',
+      OMXCopenhagen20 = 'Denmark', OMXHelsinki25 = 'Finland',CAC40 = 'France', DAX = 'Germany', HangSeng = 'HongKong',
+      Nifty50 = 'India', JakartaStockExchange = 'Indonesia', S.PBMVIPC = 'Mexico', AEX = 'Netherlands',
+      OSEBenchmark = 'Norway',WIG20 = 'Poland', MOEXRussia = 'Russia',SouthAfricaTop40 = 'SouthAfrica',
+      KOSPI = 'SouthKorea',IBEX35 = 'Spain', OMXStockholm30 = 'Sweden', SMI = 'Switzerland', SETIndex = 'Thailand',
+      BIST100 = 'Turkey', FTSE100 = 'UnitedKingdom', NASDAQComposite = 'USA', Nasdaq100 = 'USA')
+  }
+  
+  if(serie %in% names(countryByindex)) {
+    pais <- countryByindex[[serie]]
+  }else{
+    pais <- NULL
+  }
+  return(pais)
+}
+#---------------------------------------------------------------------------------------#
+
 
 #---------------------------------- 16. drop.events  ------------------------------------#
 # Filtrar una base de eventos para tener una ventana minima de estimacion y una ventana 
@@ -3921,3 +3963,140 @@ kernel.cav <- function(tipos.de.desastres, lista.desagregada, lista.agregada,col
     dev.off()
   }
 }
+
+#---------------------------------- 33. dummies_por_pais  ------------------------------------#
+# Genera las dummies t_0, t_1, t_2, t_3, t_4 y D para cada pais, diviendo por el tipo de desastre
+#---------------------------------------------------------------------------------------#
+# ----Argumentos de entrada ----#
+#-- excel_file: un archivo excel que contiene los dias correspondientes a las dummies
+#-- base.de.retornos   : serie de tiempo, se usara su indice para generar las dummies
+#-- no.rezagos : Numero de rezagos de la primera dummy (t_0) se interpretan como n dias despues del desastre
+# ----Argumentos de salida  ----#
+#-- xts_dummies: Array con las dummies de todos los tipos de desastres (o paises) de tres dominsiones, donde la primera es el tipo 
+#                de desastre (o el pais), la segunda el indice de fechas y la tercera los pasos adelante del desastre (0,...,no.rezagos) 
+#---------------------------------------------------------------------------------------#
+dummies_por_pais <- function(excel_file, base.de.retornos, no.rezagos, bool.overlap = F, overlap.window =NULL) {
+  #Lee el nombre de las hojas del archivo, cada hoja corresponde a un tipo de desastre
+  sheet_names <- excel_sheets(excel_file)
+  xts_dummies <- list()
+  
+  #Loop para todas las hojas
+  for(sheet_name in sheet_names) {
+    #lee la hoja especifica
+    current_sheet <- openxlsx::read.xlsx(excel_file, sheet = sheet_name, detectDates = TRUE)
+    current_sheet <-  current_sheet %>% 
+      dplyr::filter(between(t0, index(base.de.retornos)[1],tail(index(base.de.retornos),1)))
+    
+    # Como se quiere separar las dummies dependiendo del pais, vamos a generar tantas dataframes como paises se tenga
+    current_sheet_country <- split(current_sheet,current_sheet$Country)
+    
+    # Se realiza un procedimiento cuando <bool.overlap> == F, el cual es asignar 1 a la dummy t0 siempre que haya un
+    # desastre.
+    if(bool.overlap == F){
+      # Selecciona la columna t0 de cada archivo excel
+      dummies_t0 <- purrr::map(current_sheet_country, ~.x$t0) 
+      
+      ##Para generar las dummies, se utiliza un loop que evalua si el dia del desastre esta dentro de indice de
+      # base.de.retornos. Si el dia esta, establece 1 en la posicion de ese dia.
+      # Si no se encuentra, evalua si el dia calendario siguiente está en la base de base.de.retornos, si se encuentra establece 1
+      # en ese dia. Así sucesivamente hasta encontrar el dia transable mas cercano al dia del desastre. 
+      t_0 <- lapply(dummies_t0, function(x){
+        t_0_temp <- rep(0,nrow(base.de.retornos))
+        for(i in seq_along(x)){
+          for(j in 0:nrow(base.de.retornos)){
+            if((as.Date(x[i])+j) %in% index(base.de.retornos)){
+              index_temp <- which(index(base.de.retornos) == (as.Date(x[i])+j)) 
+              t_0_temp[index_temp] <- 1
+              break
+            }
+          }
+        }
+        return(t_0_temp)
+      })
+    }else{
+      # Cuando <bool.overlap> == T, se asignara 1 a la dummy <t_0> solamente para los eventos mas significativos
+      # de acuerdo con una ventana de traslape <overlap.window>. Se comienza seleccionando el evento mas significativo
+      # en terminos de personas afectadas. Luego, en orden de numero de afectados se van seleccionando los eventos, asegurando
+      # que no esten dentro de +-<overlap.window> de otro evento mas significativo.
+      # Tambien se va a generar una dummy <t_overlap>, donde 1 se asigne a los eventos que no estan siendo considerados en <t_0>
+      #Selecciona la columna t0 del archivo excel
+      current_sheet     <- current_sheet %>% arrange(desc(Total.Affected)) # ordenar base por orden de personas afectadas
+      # Generar el indice que corresponde con <index(base.de.retornos)> para cada desastre, si el dia no se encuentra
+      # entonces se busca el dia transable mas cercano al desastre
+      indices.des <- c()
+      for(p in 1:nrow(current_sheet)){
+        for(j in 0:nrow(base.de.retornos)){
+          if((as.Date(current_sheet[p,'t0'])+j) %in% index(base.de.retornos)){
+            indices.des[p] <- which(index(base.de.retornos) == (as.Date(current_sheet[p,'t0'])+j)) 
+            break
+          }
+        }
+      }
+      current_sheet$indices <- indices.des
+      
+      considered.events <- c(1) # en <considered.events> va a agregarse los indices de los eventos que no se traslapan.
+      ventanas.traslape <- (current_sheet[considered.events,'indices']-bool.overlap):(current_sheet[considered.events,'indices']+bool.overlap)
+      if(nrow(current_sheet > 1)) for(m in 2:nrow(current_sheet)){
+        evento.iteracion <- current_sheet[m,]
+        # <inicio.ventanas.traslape>indica para cada evento considerado el indice inicial donde no se va a considerar mas eventos
+        # Por ejemplo, si se considero un evento en el indice 4000 y la ventana de traslape es 50, en <inicio.ventanas.traslape> habra
+        # un 3950.
+        if(!(evento.iteracion$indices %in% ventanas.traslape)){
+          considered.events <- c(considered.events, m)
+          ventanas.traslape <- c(ventanas.traslape, (current_sheet[m, 'indices']-bool.overlap):(current_sheet[m, 'indices']+bool.overlap))
+        }
+      }
+      not.considered.events <- setdiff(1:nrow(current_sheet),considered.events)
+      
+      dummies.interest.t0  <- current_sheet[considered.events,c('t0','indices')]
+      dummies.overlap.t0   <- current_sheet[not.considered.events,c('t0','indices')]
+      #Se inicializa en ceros 
+      t_0 <- c(rep(0,nrow(base.de.retornos)))
+      t_0[dummies.interest.t0[,'indices']] <- 1
+      
+      # Se genera otra dummy para los eventos de traslape
+      t_0.overlap <- rep(0, nrow(base.de.retornos))
+      t_0.overlap[dummies.overlap.t0[,'indices']] <- 1
+    }
+    
+    
+    #Por otro lado, para formar las dummies t_1, t_2, t_3 y t_4 se usan rezagos de t_0, ya que en esta funcion
+    #se asume que el n-paso adelante del evento es igual al n-ésimo día hábil después de t_0.
+    #t_1 <- dplyr::lag(t_0,1)
+    #t_2 <- dplyr::lag(t_0,2)
+    #t_3 <- dplyr::lag(t_0,3)
+    #t_4 <- dplyr::lag(t_0,4)
+    
+    # La funcion dplyr::lag genera los rezagos para solamente un orden n, por ejemplo si n = 3, genera el rezago de orden 3
+    # de la serie incluida en la funcion. 
+    # Como queremos generar rezagos para varios ordenes, de 0 a <no.rezagos>, es necesario vectorizar la funcion usando <Vectorize>
+    # funcion que llamaremos <vectorized.lags>
+    vectorized.lags <- Vectorize(dplyr::lag, 'n')
+    dummies.country.xts <- lapply(names(t_0), function(country_name) {
+      x <- t_0[[country_name]]  # Extract the object x by name
+      # Usando <vectorized.lags> generamos un dataframe de rezagos para la serie x
+      df.temp <- as.data.frame(vectorized.lags(x, c(0:no.rezagos)))
+      # Ya que la funcion dplyr::lag genera valores NA para la serie rezagada, entonces cambiamos los NA por 0
+      df.temp <- df.temp %>% 
+        replace(is.na(.), 0)
+      # Por ultimo, generamos la dummy D, la cual es 0 si en el dia i tanto t_0, t_1, ..., t_<no.rezagos> son 0, y 1 en otro caso
+      df.temp$D <- (rowSums(df.temp) != 0) + 0
+      # Asignamos los nombres al dataframe
+      colnames(df.temp) <- c(paste0(sheet_name,'_',country_name,'_t', 0:no.rezagos), paste0(sheet_name,'_',country_name,'_D'))
+      # Convertimos el objeto a xts
+      df.temp <- xts(df.temp, order.by = index(base.de.retornos))
+      return(df.temp)
+    })
+    
+    # Juntar todos los objetos de <dummies.country.xts> en un solo objeto xts
+    dummies.xts <- do.call(cbind, dummies.country.xts)
+    #Crear objetos distintos para cada hoja
+    #xts_name        <- paste0(sheet_name, "_dummies_xts")
+    #xts_dummies_list[[xts_name]] <- dummies_xts
+    xts_dummies[[sheet_name]] <- dummies.xts
+  }
+  # Juntar todos los elementos de <xts_dummies> en una dataframe
+  xts.dummies.merged <- do.call(cbind, xts_dummies)
+  return(xts.dummies.merged)
+}
+#---------------------------------------------------------------------------------------#
