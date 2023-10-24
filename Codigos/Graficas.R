@@ -29,7 +29,7 @@ if(1){
 # Parametros --------------------------------------------------------------
 bool_paper <- T # booleano que toma el valor de T si se quiere revisar el paper que vamos a escribir, F para Pagnottoni
 no.rezagos.de.desastres <- 15     #<<<--- Numero de rezagos de los desastres <w> (i.e. t0, t1, ..., tw)
-tipo.serie              <- 'indices'  #<<<--- Puede ser 'cds' o 'indices
+tipo.serie              <- 'cds'  #<<<--- Puede ser 'cds' o 'indices
 market                  <- 'PM'   #<<<--- Puede ser 'PM' o 'benchmark', pero si tenemos CDS solamente puede ser PM
 if(market == 'benchmark') retorno.mercado <- 'MSCI'
 if(market == 'PM')        retorno.mercado <- 'Promedio Movil'
