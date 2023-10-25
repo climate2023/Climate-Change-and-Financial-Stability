@@ -81,7 +81,7 @@ directorio.guardar      <- paste0(directorio.saved,'Tablas/')
 # Parametros --------------------------------------------------------------
 tipo.serie              <- 'Indices'   #<<<--- Puede ser 'CDS' o 'Indices'  
 tipo.estudio            <- 'varianza' #<<<--- Puede ser de 'media' o 'varianza'
-regresor.mercado        <- 'PM'    #<<<--- Retornos de mercado 'PM' es promedio movil y 'MSCI' es el retorno MSCI Emerging Markets
+regresor.mercado        <- 'benchmark'    #<<<--- Retornos de mercado 'PM' es promedio movil y 'MSCI' es el retorno MSCI Emerging Markets
 paises.resultados       <- countries # Seleccionar los paises sobre los cuales se quiere hacer el analisis de resultados. <countries> si se desea
 # de todos los paises de los que se tiene informacion
 columna.agrupar         <- 'Ambas'  #<<<--- Columna del evento por la cual se quiere separar la lista de regresiones para las tablas/graficas
@@ -140,7 +140,7 @@ for(ventana.estimacion in ventanas.estimacion){
       # Combinaciones sin evento
       nombres.sin.eventos <- setdiff(posibles.combinaciones, nombres.listas)
     }
-    print(paste0('Estimacion ', ventana.estimacion,'. Traslape ', ventana.traslape,' no hay desastres para: ',paste0(nombres.sin.eventos, collapse=' - ')))
-    print(paste0('Estimacion ', ventana.estimacion,'. Traslape ', ventana.traslape,' hay solamente un desastre para: ',paste0(names(lista.un.evento),collapse= ' - ')))
+    print(paste0('Estimacion ', ventana.estimacion,'. Traslape ', ventana.traslape,' no hay desastres para: ',paste0(sort(nombres.sin.eventos), collapse=' - ')))
+    print(paste0('Estimacion ', ventana.estimacion,'. Traslape ', ventana.traslape,' hay solamente un desastre para: ',paste0(sort(names(lista.un.evento)),collapse= ' - ')))
   }
 }

@@ -80,11 +80,11 @@ setClass("ESmean",slots=list(retornos = "xts",error_estandar = "numeric",res_est
 # Prueba de filtro  -------------------------------------------------------
 directorio.saved        <- paste0(getwd(),'/Resultados_regresion/')
 directorio.guardar      <- paste0(directorio.saved,'Tablas/')
-tipo.serie              <- 'CDS'   #<<<--- Puede ser 'CDS' o 'Indices'  
+tipo.serie              <- 'Indices'   #<<<--- Puede ser 'CDS' o 'Indices'  
 if(tipo.serie == 'CDS')     cola <- 1
 if(tipo.serie == 'Indices') cola <- -1
 tipo.estudio            <- 'media' #<<<--- Puede ser de 'media' o 'varianza'
-regresor.mercado        <- 'PM'    #<<<--- Retornos de mercado 'PM' es promedio movil y 'benchmark' es el retorno MSCI Emerging Markets
+regresor.mercado        <- 'benchmark'    #<<<--- Retornos de mercado 'PM' es promedio movil y 'benchmark' es el retorno MSCI Emerging Markets
 tipos.desastre.eliminar <- c('Biological','Climatological') #<<<--- NULL si no se desea eliminar ningun tipo de desastre 
 paises.resultados       <- countries # Seleccionar los paises sobre los cuales se quiere hacer el analisis de resultados. <countries> si se desea
 # de todos los paises de los que se tiene informacion
@@ -162,7 +162,7 @@ for(ventana.estimacion in ventanas.estimacion){
       # Combinaciones sin evento
       nombres.sin.eventos <- setdiff(posibles.combinaciones, nombres.listas)
     }
-    print(paste0('Estimacion ', ventana.estimacion,'. Traslape ', ventana.traslape,' no hay desastres para: ',paste0(nombres.sin.eventos, collapse=' - ')))
-    print(paste0('Estimacion ', ventana.estimacion,'. Traslape ', ventana.traslape,' hay solamente un desastre para: ',paste0(names(lista.un.evento),collapse= ' - ')))
+    print(paste0('Estimacion ', ventana.estimacion,'. Traslape ', ventana.traslape,' no hay desastres para: ',paste0(sort(nombres.sin.eventos), collapse=' - ')))
+    print(paste0('Estimacion ', ventana.estimacion,'. Traslape ', ventana.traslape,' hay solamente un desastre para: ',paste0(sort(names(lista.un.evento)),collapse= ' - ')))
   }
 }
