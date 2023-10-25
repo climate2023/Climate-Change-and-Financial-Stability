@@ -29,7 +29,7 @@ if(1){
 # Parametros --------------------------------------------------------------
 bool_paper <- T # booleano que toma el valor de T si se quiere revisar el paper que vamos a escribir, F para Pagnottoni
 no.rezagos.de.desastres <- 15     #<<<--- Numero de rezagos de los desastres <w> (i.e. t0, t1, ..., tw)
-tipo.serie              <- 'cds'  #<<<--- Puede ser 'cds' o 'indices
+tipo.serie              <- 'indices'  #<<<--- Puede ser 'cds' o 'indices
 market                  <- 'PM'   #<<<--- Puede ser 'PM' o 'benchmark', pero si tenemos CDS solamente puede ser PM
 if(market == 'benchmark') retorno.mercado <- 'MSCI'
 if(market == 'PM')        retorno.mercado <- 'Promedio Movil'
@@ -139,7 +139,7 @@ if(0){
 ### =============================== Graficas de retornos anormales ==================================
 
 # <if(0)> cuando no se quiera correr el codigo de las graficas de retornos anormales. <if(1)> cuando si se desee
-if(1){
+if(0){
   # Establecer un directorio para los graficos de densidad de retornos anormales
   cd.retornos.anormales <- paste0(cd.graficos,'Dens_AR/')
   #Ya con las densidades de los retornos acumulados y de las dummies t_0, t_1, ..., t_4 podemos graficarlas
@@ -265,7 +265,7 @@ for(ventana.estimacion in ventanas.estimacion){
     names(eventos.separados) <- c(names(unlist(lapply(v.lista.separada, length))),'Todos')
     
     # if(0) si no se quiere graficar CAV relativo al evento, if(1) si se desea
-    if(0){
+    if(1){
       # Graficas CAV (separadas) ------------------------------------------------------------
       for(i in seq_along(v.lista.separada)){
         element <- v.lista.separada[[i]]
@@ -280,7 +280,7 @@ for(ventana.estimacion in ventanas.estimacion){
       # Graficas CAV (agregadas) -------------------------------------------------------------
       if(columna.agrupar == 'Disaster.Subgroup'){
         png(filename=paste0(cd.cav,'Ag/',tipo.serie,'_',market,'_CAV_Est_',ventana.estimacion,'_tra_',ventana.traslape,'.png'),
-            width = 800, height = 800 )
+            width = 600, height = 600 )
         grafico_cav_agregado(aggregated.events.list = volatility_results, disagg.events.list = v.lista.separada, 
                              es.window.length = as.numeric(ventana.estimacion), ev.window.length = vol_ev_window, 
                              serie = str_to_title(tipo.serie), rm = retorno.mercado)
