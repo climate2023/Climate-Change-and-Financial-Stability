@@ -3656,8 +3656,10 @@ grafico_cav_agregado <- function(aggregated.events.list, disagg.events.list, es.
   # Cambiar el idioma de <rm>
   rm.english <- ifelse(rm == 'Promedio Movil', 'Moving Average', rm)
   rm.english <- ifelse(serie == 'Cds', '', paste0(' with ', rm.english))
+  serie.cap  <- ifelse(serie == 'Cds', 'CDS', serie) 
+  serie.cap  <- ifelse(serie.cap == 'Indices', 'Indexes', serie.cap) 
   plot(x=names(cavs.relativos[[1]]),y=cavs.relativos[[1]],type='l',col=colors[1],lwd=3,
-       main=paste0('Cumulative Abnormal Volatility (CAV) relative to the disaster date. For ',serie, rm.english),
+       main=paste0('Cumulative Abnormal Volatility (CAV) relative to the disaster date. \nFor ',serie.cap, rm.english),
        ylab='Cumulative Abnormal Volatility (CAV)',xlab='Day relative to the disaster date',
        ylim = c(0,maximo.escalay))
   if(length(cavs.relativos)>1) for(p in 2:length(cavs.relativos)){
@@ -3685,17 +3687,29 @@ grafico_cav_agregado <- function(aggregated.events.list, disagg.events.list, es.
   # Cambiar el idioma de la leyenda, 'Todos' por 'All'
   names(cavs.relativos) <- ifelse(names(cavs.relativos)== 'Todos', 'All', names(cavs.relativos))
   
+  # legend("topleft", 
+  #        legend    = c("Under Null Hypothesis (No Volatility Effect)", paste0("Observed Volatility: ",names(cavs.relativos)),
+  #                      paste0((1 - significancia)*100,'% Percentile: ', names(cavs.relativos)),
+  #                      paste0((1 - significancia)*100,'% C.I: ', names(cavs.relativos))),
+  #        col       = c("black", colors, colors, rep(NA,length(cavs.relativos))), 
+  #        lty       = c(3,rep(1,length(cavs.relativos)),rep(2,length(cavs.relativos)),rep(NA,length(cavs.relativos))),
+  #        fill      = c(rep(NA,(1+length(cavs.relativos))),rep(NA,(length(cavs.relativos))),adjustcolor(colors, alpha.f = shading.alpha)), 
+  #        border    = c(rep(NA,(1+length(cavs.relativos))),rep(NA,(length(cavs.relativos))),colors),
+  #        pch       = c(rep(NA,(1+length(cavs.relativos))),rep(NA,(length(cavs.relativos))),rep(15,length(cavs.relativos))),
+  #        bty       ='n', 
+  #        y.intersp = 1)
+  
   legend("topleft", 
          legend    = c("Under Null Hypothesis (No Volatility Effect)", paste0("Observed Volatility: ",names(cavs.relativos)),
-                       paste0((1 - significancia)*100,'% Percentile: ', names(cavs.relativos)),
                        paste0((1 - significancia)*100,'% C.I: ', names(cavs.relativos))),
-         col       = c("black", colors, colors, rep(NA,length(cavs.relativos))), 
-         lty       = c(3,rep(1,length(cavs.relativos)),rep(2,length(cavs.relativos)),rep(NA,length(cavs.relativos))),
-         fill      = c(rep(NA,(1+length(cavs.relativos))),rep(NA,(length(cavs.relativos))),adjustcolor(colors, alpha.f = shading.alpha)), 
-         border    = c(rep(NA,(1+length(cavs.relativos))),rep(NA,(length(cavs.relativos))),colors),
-         pch       = c(rep(NA,(1+length(cavs.relativos))),rep(NA,(length(cavs.relativos))),rep(15,length(cavs.relativos))),
+         col       = c("black", colors, colors), 
+         lty       = c(3,rep(1,length(cavs.relativos)),rep(2,length(cavs.relativos))),
+         fill      = c(rep(NA,(1+length(cavs.relativos))),adjustcolor(colors, alpha.f = shading.alpha)), 
+         border    = c(rep(NA,(1+length(cavs.relativos))),colors),
+         pch       = c(rep(NA,(1+length(cavs.relativos))),rep(NA,length(cavs.relativos))),
          bty       ='n', 
          y.intersp = 1)
+  
 }
 
 # Revision de la funcion bootstrap.volatility ------------------------------
