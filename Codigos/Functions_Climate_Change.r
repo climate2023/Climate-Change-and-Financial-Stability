@@ -3600,7 +3600,7 @@ grafico_cav <- function(events.list, es.window.length,ev.window.length,serie.rm)
 # ----Argumentos de salida  ----#
 #-- NA
 #---------------------------------------------------------------------------------------#
-grafico_cav_agregado <- function(aggregated.events.list, disagg.events.list, es.window.length,ev.window.length,serie,rm, significancia = 0.05){
+grafico_cav_agregado <- function(aggregated.events.list, disagg.events.list, es.window.length,ev.window.length,serie,rm, significancia = 0.05, extra.title){
   # Detener la funcion si hay algun elemento que no tenga la clase 'ESVolatility' en <aggregated.events.list>
   if (any(!sapply(aggregated.events.list, inherits, "ESVolatility"))) stop('La lista contiene elementos que no fueron creados con la funcion estimation.event.study.')
   # Detener la funcion si dentro de cualquier elemento de <disagg.events.list> hay algun elemento que no sea "ESVolatility"
@@ -3657,9 +3657,10 @@ grafico_cav_agregado <- function(aggregated.events.list, disagg.events.list, es.
   rm.english <- ifelse(rm == 'Promedio Movil', 'Moving Average', rm)
   rm.english <- ifelse(serie == 'Cds', '', paste0(' with ', rm.english))
   serie.cap  <- ifelse(serie == 'Cds', 'CDS', serie) 
-  serie.cap  <- ifelse(serie.cap == 'Indices', 'Indexes', serie.cap) 
+  serie.cap  <- ifelse(serie.cap == 'Indices', 'Stock Indexes', serie.cap) 
   plot(x=names(cavs.relativos[[1]]),y=cavs.relativos[[1]],type='l',col=colors[1],lwd=3,
-       main=paste0('Cumulative Abnormal Volatility (CAV) relative to the disaster date. \nFor ',serie.cap, rm.english),
+       main=paste0('Cumulative Abnormal Volatility (CAV) relative to the disaster date. \nFor ',
+                   serie.cap, rm.english,'. \n',extra.title),
        ylab='Cumulative Abnormal Volatility (CAV)',xlab='Day relative to the disaster date',
        ylim = c(0,maximo.escalay))
   if(length(cavs.relativos)>1) for(p in 2:length(cavs.relativos)){
@@ -3701,10 +3702,11 @@ grafico_cav_agregado <- function(aggregated.events.list, disagg.events.list, es.
   
   legend("topleft", 
          legend    = c("Under Null Hypothesis (No Volatility Effect)", paste0("Observed Volatility: ",names(cavs.relativos)),
-                       paste0((1 - significancia)*100,'% C.I: ', names(cavs.relativos))),
+                       paste0((1 - significancia)*100,'% C.I (Under H0): ', names(cavs.relativos))),
          col       = c("black", colors, colors), 
          lty       = c(3,rep(1,length(cavs.relativos)),rep(2,length(cavs.relativos))),
-         fill      = c(rep(NA,(1+length(cavs.relativos))),adjustcolor(colors, alpha.f = shading.alpha)), 
+         fill      = c(rep(NA,(1+length(cavs.relativos))),adjustcolor(colors, alpha.f = shading.alpha)),
+         lwd       = c(1.5, rep(2, length(cavs.relativos)), rep(1, length(cavs.relativos))),
          border    = c(rep(NA,(1+length(cavs.relativos))),colors),
          pch       = c(rep(NA,(1+length(cavs.relativos))),rep(NA,length(cavs.relativos))),
          bty       ='n', 

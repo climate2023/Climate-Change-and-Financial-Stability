@@ -338,7 +338,7 @@ Se considera que no hubo una explicación suficiente para analizar los efectos d
 \frametitle{Metodologia SUR}
 El modelo a estimar es el siguiente:
 \begin{align}
-    R_{i,t} = \alpha_i + \beta_iR_{m,t} + &\beta_i^D D_t^i R_{m,t} + \sum_{e=1}^{E} \sum_{s=s_0}^{s_w} \gamma_{i,e}d_{e,t-s}^{i}+ \\ &\sum_{\tau=1}^{k}\theta_{i,\tau} R_{i,t-\tau}+\sum_{n=1}^{n_c}\phi_{i,n}\Tilde{C}_{i,t}+\varepsilon_{i,t} \nonumber
+    R_{i,t} = \alpha_i + \beta_iR_{m,t} + &\beta_i^D min {1, \sum_{e=1}^{E} \sum_{s=s_0}^{s_w} d_{e,t-s}^{i}} R_{m,t} + \sum_{e=1}^{E} \sum_{s=s_0}^{s_w} \gamma_{i,e}d_{e,t-s}^{i}+ \\ &\sum_{\tau=1}^{k}\theta_{i,\tau} R_{i,t-\tau}+\sum_{n=1}^{n_c}\phi_{i,n}\Tilde{C}_{i,t}+\varepsilon_{i,t} \nonumber
 \end{align}
 Donde:
 \begin{itemize}

@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.25 (MiKTeX 23.9 NEXT) (preloaded format=pdflatex 2023.9.20)  25 OCT 2023 11:03
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (MiKTeX 23.9 NEXT) (preloaded format=pdflatex 2023.9.20)  25 OCT 2023 11:43
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -806,34 +806,38 @@ Package pdftex.def Info: Imagenes/eventstudy.png  used on input line 196.
 
 ] [32
 
-] [33
+]
+Overfull \vbox (2.99683pt too high) detected at line 348
+ []
+
+[33
 
 ] [34
 
 ]
-<../Graficos_Paper/CAV/Ag//cds_PM_CAV_Est_500_tra_50.png, id=998, 602.25pt x 602.25pt>
+<../Graficos_Paper/CAV/Ag//cds_PM_CAV_Est_500_tra_50.png, id=998, 552.0625pt x 501.875pt>
 File: ../Graficos_Paper/CAV/Ag//cds_PM_CAV_Est_500_tra_50.png Graphic file (type png)
 <use ../Graficos_Paper/CAV/Ag//cds_PM_CAV_Est_500_tra_50.png>
 Package pdftex.def Info: ../Graficos_Paper/CAV/Ag//cds_PM_CAV_Est_500_tra_50.png  used on input line 377.
-(pdftex.def)             Requested size: 154.03183pt x 154.0266pt.
-<../Graficos_Paper/CAV/Ag//cds_PM_CAV_Est_750_tra_50.png, id=999, 602.25pt x 602.25pt>
+(pdftex.def)             Requested size: 154.03183pt x 140.02626pt.
+<../Graficos_Paper/CAV/Ag//cds_PM_CAV_Est_750_tra_50.png, id=999, 552.0625pt x 501.875pt>
 File: ../Graficos_Paper/CAV/Ag//cds_PM_CAV_Est_750_tra_50.png Graphic file (type png)
 <use ../Graficos_Paper/CAV/Ag//cds_PM_CAV_Est_750_tra_50.png>
 Package pdftex.def Info: ../Graficos_Paper/CAV/Ag//cds_PM_CAV_Est_750_tra_50.png  used on input line 377.
-(pdftex.def)             Requested size: 154.03183pt x 154.0266pt.
+(pdftex.def)             Requested size: 154.03183pt x 140.02626pt.
  [35
 
  <../Graficos_Paper/CAV/Ag//cds_PM_CAV_Est_500_tra_50.png> <../Graficos_Paper/CAV/Ag//cds_PM_CAV_Est_750_tra_50.png>]
-<../Graficos_Paper/CAV/Ag//indices_benchmark_CAV_Est_500_tra_50.png, id=1033, 602.25pt x 602.25pt>
+<../Graficos_Paper/CAV/Ag//indices_benchmark_CAV_Est_500_tra_50.png, id=1033, 552.0625pt x 501.875pt>
 File: ../Graficos_Paper/CAV/Ag//indices_benchmark_CAV_Est_500_tra_50.png Graphic file (type png)
 <use ../Graficos_Paper/CAV/Ag//indices_benchmark_CAV_Est_500_tra_50.png>
 Package pdftex.def Info: ../Graficos_Paper/CAV/Ag//indices_benchmark_CAV_Est_500_tra_50.png  used on input line 393.
-(pdftex.def)             Requested size: 154.03183pt x 154.0266pt.
-<../Graficos_Paper/CAV/Ag//indices_benchmark_CAV_Est_750_tra_50.png, id=1034, 602.25pt x 602.25pt>
+(pdftex.def)             Requested size: 154.03183pt x 140.02626pt.
+<../Graficos_Paper/CAV/Ag//indices_benchmark_CAV_Est_750_tra_50.png, id=1034, 552.0625pt x 501.875pt>
 File: ../Graficos_Paper/CAV/Ag//indices_benchmark_CAV_Est_750_tra_50.png Graphic file (type png)
 <use ../Graficos_Paper/CAV/Ag//indices_benchmark_CAV_Est_750_tra_50.png>
 Package pdftex.def Info: ../Graficos_Paper/CAV/Ag//indices_benchmark_CAV_Est_750_tra_50.png  used on input line 393.
-(pdftex.def)             Requested size: 154.03183pt x 154.0266pt.
+(pdftex.def)             Requested size: 154.03183pt x 140.02626pt.
  [36
 
  <../Graficos_Paper/CAV/Ag//indices_benchmark_CAV_Est_500_tra_50.png> <../Graficos_Paper/CAV/Ag//indices_benchmark_CAV_Est_750_tra_50.png>] [37
@@ -861,7 +865,7 @@ Here is how much of TeX's memory you used:
  1141 hyphenation exceptions out of 8191
  128i,16n,122p,836b,692s stack positions out of 10000i,1000n,20000p,200000b,200000s
 <C:/Users/jpber/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmex10.pfb><C:/Users/jpber/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cmextra/cmex9.pfb><C:/Users/jpber/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmmi10.pfb><C:/Users/jpber/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmmi6.pfb><C:/Users/jpber/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmmi8.pfb><C:/Users/jpber/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmmi9.pfb><C:/Users/jpber/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmss10.pfb><C:/Users/jpber/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmss12.pfb><C:/Users/jpber/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmss8.pfb><C:/Users/jpber/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmss9.pfb><C:/Users/jpber/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmssi10.pfb><C:/Users/jpber/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmssi8.pfb><C:/Users/jpber/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmssi9.pfb><C:/Users/jpber/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmsy10.pfb><C:/Users/jpber/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmsy6.pfb><C:/Users/jpber/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmsy8.pfb><C:/Users/jpber/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmsy9.pfb>
-Output written on Presentacion.pdf (37 pages, 491561 bytes).
+Output written on Presentacion.pdf (37 pages, 486501 bytes).
 PDF statistics:
  1189 PDF objects out of 1200 (max. 8388607)
  89 named destinations out of 1000 (max. 500000)

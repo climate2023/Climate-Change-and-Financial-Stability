@@ -1,9 +1,9 @@
 # Fdb version 4
-["pdflatex"] 1698249833 "c:/Users/jpber/OneDrive/Documents/Codigo_compartido_Melo/Climate_Change_and_Financial_Stability/Climate-Change-and-Financial-Stability/Presentacion_Paper_Tests/Presentacion.tex" "Presentacion.pdf" "Presentacion" 1698249840 0
-  "../Graficos_Paper/CAV/Ag//cds_PM_CAV_Est_500_tra_50.png" 1698248908 13737 e34269996b7db8b641d1a0bf4a2bdbe9 ""
-  "../Graficos_Paper/CAV/Ag//cds_PM_CAV_Est_750_tra_50.png" 1698248908 13135 2b4238c9bc6771c504147b5b9f4aadbd ""
-  "../Graficos_Paper/CAV/Ag//indices_benchmark_CAV_Est_500_tra_50.png" 1698248908 13522 45bcd36f88b661db7a2a967ffac362bb ""
-  "../Graficos_Paper/CAV/Ag//indices_benchmark_CAV_Est_750_tra_50.png" 1698248908 13664 1f64c9d1ba6a6d905b0711608bcdcdcc ""
+["pdflatex"] 1698252187 "c:/Users/jpber/OneDrive/Documents/Codigo_compartido_Melo/Climate_Change_and_Financial_Stability/Climate-Change-and-Financial-Stability/Presentacion_Paper_Tests/Presentacion.tex" "Presentacion.pdf" "Presentacion" 1698252197 0
+  "../Graficos_Paper/CAV/Ag//cds_PM_CAV_Est_500_tra_50.png" 1698251129 11988 10f016485c8b98558650873a065f8aca ""
+  "../Graficos_Paper/CAV/Ag//cds_PM_CAV_Est_750_tra_50.png" 1698251132 11510 4d84b9ae93f25ad099f9f7d06dc4aa1d ""
+  "../Graficos_Paper/CAV/Ag//indices_benchmark_CAV_Est_500_tra_50.png" 1698251144 12076 4c9a6d0cffff4c6f492619c3536c7b9c ""
+  "../Graficos_Paper/CAV/Ag//indices_benchmark_CAV_Est_750_tra_50.png" 1698251148 12148 4930de13b1a8869c28db54d0b5cb7f66 ""
   "C:/Users/jpber/AppData/Local/MiKTeX/fonts/map/pdftex/pdftex.map" 1698249576 82686 2381c3433487640bf26aa76a10db7eb2 ""
   "C:/Users/jpber/AppData/Local/MiKTeX/fonts/tfm/public/rsfs/rsfs10.tfm" 1694789863 688 37338d6ab346c2f1466b29e195316aa4 ""
   "C:/Users/jpber/AppData/Local/MiKTeX/fonts/tfm/public/rsfs/rsfs5.tfm" 1698249581 684 3a51bd4fd9600428d5264cf25f04bb9a ""
@@ -225,11 +225,11 @@
   "C:/Users/jpber/AppData/Local/Programs/MiKTeX/tex/latex/url/url.sty" 1388490452 12796 8edb7d69a20b857904dd0ea757c14ec9 ""
   "C:/Users/jpber/AppData/Local/Programs/MiKTeX/tex/latex/xcolor/xcolor.sty" 1656236890 56148 51a9a8571c07b9921892ae11063ae853 ""
   "Imagenes/eventstudy.png" 1698249625 1917 00baf1e6b07497ff68c1c871881715de ""
-  "Presentacion.aux" 1698249840 7608 0502379b22411a5875b504651e86f6dc "pdflatex"
-  "Presentacion.nav" 1698249840 3620 0d24747d224889f3dce48efcb712964f "pdflatex"
-  "Presentacion.out" 1698249836 0 d41d8cd98f00b204e9800998ecf8427e "pdflatex"
-  "Presentacion.tex" 1698249831 29181 ffc7c8c7ab2ba2ab4786b4180414ea7f ""
-  "c:/Users/jpber/OneDrive/Documents/Codigo_compartido_Melo/Climate_Change_and_Financial_Stability/Climate-Change-and-Financial-Stability/Presentacion_Paper_Tests/Presentacion.tex" 1698249831 29181 ffc7c8c7ab2ba2ab4786b4180414ea7f ""
+  "Presentacion.aux" 1698252196 7608 0502379b22411a5875b504651e86f6dc "pdflatex"
+  "Presentacion.nav" 1698252196 3620 0d24747d224889f3dce48efcb712964f "pdflatex"
+  "Presentacion.out" 1698252192 0 d41d8cd98f00b204e9800998ecf8427e "pdflatex"
+  "Presentacion.tex" 1698252184 29232 4c761653886c9f6bd8aa5025075e432b ""
+  "c:/Users/jpber/OneDrive/Documents/Codigo_compartido_Melo/Climate_Change_and_Financial_Stability/Climate-Change-and-Financial-Stability/Presentacion_Paper_Tests/Presentacion.tex" 1698252184 29232 4c761653886c9f6bd8aa5025075e432b ""
   (generated)
   "Presentacion.aux"
   "Presentacion.log"

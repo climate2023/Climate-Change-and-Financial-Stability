@@ -23,7 +23,7 @@ if(1){
   cd.graficos = paste0(getwd(),'/Graficos_Paper/') # Directorio para las imagenes
   Tipos.Desastres  <- c("Geophysical","Hydrological","Meteorological")  #<<<--- Tipos de desastres considerados
   paises   <- c('Brazil','Chile','China','Colombia','Indonesia','Korea','Malaysia','Mexico','Peru',
-                   'SouthAfrica','Turkey') 
+                'SouthAfrica','Turkey') 
 }
 
 # Parametros --------------------------------------------------------------
@@ -35,12 +35,12 @@ if(market == 'benchmark') retorno.mercado <- 'MSCI'
 if(market == 'PM')        retorno.mercado <- 'Promedio Movil'
 if(tipo.serie == 'cds'){
   indexes <- c('CDSBrazil','CDSChile','CDSChina','CDSColombia','CDSIndonesia','CDSKorea',
-                                      'CDSMalaysia','CDSMexico','CDSPeru','CDSSouthAfrica','CDSTurkey') #<<<--- Lista de los indices analizados.
+               'CDSMalaysia','CDSMexico','CDSPeru','CDSSouthAfrica','CDSTurkey') #<<<--- Lista de los indices analizados.
   bdwidth <- 1 #<<<--- bandwidth para los graficos de densidad. Con una banda de 1 se suavizan los kernels para las series de CDS
 }
 if(tipo.serie == 'indices'){
   indexes <- c('BIST100','Bovespa','ChinaA50','JSX','KOSPI','S.PBMVIPC','S.PCLXIPSA','SouthAfricaTop40',
-                                                 'IGBVL','KLCI','COLCAP') # Nombre indices para el paper. JSX es el de Jakarta
+               'IGBVL','KLCI','COLCAP') # Nombre indices para el paper. JSX es el de Jakarta
   bdwidth <- 0.3 #<<<--- bandwidth para los graficos de densidad. Con una banda de 0.3 se suavizan los kernels para las series de indices
 }
 nivel.desagregacion <- 'tipodesastre'  # Como se quiere desagregar las graficas, por 'pais' o 'tipodesastre', ambas es 'pais.tipodesastre'
@@ -214,7 +214,7 @@ if(0){
 setClass('Tabla.varianza', slots = list(dataframe = 'data.frame', no.eventos = 'numeric'))
 # Directorio para imagenes de CAV
 cd.cav <- paste0(cd.graficos,'CAV/')
-  
+
 # Prueba de filtro  -------------------------------------------------------
 directorio.saved        <- paste0(getwd(),'/Resultados_regresion/')
 # Parametros --------------------------------------------------------------
@@ -280,15 +280,15 @@ for(ventana.estimacion in ventanas.estimacion){
       # Graficas CAV (agregadas) -------------------------------------------------------------
       if(columna.agrupar == 'Disaster.Subgroup'){
         png(filename=paste0(cd.cav,'Ag/',tipo.serie,'_',market,'_CAV_Est_',ventana.estimacion,'_tra_',ventana.traslape,'.png'),
-            width = 600, height = 600 )
+            width = 550, height = 500 )
+        add.to.title <- paste0('Estimation window: ',ventana.estimacion,'. Overlap window: ',ventana.traslape,'. Disasters for all countries')
         grafico_cav_agregado(aggregated.events.list = volatility_results, disagg.events.list = v.lista.separada, 
                              es.window.length = as.numeric(ventana.estimacion), ev.window.length = vol_ev_window, 
-                             serie = str_to_title(tipo.serie), rm = retorno.mercado)
-        title(paste0('Estimacion window: ',ventana.estimacion,'. Overlap window: ',ventana.traslape,'. Disasters for all countries'),line=0.75)
+                             serie = str_to_title(tipo.serie), rm = retorno.mercado, extra.title = add.to.title)
         dev.off()
       }
     }
-
+    
     # Kernel CAV --------------------------------------------------------------
     # Para el kernel CAV se necesita que <columna.agrupar> sea 'Ambas', para asi poder encontrar el CAV para varios paises para
     # cierto tipo de desastre
