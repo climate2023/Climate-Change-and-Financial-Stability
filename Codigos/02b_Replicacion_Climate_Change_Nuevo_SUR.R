@@ -1,27 +1,16 @@
-if(Sys.info()["sysname"]=='Windows') Sys.setlocale("LC_TIME","English")
+##########################################################
+# Replicacion paper Climate Change and Financial Stability de Pagnottoni et al 2022, con codigo
+# para el nuevo SUR. Ahora los desastres afectan solamente al pais donde sucedió y no a los demas
+# Autores: Juan Pablo Bermudez.
+##########################################################
 
-rm(list = ls())
-if (Sys.info()["sysname"]=='Windows')  setwd('C:/Users/jpber/OneDrive/Documents/Codigo_compartido_Melo/Climate_Change_and_Financial_Stability/Climate-Change-and-Financial-Stability')
-if (Sys.info()["sysname"]!='Windows')  setwd('/Users/lumelo/archivos/Climate-Change-and-Financial-Stability/Github/Climate-Change-and-Financial-Stability')
 
-cat("\014")
-#
-# Cargar librerias --------------------------------------------------------
-require(pacman)
-p_load(tidyverse, xts, timeDate, zoo, tempdisagg, tsbox, quantmod, timeSeries, forecast, nlme, seasonal, 
-       openxlsx, urca, fable, lmtest, moments, stargazer, Hmisc, scales, vars, smoots, dynlm, systemfit,
-       ks, knitr, gridExtra, stringr, maps, mapproj, ggthemes, tmap, sf, ggsci, classInt, gnFit, rugarch,
-       kableExtra, janitor, xtable, RColorBrewer, tools, writexl, readxl, readxl, bizdays, RQuantLib, gplots,
-       datawizard)
-
-# Cargar funciones --------------------------------------------------------
-
-source(paste0(getwd(),'/Codigos/Functions_Climate_Change.r')) # Source de las funciones
+# Cargar librerias y directorios ------------------------------------------
+# Dentro de <01_Librerias_Directorios.R> se encuentra el source a las funciones
+source(paste0(getwd(),'/Codigos/01_Librerias_Directorios.R'))
 
 # Lectura de datos --------------------------------------------------------
-
 # Se genera un vector con el nombre de los paises de los cuales se tiene datos de indice bursatil
-
 bool_paper <- T #<<<--- Parametro que indica si se carga la base de datos que utilizaremos o los retornos de Pagnottoni (2022). 
 # <T> si se desea la base de datos para el paper. <F> si los retornos de Pagnottoni
 bool_cds   <- T  #<<<--- Parametro que indice si se hara el analisis sobre los CDS (<TRUE>) y <F> si se realizara sobre los stocks

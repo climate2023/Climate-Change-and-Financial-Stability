@@ -1,27 +1,14 @@
-if(Sys.info()["sysname"]=='Windows') Sys.setlocale("LC_TIME","English")
+##########################################################
+# Replicacion paper Climate Change and Financial Stability de Pagnottoni et al 2022.
+# Autores: Juan Pablo Bermudez.
+##########################################################
 
-rm(list = ls())
-if (Sys.info()["sysname"]=='Windows')  setwd('C:/Users/jpber/OneDrive/Documents/Codigo_compartido_Melo/Climate_Change_and_Financial_Stability/Climate-Change-and-Financial-Stability')
-if (Sys.info()["sysname"]!='Windows')  setwd('/Users/lumelo/archivos/Climate-Change-and-Financial-Stability/Github/Climate-Change-and-Financial-Stability')
-
-cat("\014")
-#
-# Cargar librerias --------------------------------------------------------
-require(pacman)
-p_load(tidyverse, xts, timeDate, zoo, tempdisagg, tsbox, quantmod, timeSeries, forecast, nlme, seasonal, 
-       openxlsx, urca, fable, lmtest, moments, stargazer, Hmisc, scales, vars, smoots, dynlm, systemfit,
-       ks, knitr, gridExtra, stringr, maps, mapproj, ggthemes, tmap, sf, ggsci, classInt, gnFit, rugarch,
-       kableExtra, janitor, xtable, RColorBrewer, tools, writexl, readxl, readxl, bizdays, RQuantLib, gplots,
-       datawizard)
-
-# Cargar funciones --------------------------------------------------------
-
-source(paste0(getwd(),'/Codigos/Functions_Climate_Change.r')) # Source de las funciones
+# Cargar librerias y directorios ------------------------------------------
+# Dentro de <01_Librerias_Directorios.R> se encuentra el source a las funciones
+source(paste0(getwd(),'/Codigos/01_Librerias_Directorios.R'))
 
 # Lectura de datos --------------------------------------------------------
-
 # Se genera un vector con el nombre de los paises de los cuales se tiene datos de indice bursatil
-
 bool_paper <- T #<<<--- Parametro que indica si se carga la base de datos que utilizaremos o los retornos de Pagnottoni (2022). 
 # <T> si se desea la base de datos para el paper. <F> si los retornos de Pagnottoni
 bool_cds   <- T  #<<<--- Parametro que indice si se hara el analisis sobre los CDS (<TRUE>) y <F> si se realizara sobre los stocks
@@ -535,7 +522,7 @@ base_datos <- merge(base_datos, Crecimiento_PIB, Crecimiento_FDI)
 # if(0) dado que se utilizo el comando <save> para guardar los modelos. Los elementos guardados seran <models_disasters_list> y 
 # <resid_disasters_list>, que incluyen por un lado los modelos estimados y por el otro los residuales.
 # ----COLOCAR <if(1)> SI SE DESEA ESTIMAR EL MODELO ----#
-load.SUR  = 0           #<<<<-- 1 si se carga el SUR inicial, 0 si se corre y salva el SUR inicial
+load.SUR  = 1           #<<<<-- 1 si se carga el SUR inicial, 0 si se corre y salva el SUR inicial
 if(bool_cds){tipo.serie <- 'cds'}else{tipo.serie <- 'indices'}
 if(promedio.movil){market <- 'PM' }else{market <- 'benchmark'}
 if(!load.SUR){
@@ -610,7 +597,7 @@ for (pais in 1:length(paises)){
 ## REGRESION POR PAISES. Los coeficientes, errores estandar, t_Values, p_values y residuales de la estimacion fueron guardados usando el comando
 #  save() con el fin de no tener que correr siempre esta estimacion, por lo cual se usa el if(0).
 # ----COLOCAR <if(1)> SI SE DESEA ESTIMAR EL MODELO por paises ----#
-load.SURpaises = 0       #<<<--- 1 si se carga el SUR paises, 0 si se corre y salva el SUR paises 
+load.SURpaises = 1       #<<<--- 1 si se carga el SUR paises, 0 si se corre y salva el SUR paises 
 if(!load.SURpaises){
   ## Regresion con las dummies por pais. Es importante resaltar que en este caso <paises> indica el pais en el que sucedio el desastre, 
   #  mientras que <countries> indica el pais donde esta el indice (Ejemplo de <countries>: 'Brazil' que corresponde a 'Bovespa') 
@@ -670,3 +657,7 @@ if(0){
     resultado <- wilcoxon_Pagnottoni(coefficients_countries_list,name_column,steps,indexes,paises);resultado
   }
 }
+
+# Guardar base de datos necesaria para el analisis de Tommaso (2023) --------
+base_Tommaso <- merge(base_retornos,market.returns,gdp_growth_base,fdi_growth_base)
+save(base_Tommaso, file = paste0(getwd(),'/Bases/Procesado/Base_Tommaso_',tipo.serie,'_rm_',market,'.RData'))

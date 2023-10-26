@@ -1,15 +1,61 @@
+##########################################################
+# Event_Study_Sin_Dummies se rerfiere al analisis hecho por Tommaso et al (2023), aumentado con un 
+# GARCH proveniente de ...
+# Autores: Juan Pablo Bermudez.
+##########################################################
+
+
+# Cargar librerias y directorios ------------------------------------------
+# Dentro de <01_Librerias_Directorios.R> se encuentra el source a las funciones
+source(paste0(getwd(),'/Codigos/01_Librerias_Directorios.R'))
+
+# Lectura de datos --------------------------------------------------------
+# Se genera un vector con el nombre de los paises de los cuales se tiene datos de indice bursatil
+bool_paper <- T #<<<--- Parametro que indica si se carga la base de datos que utilizaremos o los retornos de Pagnottoni (2022). 
+# <T> si se desea la base de datos para el paper. <F> si los retornos de Pagnottoni
+bool_cds   <- T  #<<<--- Parametro que indice si se hara el analisis sobre los CDS (<TRUE>) y <F> si se realizara sobre los stocks
+promedio.movil <- T #<<<-- parametro (booleano) para que el usuario decida cual sera el retorno de mercado, <T> si es el promedio movil de 
+# de los retornos de los indices, <F> si es otra variable
+
 # Para el análisis de Pagnottoni (2022) se utilizaba una base con la muestra reducida a <dia.inicial>, lo 
 # cual no se hace para Tommaso (2023), ya que necesitamos la mayor cantidad posible de datos antes de 
 # <dia.inicial>. 
 # En <base_Tommaso> estan las series que van a servir como variables dependientes, un indice de mercado,
 # y las variables exogenas del modelo.
-base_Tommaso <- merge(base_retornos,market.returns,gdp_growth_base,fdi_growth_base)
+tipo.serie <- ifelse(bool_cds,'cds','indices')
+market     <- ifelse(promedio.movil, 'PM','benchmark')
+load(paste0(getwd(),'/Bases/Procesado/Base_Tommaso_',tipo.serie,'_rm_',market,'.RData'))
+
 # Por construccion, <base_Tommaso> tiene dos columnas para Estados Unidos para gdp y fdi: <gdp_USA1>/<gdp_USA2> y <fdi_USA1>/<fdi_USA2>
 # Dejar solamente una columna para gdp y una para fdi que se llamen <gdp_USA> y <fdi_USA>
 base_Tommaso <- base_Tommaso[,!colnames(base_Tommaso) %in% c('gdp_USA2','fdi_USA2')]
 colnames(base_Tommaso) <- gsub("USA1$", "USA", colnames(base_Tommaso))
-# Base de eventos ---------------------------------------------------------
 
+# Para un correcto funcionamiento del codigo, toca colocar el nombre de indices y paises, que son los mismos del codigo
+# <02a_Replicacion_Climate_Change.R>
+if(!bool_paper){
+  indexes   <- c("S.PASX200","BEL20","Bovespa","S.PTSXComposite","S.PCLXIPSA","OMXCopenhagen20","OMXHelsinki25","CAC40",
+                 "DAX","HangSeng","Nifty50","JakartaStockExchange","S.PBMVIPC","AEX","OSEBenchmark","WIG20","MOEXRussia",
+                 "SouthAfricaTop40","KOSPI","IBEX35","OMXStockholm30","SMI","SETIndex","BIST100","FTSE100","NASDAQComposite",
+                 "Nasdaq100") #<<<--- Lista de los indices analizados
+  
+  countries <- c("Australia","Belgium", "Brazil", "Canada", "Chile", "Denmark", "Finland",
+                 "France", "Germany", "HongKong", "India", "Indonesia","Mexico","Netherlands","Norway","Poland","Russia",
+                 "SouthAfrica","SouthKorea", "Spain", "Sweden","Switzerland","Thailand","Turkey", 
+                 "UnitedKingdom","USA1","USA2") #<<<--- Lista de los paises de cada indice, con el proposito de leer los excel con los datos
+}else{
+  countries   <- c('Brazil','Chile','China','Colombia','Indonesia','Korea','Malaysia','Mexico','Peru',
+                   'SouthAfrica','Turkey') #<<<--- Lista de los paises de cada CDS/indice
+  if(bool_cds){
+    indexes  <- c('CDSBrazil','CDSChile','CDSChina','CDSColombia','CDSIndonesia','CDSKorea',
+                  'CDSMalaysia','CDSMexico','CDSPeru','CDSSouthAfrica','CDSTurkey') #<<<--- Lista de los indices analizados.
+  }else{
+    indexes         <- c('BIST100','Bovespa','ChinaA50','JSX','KOSPI','S.PBMVIPC','S.PCLXIPSA','SouthAfricaTop40',
+                         'IGBVL','KLCI','COLCAP') # Nombre indices para el paper. JSX es el de Jakarta
+  }
+}
+
+# Base de eventos ---------------------------------------------------------
 # Lectura de la base de eventos
 load(paste0(getwd(),'/Bases/EMDAT_PAPER.RData'))
 
