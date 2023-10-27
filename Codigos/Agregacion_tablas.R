@@ -1,79 +1,33 @@
-if(1){
-  # Generar la clase ESVolatility, para poder manejar los resultados de la estimacion para la varianza
-  setClass("ESVolatility",slots=list(coefficients = "numeric",goodness_of_fit = "numeric",res_estandar_estimacion="xts",
-                                     res_no_estandar_estimacion="xts",variance_forecast="xts",residuales_evento="xts",
-                                     info.evento = 'data.frame'))
-  
-  if(Sys.info()["sysname"]=='Windows') Sys.setlocale("LC_TIME","English")
-  
-  rm(list = ls())
-  if (Sys.info()["sysname"]=='Windows')  setwd('C:/Users/jpber/OneDrive/Documents/Codigo_compartido_Melo/Climate_Change_and_Financial_Stability/Climate-Change-and-Financial-Stability')
-  if (Sys.info()["sysname"]!='Windows')  setwd('/Users/lumelo/archivos/Climate-Change-and-Financial-Stability/Github/Climate-Change-and-Financial-Stability')
-  
-  cat("\014")
-  
-  # Cargar librerias --------------------------------------------------------
-  
-  library(tidyverse)
-  library(xts)
-  library(timeDate)
-  library(zoo)
-  library(tempdisagg)
-  library(tsbox)
-  library(quantmod)
-  library(timeSeries)
-  library(forecast)
-  library(nlme)
-  library(seasonal)   
-  library(openxlsx)
-  library(urca)
-  library(fable)
-  library(lmtest)
-  library(moments)
-  library(stargazer)
-  library(Hmisc)
-  library(scales)
-  library(vars)
-  library(smoots)
-  library(dynlm)
-  library(systemfit)
-  library(ks)
-  library(knitr)
-  library(gridExtra)
-  library(stringr)
-  library(maps)
-  library(mapproj)
-  library(ggthemes)
-  library(tmap)
-  library(sf)
-  library(ggsci)
-  library(classInt)
-  library(gnFit)
-  library(rugarch)
-  library(knitr)
-  library(kableExtra)
-  library(janitor) # Para manejo de tablas descriptivas
-  library(xtable)  # Para exportar tablas a latex 
-  library(RColorBrewer)
-  library(tools)
-  library(writexl)  # Para crear excel
-  library(readxl)
-  
-  # Cargar funciones --------------------------------------------------------
-  source(paste0(getwd(),'/Codigos/Functions_Climate_Change.r')) # Source de las funciones
-  
-  countries   <- c('Brazil','Chile','China','Colombia','Indonesia','Korea','Malaysia','Mexico','Peru',
-                   'SouthAfrica','Turkey') #<<<--- Lista de los paises de cada CDS/indice
-}
+
+# Generar la clase ESVolatility, para poder manejar los resultados de la estimacion para la varianza
+setClass("ESVolatility",slots=list(coefficients = "numeric",goodness_of_fit = "numeric",res_estandar_estimacion="xts",
+                                   res_no_estandar_estimacion="xts",variance_forecast="xts",residuales_evento="xts",
+                                   info.evento = 'data.frame'))
+
+# Cargar librerias y directorios ------------------------------------------
+# Dentro de <01_Librerias_Directorios.R> se encuentra el source a las funciones
+source(paste0(getwd(),'/Codigos/01_Librerias_Directorios.R'))
+
+countries   <- c('Brazil','Chile','China','Colombia','Indonesia','Korea','Malaysia','Mexico','Peru',
+                 'SouthAfrica','Turkey') #<<<--- Lista de los paises de cada CDS/indice
+
+
+# Creacion objeto tabla.media ---------------------------------------------
+# Se crea un tipo de objeto S4 para guardar la tabla de la media, y aparte el numero de eventos para cada pais
+setClass('Tabla.media', slots = list(dataframe = 'data.frame', no.eventos = 'numeric'))
+# Crear clase de objetos
+setClass("ESmean",slots=list(retornos = "xts",error_estandar = "numeric",res_estandar_estimacion="xts",
+                             res_no_estandar_estimacion="xts",variance_forecast="xts",
+                             evento='data.frame',fit='list'))
 
 # Los siguientes argumentos van a filtrar los resultados y tablas
-serie             <- 'CDS'      #<<<--- puede ser 'Indices' o 'CDS'
-tipo.estudio      <- 'varianza'     #<<<--- puede ser 'media' o 'varianza'
-regresor.mercado  <- 'PM'    #<<<--- puede ser 'PM' o 'benchmark', para CDS todavia no hay benchmark
+serie             <- 'Indices'      #<<<--- puede ser 'Indices' o 'CDS'
+tipo.estudio      <- 'media'     #<<<--- puede ser 'media' o 'varianza'
+regresor.mercado  <- 'benchmark'    #<<<--- puede ser 'PM' o 'benchmark', para CDS todavia no hay benchmark
 umbrales.evento   <- c(50,100,150)  #<<<--- puede ser 50 100 o 150
 if(tipo.estudio=='media') es.windows <- c(250,375,500) #<<<--- Para media puede ser 250, 375 o 500.
 if(tipo.estudio=='varianza') es.windows <- c(500,750,1000) #<<<--- Para media puede ser 500, 750 o 1000.
-columnas.tabla    <- 'pais' #<<<--- Las tablas de la media estan guardadas tanto por tipo de desastre como por pais
+columnas.tabla    <- 'paistipodesastre' #<<<--- Las tablas de la media estan guardadas tanto por tipo de desastre como por pais
 # <columnas.tabla> toma el valor de 'tipodesastre' o 'pais'. Tambien estan guardadas por 'ambas, en cuyo caso <columnas.tabla> toma el valor
 # de 'paistipodesastre'
 table.caar        <- 0 #<<<--- booleano para indicar si las tablas se construiran mostrando el CAAR o el estadistico. 0 para estadistico, 1  para CAAR
