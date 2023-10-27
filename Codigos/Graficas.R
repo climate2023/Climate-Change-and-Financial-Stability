@@ -7,8 +7,6 @@
 # Cargar librerias y directorios ------------------------------------------
 source(paste0(getwd(),'/Codigos/01_Librerias_Directorios.R'))
 
-# Cargar funciones --------------------------------------------------------
-source(paste0(getwd(),'/Codigos/Functions_Climate_Change.r')) # Source de las funciones
 Tipos.Desastres  <- c("Geophysical","Hydrological","Meteorological")  #<<<--- Tipos de desastres considerados
 paises   <- c('Brazil','Chile','China','Colombia','Indonesia','Korea','Malaysia','Mexico','Peru',
               'SouthAfrica','Turkey') 

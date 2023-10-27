@@ -3662,7 +3662,7 @@ grafico_cav_agregado <- function(aggregated.events.list, disagg.events.list, es.
        main=paste0('Cumulative Abnormal Volatility (CAV) relative to the disaster date. \nFor ',
                    serie.cap, rm.english,'. \n',extra.title),
        ylab='Cumulative Abnormal Volatility (CAV)',xlab='Day relative to the disaster date',
-       ylim = c(0,maximo.escalay))
+       ylim = c(0,maximo.escalay), xaxs='i', yaxs='i')
   if(length(cavs.relativos)>1) for(p in 2:length(cavs.relativos)){
     lines(x = names(cavs.relativos[[1]]), cavs.relativos[[p]],type='l',col=colors[[p]],lwd=2)
   }
@@ -3670,9 +3670,12 @@ grafico_cav_agregado <- function(aggregated.events.list, disagg.events.list, es.
   # Rellenar la zona de los intervalos de confianza
   shading.alpha = 0.15 #<<<--- parametro para hacer mas transparente las areas de IC
   for(m in seq_along(sup.intervalos.confianza)){
+    # polygon(x = c(names(cavs.relativos[[1]]), rev(names(cavs.relativos[[1]]))),
+    #         y = c(sup.intervalos.confianza[[m]], rev((0:(length(cavs.relativos[[1]])-1)))),
+    #         col = adjustcolor(colors[m], alpha.f = shading.alpha), border = F)
     polygon(x = c(names(cavs.relativos[[1]]), rev(names(cavs.relativos[[1]]))),
-            y = c(sup.intervalos.confianza[[m]], rev((0:(length(cavs.relativos[[1]])-1)))),
-            col = adjustcolor(colors[m], alpha.f = shading.alpha), border = F)
+              y = c(sup.intervalos.confianza[[m]], rep(0, length(cavs.relativos[[1]]))),
+              col = adjustcolor(colors[m], alpha.f = shading.alpha), border = F)
   }
   
   # anadir rectas del intervalo de confianza con un nivel de <significancia>
@@ -3712,7 +3715,7 @@ grafico_cav_agregado <- function(aggregated.events.list, disagg.events.list, es.
          bty       ='n', 
          y.intersp = 1)
   
-}
+  }
 
 # Revision de la funcion bootstrap.volatility ------------------------------
 bootstrap.volatility2 <- function(volatility.list,es.window.length,ev.window.length,bootstrap_vol_iterations){ 
