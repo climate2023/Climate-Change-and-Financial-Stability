@@ -1,70 +1,16 @@
-if(1){
-  # Generar la clase ESVolatility, para poder manejar los resultados de la estimacion para la varianza
-  setClass("ESVolatility",slots=list(coefficients = "numeric",goodness_of_fit = "numeric",res_estandar_estimacion="xts",
-                                     res_no_estandar_estimacion="xts",variance_forecast="xts",residuales_evento="xts",
-                                     info.evento = 'data.frame'))
-  
-  if(Sys.info()["sysname"]=='Windows') Sys.setlocale("LC_TIME","English")
-  
-  rm(list = ls())
-  if (Sys.info()["sysname"]=='Windows')  setwd('C:/Users/jpber/OneDrive/Documents/Codigo_compartido_Melo/Climate_Change_and_Financial_Stability/Climate-Change-and-Financial-Stability')
-  if (Sys.info()["sysname"]!='Windows')  setwd('/Users/lumelo/archivos/Climate-Change-and-Financial-Stability/Github/Climate-Change-and-Financial-Stability')
-  
-  cat("\014")
-  
-  # Cargar librerias --------------------------------------------------------
-  
-  library(tidyverse)
-  library(xts)
-  library(timeDate)
-  library(zoo)
-  library(tempdisagg)
-  library(tsbox)
-  library(quantmod)
-  library(timeSeries)
-  library(forecast)
-  library(nlme)
-  library(seasonal)   
-  library(openxlsx)
-  library(urca)
-  library(fable)
-  library(lmtest)
-  library(moments)
-  library(stargazer)
-  library(Hmisc)
-  library(scales)
-  library(vars)
-  library(smoots)
-  library(dynlm)
-  library(systemfit)
-  library(ks)
-  library(knitr)
-  library(gridExtra)
-  library(stringr)
-  library(maps)
-  library(mapproj)
-  library(ggthemes)
-  library(tmap)
-  library(sf)
-  library(ggsci)
-  library(classInt)
-  library(gnFit)
-  library(rugarch)
-  library(knitr)
-  library(kableExtra)
-  library(janitor) # Para manejo de tablas descriptivas
-  library(xtable)  # Para exportar tablas a latex 
-  library(RColorBrewer)
-  library(tools)
-  library(writexl)  # Para crear excel
-  library(readxl)
-  
-  # Cargar funciones --------------------------------------------------------
-  source(paste0(getwd(),'/Codigos/Functions_Climate_Change.r')) # Source de las funciones
-  
-  countries   <- c('Brazil','Chile','China','Colombia','Indonesia','Korea','Malaysia','Mexico','Peru',
-                   'SouthAfrica','Turkey') #<<<--- Lista de los paises de cada CDS/indice
-}
+
+# Generar la clase ESVolatility, para poder manejar los resultados de la estimacion para la varianza
+setClass("ESVolatility",slots=list(coefficients = "numeric",goodness_of_fit = "numeric",res_estandar_estimacion="xts",
+                                   res_no_estandar_estimacion="xts",variance_forecast="xts",residuales_evento="xts",
+                                   info.evento = 'data.frame'))
+
+# Cargar librerias y directorios ------------------------------------------
+# Dentro de <01_Librerias_Directorios.R> se encuentra el source a las funciones
+source(paste0(getwd(),'/Codigos/01_Librerias_Directorios.R'))
+
+countries   <- c('Brazil','Chile','China','Colombia','Indonesia','Korea','Malaysia','Mexico','Peru',
+                 'SouthAfrica','Turkey') #<<<--- Lista de los paises de cada CDS/indice
+
 
 # Creacion objeto tabla.media ---------------------------------------------
 # Se crea un tipo de objeto S4 para guardar la tabla de la media, y aparte el numero de eventos para cada pais
@@ -77,11 +23,11 @@ setClass("ESmean",slots=list(retornos = "xts",error_estandar = "numeric",res_est
 # Prueba de filtro  -------------------------------------------------------
 directorio.saved        <- paste0(getwd(),'/Resultados_regresion/')
 directorio.guardar      <- paste0(directorio.saved,'Tablas/')
-tipo.serie              <- 'CDS'   #<<<--- Puede ser 'CDS' o 'Indices'  
+tipo.serie              <- 'Indices'   #<<<--- Puede ser 'CDS' o 'Indices'  
 if(tipo.serie == 'CDS')     cola <- 1
 if(tipo.serie == 'Indices') cola <- -1
 tipo.estudio            <- 'media' #<<<--- Puede ser de 'media' o 'varianza'
-regresor.mercado        <- 'PM'    #<<<--- Retornos de mercado 'PM' es promedio movil y 'benchmark' es el retorno MSCI Emerging Markets
+regresor.mercado        <- 'benchmark'    #<<<--- Retornos de mercado 'PM' es promedio movil y 'benchmark' es el retorno MSCI Emerging Markets
 tipos.desastre.eliminar <- c('Biological','Climatological') #<<<--- NULL si no se desea eliminar ningun tipo de desastre 
 paises.resultados       <- countries # Seleccionar los paises sobre los cuales se quiere hacer el analisis de resultados. <countries> si se desea
 # de todos los paises de los que se tiene informacion

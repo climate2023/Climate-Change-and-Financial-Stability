@@ -3276,7 +3276,7 @@ bmp_savickas = function(data.list,es.window.length,ev.window.length,ev.window.be
   # El forecast de la varianza se encuentra en <@variance_forecast>
   # Generar el termino ScT que se encuentra en la pagina 1470 de Demirer(2010)
   retornos.anormales     <- data.frame(purrr::map(data.list,~coredata(.x@retornos$Abnormal[(es.window.length+1+ev.window.begin):(es.window.length+ev.window.length+ev.window.begin)])))
-  var.condicional.evento <- data.frame(purrr::map(data.list,~coredata(.x@variance_forecast)[(1+ev.window.begin):ev.window.length+ev.window.begin]))
+  var.condicional.evento <- data.frame(purrr::map(data.list,~coredata(.x@variance_forecast)[(1+ev.window.begin):(ev.window.length+ev.window.begin)]))
   # ScT es un vector de longitud <length(data.list)>
   ScT                    <- as.numeric(colMeans(retornos.anormales)/sqrt(colMeans(var.condicional.evento)))
   
