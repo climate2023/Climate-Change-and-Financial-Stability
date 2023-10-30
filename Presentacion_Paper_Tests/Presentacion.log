@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.25 (MiKTeX 23.9 NEXT) (preloaded format=pdflatex 2023.9.20)  26 OCT 2023 23:23
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (MiKTeX 23.9 NEXT) (preloaded format=pdflatex 2023.9.20)  29 OCT 2023 23:13
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -570,33 +570,54 @@ Package caption Info: New subtype `subtable' on input line 238.
 ) (C:\Users\jpber\AppData\Local\Programs\MiKTeX\tex/latex/jknappen\mathrsfs.sty
 Package: mathrsfs 1996/01/01 Math RSFS package v1.0 (jk)
 \symrsfs=\mathgroup6
+) (C:\Users\jpber\AppData\Local\Programs\MiKTeX\tex/latex/multirow\multirow.sty
+Package: multirow 2021/03/15 v2.8 Span multiple rows of a table
+\multirow@colwidth=\skip65
+\multirow@cntb=\count338
+\multirow@dima=\skip66
+\bigstrutjot=\dimen302
+) (C:\Users\jpber\AppData\Local\Programs\MiKTeX\tex/latex/colortbl\colortbl.sty
+Package: colortbl 2022/06/20 v1.0f Color table columns (DPC)
+ (C:\Users\jpber\AppData\Local\Programs\MiKTeX\tex/latex/tools\array.sty
+Package: array 2022/09/04 v2.5g Tabular extension package (FMi)
+\col@sep=\dimen303
+\ar@mcellbox=\box76
+\extrarowheight=\dimen304
+\NC@list=\toks47
+\extratabsurround=\skip67
+\backup@length=\skip68
+\ar@cellbox=\box77
 )
-\c@saveenumi=\count338
+\everycr=\toks48
+\minrowclearance=\skip69
+\rownum=\count339
+)
+\c@saveenumi=\count340
  (C:\Users\jpber\AppData\Local\Programs\MiKTeX\tex/latex/beamer\beamerthemeCambridgeUS.sty (C:\Users\jpber\AppData\Local\Programs\MiKTeX\tex/latex/beamer\beamerinnerthemerounded.sty) (C:\Users\jpber\AppData\Local\Programs\MiKTeX\tex/latex/beamer\beamerouterthemeinfolines.sty) (C:\Users\jpber\AppData\Local\Programs\MiKTeX\tex/latex/beamer\beamercolorthemebeaver.sty)) (C:\Users\jpber\AppData\Local\Programs\MiKTeX\tex/latex/l3backend\l3backend-pdftex.def
 File: l3backend-pdftex.def 2023-03-30 L3 backend support: PDF output (pdfTeX)
-\l__color_backend_stack_int=\count339
-\l__pdf_internal_box=\box76
+\l__color_backend_stack_int=\count341
+\l__pdf_internal_box=\box78
 ) (Presentacion.aux)
 \openout1 = `Presentacion.aux'.
 
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 47.
-LaTeX Font Info:    ... okay on input line 47.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 47.
-LaTeX Font Info:    ... okay on input line 47.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 47.
-LaTeX Font Info:    ... okay on input line 47.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 47.
-LaTeX Font Info:    ... okay on input line 47.
-LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 47.
-LaTeX Font Info:    ... okay on input line 47.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 47.
-LaTeX Font Info:    ... okay on input line 47.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 47.
-LaTeX Font Info:    ... okay on input line 47.
-LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 47.
-LaTeX Font Info:    ... okay on input line 47.
-LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 47.
-LaTeX Font Info:    ... okay on input line 47.
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 53.
+LaTeX Font Info:    ... okay on input line 53.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 53.
+LaTeX Font Info:    ... okay on input line 53.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 53.
+LaTeX Font Info:    ... okay on input line 53.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 53.
+LaTeX Font Info:    ... okay on input line 53.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 53.
+LaTeX Font Info:    ... okay on input line 53.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 53.
+LaTeX Font Info:    ... okay on input line 53.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 53.
+LaTeX Font Info:    ... okay on input line 53.
+LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 53.
+LaTeX Font Info:    ... okay on input line 53.
+LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 53.
+LaTeX Font Info:    ... okay on input line 53.
 
 *geometry* driver: auto-detecting
 *geometry* detected driver: pdftex
@@ -634,77 +655,77 @@ LaTeX Font Info:    ... okay on input line 47.
 
 (C:\Users\jpber\AppData\Local\Programs\MiKTeX\tex/context/base/mkii\supp-pdf.mkii
 [Loading MPS to PDF converter (version 2006.09.02).]
-\scratchcounter=\count340
-\scratchdimen=\dimen302
-\scratchbox=\box77
-\nofMPsegments=\count341
-\nofMParguments=\count342
-\everyMPshowfont=\toks47
-\MPscratchCnt=\count343
-\MPscratchDim=\dimen303
-\MPnumerator=\count344
-\makeMPintoPDFobject=\count345
-\everyMPtoPDFconversion=\toks48
+\scratchcounter=\count342
+\scratchdimen=\dimen305
+\scratchbox=\box79
+\nofMPsegments=\count343
+\nofMParguments=\count344
+\everyMPshowfont=\toks49
+\MPscratchCnt=\count345
+\MPscratchDim=\dimen306
+\MPnumerator=\count346
+\makeMPintoPDFobject=\count347
+\everyMPtoPDFconversion=\toks50
 ) (C:\Users\jpber\AppData\Local\Programs\MiKTeX\tex/latex/epstopdf-pkg\epstopdf-base.sty
 Package: epstopdf-base 2020-01-24 v2.11 Base part for package epstopdf
 Package epstopdf-base Info: Redefining graphics rule for `.eps' on input line 485.
  (C:\Users\jpber\AppData\Local\Programs\MiKTeX\tex/latex/00miktex\epstopdf-sys.cfg
 File: epstopdf-sys.cfg 2021/03/18 v2.0 Configuration of epstopdf for MiKTeX
 ))
-Package hyperref Info: Link coloring OFF on input line 47.
+Package hyperref Info: Link coloring OFF on input line 53.
  (Presentacion.out) (Presentacion.out)
 \@outlinefile=\write5
 \openout5 = `Presentacion.out'.
 
 LaTeX Font Info:    Overwriting symbol font `operators' in version `normal'
-(Font)                  OT1/cmr/m/n --> OT1/cmss/m/n on input line 47.
+(Font)                  OT1/cmr/m/n --> OT1/cmss/m/n on input line 53.
 LaTeX Font Info:    Overwriting symbol font `operators' in version `bold'
-(Font)                  OT1/cmr/bx/n --> OT1/cmss/b/n on input line 47.
+(Font)                  OT1/cmr/bx/n --> OT1/cmss/b/n on input line 53.
 \symnumbers=\mathgroup7
 \sympureletters=\mathgroup8
 LaTeX Font Info:    Overwriting math alphabet `\mathrm' in version `normal'
-(Font)                  OT1/cmss/m/n --> OT1/cmr/m/n on input line 47.
-LaTeX Font Info:    Redeclaring math alphabet \mathbf on input line 47.
+(Font)                  OT1/cmss/m/n --> OT1/cmr/m/n on input line 53.
+LaTeX Font Info:    Redeclaring math alphabet \mathbf on input line 53.
 LaTeX Font Info:    Overwriting math alphabet `\mathbf' in version `normal'
-(Font)                  OT1/cmr/bx/n --> OT1/cmss/b/n on input line 47.
+(Font)                  OT1/cmr/bx/n --> OT1/cmss/b/n on input line 53.
 LaTeX Font Info:    Overwriting math alphabet `\mathbf' in version `bold'
-(Font)                  OT1/cmr/bx/n --> OT1/cmss/b/n on input line 47.
-LaTeX Font Info:    Redeclaring math alphabet \mathsf on input line 47.
+(Font)                  OT1/cmr/bx/n --> OT1/cmss/b/n on input line 53.
+LaTeX Font Info:    Redeclaring math alphabet \mathsf on input line 53.
 LaTeX Font Info:    Overwriting math alphabet `\mathsf' in version `normal'
-(Font)                  OT1/cmss/m/n --> OT1/cmss/m/n on input line 47.
+(Font)                  OT1/cmss/m/n --> OT1/cmss/m/n on input line 53.
 LaTeX Font Info:    Overwriting math alphabet `\mathsf' in version `bold'
-(Font)                  OT1/cmss/bx/n --> OT1/cmss/m/n on input line 47.
-LaTeX Font Info:    Redeclaring math alphabet \mathit on input line 47.
+(Font)                  OT1/cmss/bx/n --> OT1/cmss/m/n on input line 53.
+LaTeX Font Info:    Redeclaring math alphabet \mathit on input line 53.
 LaTeX Font Info:    Overwriting math alphabet `\mathit' in version `normal'
-(Font)                  OT1/cmr/m/it --> OT1/cmss/m/it on input line 47.
+(Font)                  OT1/cmr/m/it --> OT1/cmss/m/it on input line 53.
 LaTeX Font Info:    Overwriting math alphabet `\mathit' in version `bold'
-(Font)                  OT1/cmr/bx/it --> OT1/cmss/m/it on input line 47.
-LaTeX Font Info:    Redeclaring math alphabet \mathtt on input line 47.
+(Font)                  OT1/cmr/bx/it --> OT1/cmss/m/it on input line 53.
+LaTeX Font Info:    Redeclaring math alphabet \mathtt on input line 53.
 LaTeX Font Info:    Overwriting math alphabet `\mathtt' in version `normal'
-(Font)                  OT1/cmtt/m/n --> OT1/cmtt/m/n on input line 47.
+(Font)                  OT1/cmtt/m/n --> OT1/cmtt/m/n on input line 53.
 LaTeX Font Info:    Overwriting math alphabet `\mathtt' in version `bold'
-(Font)                  OT1/cmtt/m/n --> OT1/cmtt/m/n on input line 47.
+(Font)                  OT1/cmtt/m/n --> OT1/cmtt/m/n on input line 53.
 LaTeX Font Info:    Overwriting symbol font `numbers' in version `bold'
-(Font)                  OT1/cmss/m/n --> OT1/cmss/b/n on input line 47.
+(Font)                  OT1/cmss/m/n --> OT1/cmss/b/n on input line 53.
 LaTeX Font Info:    Overwriting symbol font `pureletters' in version `bold'
-(Font)                  OT1/cmss/m/it --> OT1/cmss/b/it on input line 47.
+(Font)                  OT1/cmss/m/it --> OT1/cmss/b/it on input line 53.
 LaTeX Font Info:    Overwriting math alphabet `\mathrm' in version `bold'
-(Font)                  OT1/cmss/b/n --> OT1/cmr/b/n on input line 47.
+(Font)                  OT1/cmss/b/n --> OT1/cmr/b/n on input line 53.
 LaTeX Font Info:    Overwriting math alphabet `\mathbf' in version `bold'
-(Font)                  OT1/cmss/b/n --> OT1/cmss/b/n on input line 47.
+(Font)                  OT1/cmss/b/n --> OT1/cmss/b/n on input line 53.
 LaTeX Font Info:    Overwriting math alphabet `\mathsf' in version `bold'
-(Font)                  OT1/cmss/m/n --> OT1/cmss/b/n on input line 47.
+(Font)                  OT1/cmss/m/n --> OT1/cmss/b/n on input line 53.
 LaTeX Font Info:    Overwriting math alphabet `\mathit' in version `bold'
-(Font)                  OT1/cmss/m/it --> OT1/cmss/b/it on input line 47.
+(Font)                  OT1/cmss/m/it --> OT1/cmss/b/it on input line 53.
 LaTeX Font Info:    Overwriting math alphabet `\mathtt' in version `bold'
-(Font)                  OT1/cmtt/m/n --> OT1/cmtt/b/n on input line 47.
-LaTeX Font Info:    Redeclaring symbol font `pureletters' on input line 47.
+(Font)                  OT1/cmtt/m/n --> OT1/cmtt/b/n on input line 53.
+LaTeX Font Info:    Redeclaring symbol font `pureletters' on input line 53.
 LaTeX Font Info:    Overwriting symbol font `pureletters' in version `normal'
-(Font)                  OT1/cmss/m/it --> OT1/mathkerncmss/m/sl on input line 47.
+(Font)                  OT1/cmss/m/it --> OT1/mathkerncmss/m/sl on input line 53.
 LaTeX Font Info:    Overwriting symbol font `pureletters' in version `bold'
-(Font)                  OT1/cmss/b/it --> OT1/mathkerncmss/m/sl on input line 47.
+(Font)                  OT1/cmss/b/it --> OT1/mathkerncmss/m/sl on input line 53.
 LaTeX Font Info:    Overwriting symbol font `pureletters' in version `bold'
-(Font)                  OT1/mathkerncmss/m/sl --> OT1/mathkerncmss/bx/sl on input line 47.
+(Font)                  OT1/mathkerncmss/m/sl --> OT1/mathkerncmss/bx/sl on input line 53.
  (C:\Users\jpber\AppData\Local\Programs\MiKTeX\tex/latex/translator\translator-basic-dictionary-English.dict
 Dictionary: translator-basic-dictionary, Language: English 
 ) (C:\Users\jpber\AppData\Local\Programs\MiKTeX\tex/latex/translator\translator-bibliography-dictionary-English.dict
@@ -725,19 +746,19 @@ Package caption Info: End \AtBeginDocument code.
 {C:/Users/jpber/AppData/Local/MiKTeX/fonts/map/pdftex/pdftex.map}] [2
 
 ]
-LaTeX Font Info:    Trying to load font information for U+msa on input line 73.
+LaTeX Font Info:    Trying to load font information for U+msa on input line 79.
  (C:\Users\jpber\AppData\Local\Programs\MiKTeX\tex/latex/amsfonts\umsa.fd
 File: umsa.fd 2013/01/14 v3.01 AMS symbols A
 )
-LaTeX Font Info:    Trying to load font information for U+msb on input line 73.
+LaTeX Font Info:    Trying to load font information for U+msb on input line 79.
  (C:\Users\jpber\AppData\Local\Programs\MiKTeX\tex/latex/amsfonts\umsb.fd
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 )
-LaTeX Font Info:    Trying to load font information for U+rsfs on input line 73.
+LaTeX Font Info:    Trying to load font information for U+rsfs on input line 79.
  (C:\Users\jpber\AppData\Local\Programs\MiKTeX\tex/latex/jknappen\ursfs.fd
 File: ursfs.fd 1998/03/24 rsfs font definition file (jk)
 )
-LaTeX Font Info:    Trying to load font information for OT1+mathkerncmss on input line 73.
+LaTeX Font Info:    Trying to load font information for OT1+mathkerncmss on input line 79.
  (C:\Users\jpber\AppData\Local\Programs\MiKTeX\tex/latex/sansmathaccent\ot1mathkerncmss.fd
 File: ot1mathkerncmss.fd 2020/01/31 Fontinst v1.933 font definitions for OT1/mathkerncmss.
 ) [3
@@ -774,7 +795,7 @@ File: ot1mathkerncmss.fd 2020/01/31 Fontinst v1.933 font definitions for OT1/mat
 <Imagenes/eventstudy.png, id=499, 523.20468pt x 67.75313pt>
 File: Imagenes/eventstudy.png Graphic file (type png)
 <use Imagenes/eventstudy.png>
-Package pdftex.def Info: Imagenes/eventstudy.png  used on input line 196.
+Package pdftex.def Info: Imagenes/eventstudy.png  used on input line 202.
 (pdftex.def)             Requested size: 523.2034pt x 67.75294pt.
  [18
 
@@ -804,45 +825,93 @@ Package pdftex.def Info: Imagenes/eventstudy.png  used on input line 196.
 
 ] [31
 
-] [32
+]
+<../Graficos_Paper/CAV/Ag/cds_PM_CAV_Est_500_tra_50.png, id=917, 552.0625pt x 501.875pt>
+File: ../Graficos_Paper/CAV/Ag/cds_PM_CAV_Est_500_tra_50.png Graphic file (type png)
+<use ../Graficos_Paper/CAV/Ag/cds_PM_CAV_Est_500_tra_50.png>
+Package pdftex.def Info: ../Graficos_Paper/CAV/Ag/cds_PM_CAV_Est_500_tra_50.png  used on input line 353.
+(pdftex.def)             Requested size: 154.03183pt x 140.02626pt.
+<../Graficos_Paper/CAV/Ag/cds_PM_CAV_Est_750_tra_50.png, id=918, 552.0625pt x 501.875pt>
+File: ../Graficos_Paper/CAV/Ag/cds_PM_CAV_Est_750_tra_50.png Graphic file (type png)
+<use ../Graficos_Paper/CAV/Ag/cds_PM_CAV_Est_750_tra_50.png>
+Package pdftex.def Info: ../Graficos_Paper/CAV/Ag/cds_PM_CAV_Est_750_tra_50.png  used on input line 353.
+(pdftex.def)             Requested size: 154.03183pt x 140.02626pt.
+ [32
+
+ <../Graficos_Paper/CAV/Ag/cds_PM_CAV_Est_500_tra_50.png> <../Graficos_Paper/CAV/Ag/cds_PM_CAV_Est_750_tra_50.png>]
+<../Graficos_Paper/CAV/Ag/indices_benchmark_CAV_Est_500_tra_50.png, id=952, 552.0625pt x 501.875pt>
+File: ../Graficos_Paper/CAV/Ag/indices_benchmark_CAV_Est_500_tra_50.png Graphic file (type png)
+<use ../Graficos_Paper/CAV/Ag/indices_benchmark_CAV_Est_500_tra_50.png>
+Package pdftex.def Info: ../Graficos_Paper/CAV/Ag/indices_benchmark_CAV_Est_500_tra_50.png  used on input line 369.
+(pdftex.def)             Requested size: 154.03183pt x 140.02626pt.
+<../Graficos_Paper/CAV/Ag/indices_benchmark_CAV_Est_750_tra_50.png, id=953, 552.0625pt x 501.875pt>
+File: ../Graficos_Paper/CAV/Ag/indices_benchmark_CAV_Est_750_tra_50.png Graphic file (type png)
+<use ../Graficos_Paper/CAV/Ag/indices_benchmark_CAV_Est_750_tra_50.png>
+Package pdftex.def Info: ../Graficos_Paper/CAV/Ag/indices_benchmark_CAV_Est_750_tra_50.png  used on input line 369.
+(pdftex.def)             Requested size: 154.03183pt x 140.02626pt.
+ [33
+
+ <../Graficos_Paper/CAV/Ag/indices_benchmark_CAV_Est_500_tra_50.png> <../Graficos_Paper/CAV/Ag/indices_benchmark_CAV_Est_750_tra_50.png>] [34
+
+] [35
 
 ]
-Overfull \vbox (2.99683pt too high) detected at line 348
- []
-
-[33
-
-] [34
-
-]
-<../Graficos_Paper/CAV/Ag//cds_PM_CAV_Est_500_tra_50.png, id=998, 552.0625pt x 501.875pt>
-File: ../Graficos_Paper/CAV/Ag//cds_PM_CAV_Est_500_tra_50.png Graphic file (type png)
-<use ../Graficos_Paper/CAV/Ag//cds_PM_CAV_Est_500_tra_50.png>
-Package pdftex.def Info: ../Graficos_Paper/CAV/Ag//cds_PM_CAV_Est_500_tra_50.png  used on input line 377.
-(pdftex.def)             Requested size: 154.03183pt x 140.02626pt.
-<../Graficos_Paper/CAV/Ag//cds_PM_CAV_Est_750_tra_50.png, id=999, 552.0625pt x 501.875pt>
-File: ../Graficos_Paper/CAV/Ag//cds_PM_CAV_Est_750_tra_50.png Graphic file (type png)
-<use ../Graficos_Paper/CAV/Ag//cds_PM_CAV_Est_750_tra_50.png>
-Package pdftex.def Info: ../Graficos_Paper/CAV/Ag//cds_PM_CAV_Est_750_tra_50.png  used on input line 377.
-(pdftex.def)             Requested size: 154.03183pt x 140.02626pt.
- [35
-
- <../Graficos_Paper/CAV/Ag//cds_PM_CAV_Est_500_tra_50.png> <../Graficos_Paper/CAV/Ag//cds_PM_CAV_Est_750_tra_50.png>]
-<../Graficos_Paper/CAV/Ag//indices_benchmark_CAV_Est_500_tra_50.png, id=1033, 552.0625pt x 501.875pt>
-File: ../Graficos_Paper/CAV/Ag//indices_benchmark_CAV_Est_500_tra_50.png Graphic file (type png)
-<use ../Graficos_Paper/CAV/Ag//indices_benchmark_CAV_Est_500_tra_50.png>
-Package pdftex.def Info: ../Graficos_Paper/CAV/Ag//indices_benchmark_CAV_Est_500_tra_50.png  used on input line 393.
-(pdftex.def)             Requested size: 154.03183pt x 140.02626pt.
-<../Graficos_Paper/CAV/Ag//indices_benchmark_CAV_Est_750_tra_50.png, id=1034, 552.0625pt x 501.875pt>
-File: ../Graficos_Paper/CAV/Ag//indices_benchmark_CAV_Est_750_tra_50.png Graphic file (type png)
-<use ../Graficos_Paper/CAV/Ag//indices_benchmark_CAV_Est_750_tra_50.png>
-Package pdftex.def Info: ../Graficos_Paper/CAV/Ag//indices_benchmark_CAV_Est_750_tra_50.png  used on input line 393.
-(pdftex.def)             Requested size: 154.03183pt x 140.02626pt.
+<../Graficos_Paper/Tablas/Desastre_Media.png, id=1041, 980.91469pt x 254.45062pt>
+File: ../Graficos_Paper/Tablas/Desastre_Media.png Graphic file (type png)
+<use ../Graficos_Paper/Tablas/Desastre_Media.png>
+Package pdftex.def Info: ../Graficos_Paper/Tablas/Desastre_Media.png  used on input line 393.
+(pdftex.def)             Requested size: 342.2953pt x 88.79114pt.
  [36
 
- <../Graficos_Paper/CAV/Ag//indices_benchmark_CAV_Est_500_tra_50.png> <../Graficos_Paper/CAV/Ag//indices_benchmark_CAV_Est_750_tra_50.png>] [37
+ <../Graficos_Paper/Tablas/Desastre_Media.png>]
+<../Graficos_Paper/Tablas/Media_CDS.png, id=1070, 1277.52281pt x 571.38469pt>
+File: ../Graficos_Paper/Tablas/Media_CDS.png Graphic file (type png)
+<use ../Graficos_Paper/Tablas/Media_CDS.png>
+Package pdftex.def Info: ../Graficos_Paper/Tablas/Media_CDS.png  used on input line 400.
+(pdftex.def)             Requested size: 342.2953pt x 153.0902pt.
+ [37
 
-]
+ <../Graficos_Paper/Tablas/Media_CDS.png>]
+<../Graficos_Paper/Tablas/Media_Stocks.png, id=1100, 1277.52281pt x 572.1375pt>
+File: ../Graficos_Paper/Tablas/Media_Stocks.png Graphic file (type png)
+<use ../Graficos_Paper/Tablas/Media_Stocks.png>
+Package pdftex.def Info: ../Graficos_Paper/Tablas/Media_Stocks.png  used on input line 407.
+(pdftex.def)             Requested size: 342.2953pt x 153.29189pt.
+ [38
+
+ <../Graficos_Paper/Tablas/Media_Stocks.png>]
+<../Graficos_Paper/Tablas/Varianza.png, id=1129, 1092.33093pt x 554.82281pt>
+File: ../Graficos_Paper/Tablas/Varianza.png Graphic file (type png)
+<use ../Graficos_Paper/Tablas/Varianza.png>
+Package pdftex.def Info: ../Graficos_Paper/Tablas/Varianza.png  used on input line 414.
+(pdftex.def)             Requested size: 342.2953pt x 173.85579pt.
+ [39
+
+ <../Graficos_Paper/Tablas/Varianza.png>]
+<../Graficos_Paper/Tablas/Varianza_CDS.png, id=1158, 919.18407pt x 573.64313pt>
+File: ../Graficos_Paper/Tablas/Varianza_CDS.png Graphic file (type png)
+<use ../Graficos_Paper/Tablas/Varianza_CDS.png>
+Package pdftex.def Info: ../Graficos_Paper/Tablas/Varianza_CDS.png  used on input line 421.
+(pdftex.def)             Requested size: 308.06367pt x 192.2526pt.
+
+Overfull \vbox (8.24861pt too high) detected at line 421
+ []
+
+[40
+
+ <../Graficos_Paper/Tablas/Varianza_CDS.png>]
+<../Graficos_Paper/Tablas/Varianza_Stocks.png, id=1186, 882.29625pt x 583.42969pt>
+File: ../Graficos_Paper/Tablas/Varianza_Stocks.png Graphic file (type png)
+<use ../Graficos_Paper/Tablas/Varianza_Stocks.png>
+Package pdftex.def Info: ../Graficos_Paper/Tablas/Varianza_Stocks.png  used on input line 428.
+(pdftex.def)             Requested size: 308.06367pt x 203.7138pt.
+
+Overfull \vbox (19.70982pt too high) detected at line 428
+ []
+
+[41
+
+ <../Graficos_Paper/Tablas/Varianza_Stocks.png>]
 \tf@nav=\write6
 \openout6 = `Presentacion.nav'.
 
@@ -857,17 +926,17 @@ Package rerunfilecheck Info: File `Presentacion.out' has not changed.
 (rerunfilecheck)             Checksum: D41D8CD98F00B204E9800998ECF8427E;0.
  ) 
 Here is how much of TeX's memory you used:
- 23711 strings out of 476331
- 473537 string characters out of 5787765
- 1868660 words of memory out of 5000000
- 43566 multiletter control sequences out of 15000+600000
+ 23977 strings out of 476331
+ 479100 string characters out of 5787765
+ 1869660 words of memory out of 5000000
+ 43807 multiletter control sequences out of 15000+600000
  526651 words of font info for 86 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
  128i,16n,122p,836b,692s stack positions out of 10000i,1000n,20000p,200000b,200000s
 <C:/Users/jpber/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmex10.pfb><C:/Users/jpber/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cmextra/cmex9.pfb><C:/Users/jpber/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmmi10.pfb><C:/Users/jpber/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmmi6.pfb><C:/Users/jpber/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmmi8.pfb><C:/Users/jpber/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmmi9.pfb><C:/Users/jpber/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmss10.pfb><C:/Users/jpber/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmss12.pfb><C:/Users/jpber/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmss8.pfb><C:/Users/jpber/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmss9.pfb><C:/Users/jpber/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmssi10.pfb><C:/Users/jpber/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmssi8.pfb><C:/Users/jpber/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmssi9.pfb><C:/Users/jpber/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmsy10.pfb><C:/Users/jpber/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmsy6.pfb><C:/Users/jpber/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmsy8.pfb><C:/Users/jpber/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmsy9.pfb>
-Output written on Presentacion.pdf (37 pages, 487853 bytes).
+Output written on Presentacion.pdf (41 pages, 817334 bytes).
 PDF statistics:
- 1189 PDF objects out of 1200 (max. 8388607)
- 89 named destinations out of 1000 (max. 500000)
- 110 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 1311 PDF objects out of 1440 (max. 8388607)
+ 97 named destinations out of 1000 (max. 500000)
+ 140 words of extra memory for PDF output out of 10000 (max. 10000000)
 

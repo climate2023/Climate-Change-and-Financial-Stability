@@ -4,7 +4,13 @@
 \usepackage{hyperref}
 \usepackage{subcaption}
 \usepackage{mathrsfs,amsmath}
+\usepackage{multirow}
+\usepackage{xcolor}
+\usepackage{colortbl}
 \setbeamercovered{highly dynamic}
+
+\definecolor{orangebracket}{RGB}{243,115,33}
+\definecolor{bluecomma}{RGB}{26,80,170}
 
 \newcounter{saveenumi}
 \newcommand{\seti}{\setcounter{saveenumi}{\value{enumi}}}
@@ -327,49 +333,19 @@ Grosso modo, cada iteración del bootstrap selecciona de manera aleatoria y con 
 Posteriormente, para cada iteración se calcula el estadístico $CAV(t_1,t_2)$, definido en \eqref{eq_cav} y luego se revisa el \textit{p-value} del $CAV(t_1,t_2)$ calculado originalmente.
 \end{frame}
 
-\begin{frame}
-\frametitle{Metodologia SUR}
-Por otro lado, se estimó otro modelo siguiendo la metodología de Pagnottoni et al. (2022), quienes estiman un modelo de Seemingly Unrelated Regressions. Sin embargo, se adaptó en cierta medida la forma de hacer la regresión.\\
-El principal cambio es que Pagnottoni et al. (2022) querían analizar en primer lugar los efectos de todos los desastres de cada tipo, sin importar el lugar donde sucedieron. Y por otro lado, querían estimar el efecto de los desastres de todos los países del mundo sobre los países que les interesaba.\\
-Se considera que no hubo una explicación suficiente para analizar los efectos de países diferentes al que se analiza en cada ecuación.
-\end{frame}
-
-\begin{frame}
-\frametitle{Metodologia SUR}
-El modelo a estimar es el siguiente:
-\begin{align}
-    R_{i,t} = \alpha_i + \beta_iR_{m,t} + &\beta_i^D min {1, \sum_{e=1}^{E} \sum_{s=s_0}^{s_w} d_{e,t-s}^{i}} R_{m,t} + \sum_{e=1}^{E} \sum_{s=s_0}^{s_w} \gamma_{i,e}d_{e,t-s}^{i}+ \\ &\sum_{\tau=1}^{k}\theta_{i,\tau} R_{i,t-\tau}+\sum_{n=1}^{n_c}\phi_{i,n}\Tilde{C}_{i,t}+\varepsilon_{i,t} \nonumber
-\end{align}
-Donde:
-\begin{itemize}
-    \item $R_{i,t}$ es la serie financiera asociada al i-ésimo país. Puede ser la serie de retornos del índice de bolsa, o la serie en primera diferencia de los CDS.
-    \item $R_{m,t}$ es el retorno de mercado. Para CDS está definido como el promedio móvil siguiendo a Pagnottoni et al. (2022), mientras que para los índices de bolsa puede ser el promedio móvil o también el índice Emerging Markets MSCI.
-\end{itemize}
-\end{frame}
-
-\begin{frame}
-\frametitle{Metodologia SUR}
-\begin{itemize}
-    \item $d_{e,t-s}^i$ es una dummy que toma el valor de 1 si hubo un desastre natural del tipo de evento $e$ en el país $i$ en el dia $t-s$, donde $s \in [s_0,s_w]$. $s_0$ hace referencia al día del desastre y $s_w$ al dia final de la ventana de evento (para nuestro análisis, $s_w=15$).
-    \item $D_t^{i}$ es una dummy que toma el valor de 1 si en el día t, al menos una de las dummy $d_{e,t-s}^i$ toma el valor de 1, y 0 en cualquier otro caso.
-    \item $\Tilde{C}_{i,t}$ es un vector de covariables: la tasa de crecimiento del PIB real y la tasa de crecimiento del FDI del país $i$.
-\end{itemize}
-\end{frame}
-
-
 \begin{frame}{Volatilidad Anormal Acumulada}
 \framesubtitle{Resultados}
     \begin{figure}
     \begin{subfigure}{0.45\textwidth}
         \centering
-        \includegraphics[width=\linewidth]{../Graficos_Paper/CAV/Ag//cds_PM_CAV_Est_500_tra_50.png}
+        \includegraphics[width=\linewidth]{../Graficos_Paper/CAV/Ag/cds_PM_CAV_Est_500_tra_50.png}
         \caption{CAV relative to the disaster date. CDS. 500E - 50T}
         \label{figure:cavcds50050}
     \end{subfigure}
     \hfill
     \begin{subfigure}{0.45\textwidth}
         \centering
-        \includegraphics[width=\linewidth]{../Graficos_Paper/CAV/Ag//cds_PM_CAV_Est_750_tra_50.png}
+        \includegraphics[width=\linewidth]{../Graficos_Paper/CAV/Ag/cds_PM_CAV_Est_750_tra_50.png}
         \caption{CAV relative to the disaster date. CDS. 750E - 50T}
         \label{figure:cavcds75050}
     \end{subfigure}
@@ -380,12 +356,12 @@ Donde:
 \framesubtitle{Resultados}
 \begin{figure}
     \begin{subfigure}{0.5\textwidth}
-        \includegraphics[width=0.9\linewidth]{../Graficos_Paper/CAV/Ag//indices_benchmark_CAV_Est_500_tra_50.png}
+        \includegraphics[width=0.9\linewidth]{../Graficos_Paper/CAV/Ag/indices_benchmark_CAV_Est_500_tra_50.png}
         \caption{CAV relative to the disaster date. Stock Indexes with MSCI, 500 E. 50 T}
         \label{figure:cavind50050}
     \end{subfigure}%
     \begin{subfigure}{0.5\textwidth}
-        \includegraphics[width=0.9\linewidth]{../Graficos_Paper/CAV/Ag//indices_benchmark_CAV_Est_750_tra_50.png}
+        \includegraphics[width=0.9\linewidth]{../Graficos_Paper/CAV/Ag/indices_benchmark_CAV_Est_750_tra_50.png}
         \caption{CAV relative to the disaster date. Stock Indexes with MSCI, 750 E. 50 T}
         \label{figure:cavind75050}
     \end{subfigure}
@@ -400,4 +376,55 @@ Conclusión de las gráficas de Volatilidad Anormal Acumulada (CAV) relativa al 
     \item Para los índices de bolsa usando Emerging Markets MSCI, a excepción de los desastres hidrológicos, todos los demás tipos hacen aumentar la volatilidad respecto a la volatilidad pronosticada por el modelo, usando una ventana de traslape de 50 días, y una ventana de estimación de 500 o 750 días.
 \end{itemize}
 \end{frame}
+
+\begin{frame}{Resultados tests}
+ A continuación se presentan los resultados de los tests econométricos mencionados anteriormente, para lo cual se tienen dos notas a tener en consideración:
+ \begin{enumerate}
+    \item Para todas las tablas se fija una longitud de ventana de evento de 10 días y de 15 días, es decir, para la media las ventanas de evento serán {\color{orangebracket} [1,10]} y {\color{bluecomma} [1,15]}, mientras que para la varianza serán {\color{orangebracket} [0,9]} y {\color{bluecomma} [0,14]}. Los colores serán usados en las tablas para escribir el estadístico y la significancia correspondientes a la ventana de evento del mismo color.
+    \item Si ninguna de las columnas tiene ventanas significativas, igualmente se coloca el número de eventos para las ventanas de estimación y traslape correspondientes (250 E - 50 T y 500 E - 50 T para media, 500 E - 50 T y 750 E - 50 T para varianza).
+ \end{enumerate}
+\end{frame}
+
+\begin{frame}{Significancia por tipo de desastre - Media}
+    \begin{figure}
+        \includegraphics[width=\linewidth]{../Graficos_Paper/Tablas/Desastre_Media.png}
+        \caption{Resultados tests para la media, por tipo de desastre.}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{Significancia por tipo de desastre - Media}
+    \begin{figure}
+        \includegraphics[width=\linewidth]{../Graficos_Paper/Tablas/Media_CDS.png}
+        \caption{Resultados tests para la media para CDS}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{Significancia por tipo de desastre - Media}
+    \begin{figure}
+        \includegraphics[width=\linewidth]{../Graficos_Paper/Tablas/Media_Stocks.png}
+        \caption{Resultados tests para la media para Stocks}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{Significancia por tipo de desastre - Varianza}
+    \begin{figure}
+        \includegraphics[width=\linewidth]{../Graficos_Paper/Tablas/Varianza.png}
+        \caption{Resultados tests para la varianza, por tipo de desastre.}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{Significancia por tipo de desastre - Varianza}
+    \begin{figure}
+        \includegraphics[width=0.9\linewidth]{../Graficos_Paper/Tablas/Varianza_CDS.png}
+        \caption{Resultados tests para la varianza para CDS.}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{Significancia por tipo de desastre - Varianza}
+    \begin{figure}
+        \includegraphics[width=0.9\linewidth]{../Graficos_Paper/Tablas/Varianza_Stocks.png}
+        \caption{Resultados tests para la varianza para Stocks.}
+    \end{figure}
+\end{frame}
+
 \end{document} 

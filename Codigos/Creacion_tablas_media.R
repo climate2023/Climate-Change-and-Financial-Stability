@@ -23,18 +23,18 @@ setClass("ESmean",slots=list(retornos = "xts",error_estandar = "numeric",res_est
 # Prueba de filtro  -------------------------------------------------------
 directorio.saved        <- paste0(getwd(),'/Resultados_regresion/')
 directorio.guardar      <- paste0(directorio.saved,'Tablas/')
-tipo.serie              <- 'Indices'   #<<<--- Puede ser 'CDS' o 'Indices'  
+tipo.serie              <- 'CDS'   #<<<--- Puede ser 'CDS' o 'Indices'  
 if(tipo.serie == 'CDS')     cola <- 1
 if(tipo.serie == 'Indices') cola <- -1
 tipo.estudio            <- 'media' #<<<--- Puede ser de 'media' o 'varianza'
-regresor.mercado        <- 'benchmark'    #<<<--- Retornos de mercado 'PM' es promedio movil y 'benchmark' es el retorno MSCI Emerging Markets
+regresor.mercado        <- 'PM'    #<<<--- Retornos de mercado 'PM' es promedio movil y 'benchmark' es el retorno MSCI Emerging Markets
 tipos.desastre.eliminar <- c('Biological','Climatological') #<<<--- NULL si no se desea eliminar ningun tipo de desastre 
 paises.resultados       <- countries # Seleccionar los paises sobre los cuales se quiere hacer el analisis de resultados. <countries> si se desea
 # de todos los paises de los que se tiene informacion
 eventos.fecha.exac      <- T  #<<<--- booleano para indicar si se quieren usar solamente los eventos que tengan una fecha exacta
 # <T> en caso de querer solo los que tienen fecha exacta.<F>si se quieren usar tambien aquellos eventos de
 # los que se asumio el dia
-columna.agrupar          <- 'Ambas'  #<<<--- Columna del evento por la cual se quiere separar la lista de regresiones para las tablas/graficas
+columna.agrupar          <- 'Disaster.Subgroup'  #<<<--- Columna del evento por la cual se quiere separar la lista de regresiones para las tablas/graficas
 # 'Country' la separa por pais donde sucedio el desastre y 'Disaster.Subgroup' por el tipo de desastre
 # 'Ambas' implica que se va a analizar por ambas columbas, por ejemplo: brazil - hidrologico, brazil - geofisico, ...
 max_abnormal_returns     <- 15   #<<<--- No. dias maximos despues del evento para calcular retorno anormal
@@ -172,7 +172,8 @@ for(ventana.estimacion in ventanas.estimacion){
                                    bmp_savickas(lista.separada[[i]],length_estimation_window,j,inicio.ventana.evento,tail = cola)$Significancia)
         }
         if(!table.caar) {
-          prueba.bmp <- bmp_savickas(lista.separada[[i]],length_estimation_window,j,inicio.ventana.evento,tail = cola)
+          prueba.bmp <- bmp_savickas(data.list = lista.separada[[i]],es.window.length = length_estimation_window,
+                                     ev.window.length = j,ev.window.begin = inicio.ventana.evento,tail = cola)
           matrix.bmp[j,i] <- paste(round(prueba.bmp$Estadistico,2), prueba.bmp$Significancia)
         }
       } 

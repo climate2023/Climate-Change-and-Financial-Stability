@@ -3684,7 +3684,7 @@ grafico_cav_agregado <- function(aggregated.events.list, disagg.events.list, es.
   }
   
   # Anadir la recta de la hipotesis nula
-  abline(a = 0, b = 1, col = "black",lty=3,lwd=1.5)
+  abline(a = 1, b = 1, col = "black",lty=3,lwd=1.5)
   # legend("topleft", legend = c("Under Null Hypothesis (No Effect)", paste0("Observed Volatility: ",names(cavs.relativos))),
   #        col = c("black", colors), lty = c(2,rep(1,length(cavs.relativos))),bty='n',cex = 0.9, pt.cex = 0.9,
   #        y.intersp = 1)
