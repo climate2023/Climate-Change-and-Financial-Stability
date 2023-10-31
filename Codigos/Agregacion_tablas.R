@@ -1,9 +1,9 @@
+##########################################################
+# Convertir las diversas tablas en solo una para exportar a latex
+# Autores: Juan Pablo Bermudez.
+##########################################################
 
-# Generar la clase ESVolatility, para poder manejar los resultados de la estimacion para la varianza
-setClass("ESVolatility",slots=list(coefficients = "numeric",goodness_of_fit = "numeric",res_estandar_estimacion="xts",
-                                   res_no_estandar_estimacion="xts",variance_forecast="xts",residuales_evento="xts",
-                                   info.evento = 'data.frame'))
-
+rm(list = ls())
 # Cargar librerias y directorios ------------------------------------------
 # Dentro de <01_Librerias_Directorios.R> se encuentra el source a las funciones
 source(paste0(getwd(),'/Codigos/01_Librerias_Directorios.R'))

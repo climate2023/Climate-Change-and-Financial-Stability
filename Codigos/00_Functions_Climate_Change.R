@@ -4119,12 +4119,19 @@ dummies_por_pais <- function(excel_file, base.de.retornos, no.rezagos, bool.over
 }
 #---------------------------------------------------------------------------------------#
 
-# car.list <- car.vector
-# series.type <- tipo.serie
-# market.variable <- retorno.mercado
-# estimation.window <- ventana.estimacion
-# overlap.window <- ventana.traslape
-# event.window <- max_abnormal_returns 
+#---------------------------------- 33. kernel_car  ------------------------------------#
+# Genera la grafica de una lista, cuyos objetos son vectores de CAR
+#---------------------------------------------------------------------------------------#
+# ----Argumentos de entrada ----#
+#-- car.list: lista que incluye varios vectores de CAR, generalmente un vector por cada tipo de desastre analizado y uno para la totalidad de desastres
+#-- series.type : tipo de serie financiera sobre la cual se hara los kernels (por ejemplo cds o indices)
+#-- market.variable : variable conocida como "retorno de mercado" en el modelo de event study
+#-- estimation.window : longitud ventana estimacion
+#-- overlap.window: longitud ventana traslape
+#-- event.window: longitud ventana de evento
+# ----Argumentos de salida  ----#
+#-- NA. No retorna ningun argumento, solamente el grafico, que sera guardado en el codigo <Graficas.R>
+#---------------------------------------------------------------------------------------#
 kernel.car <- function(car.list, series.type, market.variable, estimation.window, overlap.window, event.window){
   # El input es un a lista, donde cada objeto es un vector de retornos anormales acumulados de desastres de un determinado tipo de 
   # desastre
@@ -4205,4 +4212,3 @@ kernel.car <- function(car.list, series.type, market.variable, estimation.window
   series.type = ifelse(series.type == 'cds', 'CDS', series.type)
   title(paste0('Estimation window: ',estimation.window,' days. Overlap window: ',overlap.window,' days. For ',series.type, market.variable.title),line=0.75)
 }
-

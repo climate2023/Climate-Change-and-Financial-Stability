@@ -4,6 +4,7 @@
 # Autores: Juan Pablo Bermudez. 
 ##########################################################
 
+rm(list=ls())
 # Cargar librerias y directorios ------------------------------------------
 source(paste0(getwd(),'/Codigos/01_Librerias_Directorios.R'))
 
