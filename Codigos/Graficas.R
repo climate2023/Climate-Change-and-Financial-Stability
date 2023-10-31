@@ -14,7 +14,7 @@ paises   <- c('Brazil','Chile','China','Colombia','Indonesia','Korea','Malaysia'
 # Parametros --------------------------------------------------------------
 bool_paper <- T # booleano que toma el valor de T si se quiere revisar el paper que vamos a escribir, F para Pagnottoni
 no.rezagos.de.desastres <- 15     #<<<--- Numero de rezagos de los desastres <w> (i.e. t0, t1, ..., tw)
-tipo.serie              <- 'indices'  #<<<--- Puede ser 'cds' o 'indices
+tipo.serie              <- 'cds'  #<<<--- Puede ser 'cds' o 'indices
 market                  <- 'PM'   #<<<--- Puede ser 'PM' o 'benchmark', pero si tenemos CDS solamente puede ser PM
 if(market == 'benchmark') retorno.mercado <- 'MSCI'
 if(market == 'PM')        retorno.mercado <- 'Promedio Movil'
@@ -194,9 +194,6 @@ if(0){
 }
 
 ### =============================== Graficas CAV==================================
-
-# Se crea un tipo de objeto S4 para guardar la tabla de la media, y aparte el numero de eventos para cada pais
-setClass('Tabla.varianza', slots = list(dataframe = 'data.frame', no.eventos = 'numeric'))
 # Directorio para imagenes de CAV
 cd.cav <- paste0(cd.graficos,'CAV/')
 
@@ -250,7 +247,7 @@ for(ventana.estimacion in ventanas.estimacion){
     names(eventos.separados) <- c(names(unlist(lapply(v.lista.separada, length))),'Todos')
     
     # if(0) si no se quiere graficar CAV relativo al evento, if(1) si se desea
-    if(1){
+    if(0){
       # Graficas CAV (separadas) ------------------------------------------------------------
       for(i in seq_along(v.lista.separada)){
         element <- v.lista.separada[[i]]
@@ -269,7 +266,8 @@ for(ventana.estimacion in ventanas.estimacion){
         add.to.title <- paste0('Estimation window: ',ventana.estimacion,'. Overlap window: ',ventana.traslape,'. Disasters for all countries')
         grafico_cav_agregado(aggregated.events.list = volatility_results, disagg.events.list = v.lista.separada, 
                              es.window.length = as.numeric(ventana.estimacion), ev.window.length = vol_ev_window, 
-                             serie = str_to_title(tipo.serie), rm = retorno.mercado, extra.title = add.to.title)
+                             serie = str_to_title(tipo.serie), rm = retorno.mercado, extra.title = add.to.title
+                             , cumulative = F)
         dev.off()
       }
     }
@@ -279,7 +277,7 @@ for(ventana.estimacion in ventanas.estimacion){
     # cierto tipo de desastre
     # if(0) si no se desea graficar el kernel de CAV. if(1) si se desea. Podria parametrizarse todas las flags
     cd.kernel.cav <- paste0(cd.graficos,'Kernel_CAV/')
-    if(1){
+    if(0){
       if(columna.agrupar == 'Ambas'){
         # La funcion kernel CAV grafica los kernel de la volatilidad anormal acumulada dependiendo del tipo de 
         # desastre. Ademas, guarda automaticamente los graficos
@@ -291,10 +289,92 @@ for(ventana.estimacion in ventanas.estimacion){
   }
 }
 
-# Grafica de tiempo retornos anormales acumulados  -----------------------------------
+### =============================== Graficas Kernel CAR (test) ==================================
+# Directorio para imagenes de CAR
+cd.kernel.car <- paste0(cd.graficos,'Kernel_CAR/')
+# Parametros --------------------------------------------------------------
+tipo.estudio            <- 'media' #<<<--- Puede ser de 'media' o 'varianza'
+max_abnormal_returns     <- 15   #<<<--- No. dias maximos despues del evento para calcular retorno anormal
+length_car_window        <- 15   #<<<--- Ventana para calcular el CAR (por ejemplo 5 significa [0,+5], donde 0 es el dia del evento)
+length_event_window      <- length_car_window + 1 # Longitud ventana de evento es 1 mas <length_car_window>
+
+ventanas.estimacion      <- c('250','375','500')   #<<<--- Puede ser 250, 375 o 500   (Importante que sea string)
+ventanas.traslape        <- c('50','100','150')   #<<<--- Puede ser 50, 100 o 150   (Importante que sea string)
+for(ventana.estimacion in ventanas.estimacion){
+  for(ventana.traslape in ventanas.traslape){
+    # Longitud ventana estimacion
+    length_estimation_window <- as.numeric(ventana.estimacion)
+    
+    # Cargar los resultados de la regresion -----------------------------------
+    load(paste0(directorio.saved,tipo.serie,'_tra',ventana.traslape,'_est',ventana.estimacion,'_',tipo.estudio,'_',market,'.RData'))
+    # Despues de load tenemos una lista de resultados de regresion <all_events_list>. 
+    # Hay que tener en cuenta que es probable que hayan objetos NA, para aquellos casos donde el GARCH no convergio
+    # Primero es necesario eliminar esos datos NA
+    suppressWarnings(all.events.list <- purrr::discard(all_events_list,is.na))
+    tipos.desastres <- unique(unlist(purrr::map(all.events.list,~.x@evento$Disaster.Subgroup)))
+    
+    # Separar la lista <all.events.list> segun <columna.agrupar>
+    if(columna.agrupar != 'Ambas') lista.separada <- split(all.events.list, sapply(all.events.list, function(x) x@evento[[columna.agrupar]]))
+    
+    # Generar listas distintas para cada valor de la <columna.agrupar>, en caso de querer utilizarlas mas adelante
+    # for(i in seq_along(lista.separada)) assign(paste0("list.", names(lista.separada)[i]), lista.separada[[i]])
+    # Cuando <columna.agrupar> == <'Ambas'> toca tener un trato especial
+    if(columna.agrupar == 'Ambas'){
+      # En primer lugar por cada desastre se necesita una combinacion del pais y el tipo de desastre
+      # Para eso creamos una funcion, solo para mejor lectura
+      crear.columna <- function(df) {
+        df <- df %>%
+          mutate(Desastre.Pais = paste0(Country, Disaster.Subgroup))
+        return(df)
+      }
+      all.events.list <- purrr::map(all.events.list, function(s4_object) {
+        s4_object@evento <- crear.columna(s4_object@evento)
+        return(s4_object)
+      })
+      # Ahora si podemos separar <volatility_results> en listas dependiendo del desastre y el pais donde sucedio
+      lista.separada <- split(all.events.list, sapply(all.events.list, function(x) x@evento[['Desastre.Pais']]))
+    }
+    
+    # Fusionamos <lista.separada> con la lista completa, <all.events.list>
+    lista.media                          <- lista.separada
+    lista.media[[length(lista.media)+1]] <- all.events.list
+    names(lista.media)                   <- c(names(lista.separada),'All')
+    
+    # Se observo que generalmente, el dia del evento el retorno es positivo, pero en adelante es negativo. Falta explicar porque podria
+    # ser que el retorno en el dia del evento sea positivo,mientras que para el resto de la ventana de evento es negativo.
+    # Por lo anterior, el CAR va a ser menor si se elimina el dia del evento de la ventana de evento y solo se miran los dias posteriores
+    inicio.ventana.evento <- 1 #<<<--- indica en que dia comenzara la ventana de evento <0> si se desea que inicie el dia del desastre, 
+    # 1 si se desea el dia siguiente, 2 si se desea 2 dias despues ...
+    
+    # La grafica de los kernel del CAR depende de cierta medida de la longitud de la ventana de evento, y debido a la complejidad vamos a realizar
+    # un ciclo for para que genere los CAR hasta un dia j y grafique los kernel de ese dia
+    for(j in inicio.ventana.evento:(max_abnormal_returns+1-inicio.ventana.evento)){
+      # Para cada elemento de <lista.media> obtenemos el CAR, por lo que al final obtendremos un vector
+      # por cada elemento de <lista.media>
+      car.vector <- lapply(lista.media, function(obj){
+        # Generamos una matriz con todos los retornos anormales durante la ventana de evento de interes para cada desastre
+        # en <obj>. Recordemos que <obj> es un elemento de <lista.media>
+        retornos.anormales <- purrr::map_df(obj, ~as.numeric(coredata(.x@retornos$Abnormal[(length_estimation_window+1+inicio.ventana.evento):(j+1+length_estimation_window)])))
+        # Para obtener los retornos anormales acumulados de de cada desastre solo necesitamos sumar las columnas de la matriz
+        car <- colSums(retornos.anormales)
+        return(car)
+      })
+      # Falta crear funcion para graficar la densidad kernel de los vectores del CAR, junto a las medianas y el area
+      # sombreada.
+      png(filename=paste0(cd.kernel.car,tipo.serie,'_',market,'_KernelCAR_Est_',ventana.estimacion,'_tra_',ventana.traslape,'_ev_',j,'.png'),
+          width = 700, height = 550 )
+      kernel.car(car.list = car.vector, series.type = tipo.serie, market.variable = retorno.mercado, estimation.window = ventana.estimacion
+                 , overlap.window = ventana.traslape, event.window = j)
+      dev.off()
+    }
+    
+  }
+}
+
+# Grafica de tiempo retornos anormales acumulados SUR -----------------------------------
 
 #  <if(0)> cuando no se quiera correr el codigo de las graficas de CAR. <if(1)> cuando si se desee
-if(1) {
+if(0) {
   # Directorio para imagenes de CAR
   cd.car <- paste0(cd.graficos,'CAR/')
   coefficients_list <- coefficients_disasters_list  

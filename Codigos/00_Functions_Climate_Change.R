@@ -1156,11 +1156,6 @@ if(0){
     
     events.list <- list() # lista que contendra todas la informacion del modelo
     
-    # Crear una nueva clase de objetos para guardar informacion importante de la estimacion ARMA-GARCH
-    setClass("ESmean",slots=list(retornos = "xts",error_estandar = "numeric",res_estandar_estimacion="xts",
-                                 res_no_estandar_estimacion="xts",variance_forecast="xts",
-                                 evento='data.frame',fit='list'))
-    
     # Si GARCH = FALSE: Por cada evento se hace una regresion OLS con la muestra [-<es.start>,-<es.end>] dias antes del evento para estimar alfa, beta 
     # Si GARCH = TRUE:  Por cada evento se hace una regresion con ML para estimar la media y el GARCH con la muestra [-<es.start>,-<es.end>] dias 
     # antes del evento para estimar alfa, beta
@@ -1549,11 +1544,6 @@ estimation.event.study <- function(bool.paper,bool.cds,base, data.events, market
                                    vars.exo=NULL, GARCH=NULL, overlap.events = NULL, overlap.max){
   
   events.list <- list() # lista que contendra todas la informacion del modelo
-  
-  # Crear una nueva clase de objetos para guardar informacion importante de la estimacion ARMA-GARCH
-  setClass("ESmean",slots=list(retornos = "xts",error_estandar = "numeric",res_estandar_estimacion="xts",
-                               res_no_estandar_estimacion="xts",variance_forecast="xts",
-                               evento='data.frame',fit='list'))
   
   # Si GARCH = FALSE: Por cada evento se hace una regresion OLS con la muestra [-<es.start>,-<es.end>] dias antes del evento para estimar alfa, beta 
   # Si GARCH = TRUE:  Por cada evento se hace una regresion con ML para estimar la media y el GARCH con la muestra [-<es.start>,-<es.end>] dias 
@@ -2460,10 +2450,6 @@ if(0){
   volatility_event_study = function(base.evento, date.col.name, geo.col.name, base.vol, interest.vars, num_lags, AR.m = 20, MA.m = 0,d = 0,
                                     bool = TRUE,metodo = "CSS", es.start,len.ev.window,var.exo,var.exo.pais,bool.paper,bool.cds,garch,
                                     overlap.events = NULL){
-    # Crear una nueva clase de objetos para guardar informacion importante de la estimacion ARMA-GARCH
-    setClass("ESVolatility",slots=list(coefficients = "numeric",goodness_of_fit = "numeric",res_estandar_estimacion="xts",
-                                       res_no_estandar_estimacion="xts",variance_forecast="xts",residuales_evento="xts",
-                                       info.evento = 'data.frame'))
     
     # Generamos un dataframe que incluya los ordenes de rezagos para cada variable de interes, stock (Pagnottoni) o CDS
     # Tambien se tendra un parametro que le permita al usuario decidir cuantos rezagos desea en especifico para todas las variables de interes.
@@ -2829,11 +2815,7 @@ if(0){
 volatility_event_study = function(base.evento, date.col.name, geo.col.name, base.vol, interest.vars, num_lags, AR.m = 20, MA.m = 0,d = 0,
                                   bool = TRUE,metodo = "CSS", es.start,len.ev.window,var.exo,var.exo.pais,bool.paper,bool.cds,garch,
                                   overlap.events = NULL,overlap.max){
-  # Crear una nueva clase de objetos para guardar informacion importante de la estimacion ARMA-GARCH
-  setClass("ESVolatility",slots=list(coefficients = "numeric",goodness_of_fit = "numeric",res_estandar_estimacion="xts",
-                                     res_no_estandar_estimacion="xts",variance_forecast="xts",residuales_evento="xts",
-                                     info.evento = 'data.frame'))
-  
+
   # Generamos un dataframe que incluya los ordenes de rezagos para cada variable de interes, stock (Pagnottoni) o CDS
   # Tambien se tendra un parametro que le permita al usuario decidir cuantos rezagos desea en especifico para todas las variables de interes.
   # Si se desa el mismo numero de rezagos para todas las variables de interes, asignar el numero a <num_lags>. Si se desea un numero de 
@@ -3600,7 +3582,8 @@ grafico_cav <- function(events.list, es.window.length,ev.window.length,serie.rm)
 # ----Argumentos de salida  ----#
 #-- NA
 #---------------------------------------------------------------------------------------#
-grafico_cav_agregado <- function(aggregated.events.list, disagg.events.list, es.window.length,ev.window.length,serie,rm, significancia = 0.05, extra.title){
+grafico_cav_agregado <- function(aggregated.events.list, disagg.events.list, es.window.length,ev.window.length,serie,rm, significancia = 0.05, 
+                                 extra.title, cumulative=T){
   # Detener la funcion si hay algun elemento que no tenga la clase 'ESVolatility' en <aggregated.events.list>
   if (any(!sapply(aggregated.events.list, inherits, "ESVolatility"))) stop('La lista contiene elementos que no fueron creados con la funcion estimation.event.study.')
   # Detener la funcion si dentro de cualquier elemento de <disagg.events.list> hay algun elemento que no sea "ESVolatility"
@@ -3649,7 +3632,18 @@ grafico_cav_agregado <- function(aggregated.events.list, disagg.events.list, es.
   
   # Graficar el CAAV relativo al dia de evento
   # Por tema de escala, lo mejor es buscar el maximo de los maximos de <cavs.relativos>
-  maximo.escalay <- max(unlist(lapply(cavs.relativos, max)))
+  if(cumulative) maximo.escalay <- max(unlist(lapply(cavs.relativos, max)))
+  
+  if(!cumulative){
+    # Colocar los intervalos y los CAV en escala y = 0
+    sup.intervalos.confianza <- lapply(sup.intervalos.confianza, function(x) x - 0:(vol_ev_window-1))
+    cavs.relativos           <- lapply(cavs.relativos, function(x) x - 0:(vol_ev_window-1))
+    
+    # Graficar el CAAV relativo al dia de evento
+    # Por tema de escala, lo mejor es buscar el maximo de los maximos de <cavs.relativos>
+    maximo.escalay <- max(unlist(lapply(cavs.relativos, max))) + 0.5
+    minimo.escalay <- 0
+  }
   
   # Definir los colores
   colors <- c('#000000',brewer.pal(n=(length(cavs.relativos)-1), name='Set1'))
@@ -3658,11 +3652,19 @@ grafico_cav_agregado <- function(aggregated.events.list, disagg.events.list, es.
   rm.english <- ifelse(serie == 'Cds', '', paste0(' with ', rm.english))
   serie.cap  <- ifelse(serie == 'Cds', 'CDS', serie) 
   serie.cap  <- ifelse(serie.cap == 'Indices', 'Stock Indexes', serie.cap) 
-  plot(x=names(cavs.relativos[[1]]),y=cavs.relativos[[1]],type='l',col=colors[1],lwd=3,
+  
+  if(cumulative) plot(x=names(cavs.relativos[[1]]),y=cavs.relativos[[1]],type='l',col=colors[1],lwd=3,
        main=paste0('Cumulative Abnormal Volatility (CAV) relative to the disaster date. \nFor ',
                    serie.cap, rm.english,'. \n',extra.title),
        ylab='Cumulative Abnormal Volatility (CAV)',xlab='Day relative to the disaster date',
        ylim = c(0,maximo.escalay), xaxs='i', yaxs='i')
+  
+  if(!cumulative) plot(x=names(cavs.relativos[[1]]),y=cavs.relativos[[1]],type='l',col=colors[1],lwd=3,
+                       main=paste0('Abnormal Volatility relative to the disaster date. \nFor ',
+                                   serie.cap, rm.english,'. \n',extra.title),
+                       ylab='Abnormal Volatility',xlab='Day relative to the disaster date',
+                       ylim = c(minimo.escalay,maximo.escalay), xaxs='i', yaxs='i')
+  
   if(length(cavs.relativos)>1) for(p in 2:length(cavs.relativos)){
     lines(x = names(cavs.relativos[[1]]), cavs.relativos[[p]],type='l',col=colors[[p]],lwd=2)
   }
@@ -3684,7 +3686,8 @@ grafico_cav_agregado <- function(aggregated.events.list, disagg.events.list, es.
   }
   
   # Anadir la recta de la hipotesis nula
-  abline(a = 1, b = 1, col = "black",lty=3,lwd=1.5)
+  if(cumulative) abline(a = 1, b = 1, col = "black",lty=3,lwd=1.5)
+  if(!cumulative) abline(a = 1, b = 0, col = "black",lty=3,lwd=1.5)
   # legend("topleft", legend = c("Under Null Hypothesis (No Effect)", paste0("Observed Volatility: ",names(cavs.relativos))),
   #        col = c("black", colors), lty = c(2,rep(1,length(cavs.relativos))),bty='n',cex = 0.9, pt.cex = 0.9,
   #        y.intersp = 1)
@@ -3835,10 +3838,6 @@ bootstrap.volatility2 <- function(volatility.list,es.window.length,ev.window.len
 #---------------------------------------------------------------------------------------#
 kernel.cav <- function(tipos.de.desastres, lista.desagregada, lista.agregada,columna.pais = 'Country',
                        estimation.window, overlap.window, series, market.variable) {
-  
-  setClass("ESVolatility",slots=list(coefficients = "numeric",goodness_of_fit = "numeric",res_estandar_estimacion="xts",
-                                     res_no_estandar_estimacion="xts",variance_forecast="xts",residuales_evento="xts",
-                                     info.evento = 'data.frame'))
   
   # Primero vamos a generar una lista, donde cada elemento va a contener listas de los desastres ocurridos en cada pais
   # y tambien en todos los paises
@@ -4119,3 +4118,91 @@ dummies_por_pais <- function(excel_file, base.de.retornos, no.rezagos, bool.over
   return(xts.dummies.merged)
 }
 #---------------------------------------------------------------------------------------#
+
+# car.list <- car.vector
+# series.type <- tipo.serie
+# market.variable <- retorno.mercado
+# estimation.window <- ventana.estimacion
+# overlap.window <- ventana.traslape
+# event.window <- max_abnormal_returns 
+kernel.car <- function(car.list, series.type, market.variable, estimation.window, overlap.window, event.window){
+  # El input es un a lista, donde cada objeto es un vector de retornos anormales acumulados de desastres de un determinado tipo de 
+  # desastre
+  
+  # Antes de obtener la densidad kernel de los carnel, tenemos que obtener el ancho de banda optimo, tal que la densidad tenga solamente
+  # una moda
+  anchos.optimos <- lapply(car.list, function(x){
+    ancho.banda <- 1
+    while(T){
+      # Encontrar una sola moda siguiendo el criterio de la segunda derivada, la cual tiene que pasar de positivo a negativo
+      # una sola vez
+      if(length(which(abs(diff(sign(diff(density(x,bw=ancho.banda)$y)))) == 2)) == 1){
+        break
+      }
+      ancho.banda <- ancho.banda + 1
+    }
+    return(ancho.banda)
+  })
+  
+  # A cada elemento de la lista le sacamos la densidad kernel, para luego poder graficarlo
+  car.density <- lapply(seq_along(car.list), function(x){
+    densidad <- density(car.list[[x]], bw = anchos.optimos[[x]])
+    return(densidad)
+  })
+  names(car.density) <- names(car.list)
+  
+  # Obtenemos las medianas de los kernel usando <weighted_median>
+  medianas <- unlist(lapply(car.density, function(densidad) weighted_median(densidad$x, densidad$y)))
+  
+  # Obtenemos el x y y maximos y minimos
+  x.minimo <- min(unlist(purrr::map(car.density, ~min(.x$x))))
+  x.maximo <- max(unlist(purrr::map(car.density, ~max(.x$x))))
+  y.minimo <- min(unlist(purrr::map(car.density, ~min(.x$y))))
+  y.maximo <- 1.05*max(unlist(purrr::map(car.density, ~max(.x$y))))
+  
+  # Graficamos las cuatro densidades, estableciendo los colores del Set1 de brewerpal
+  colors <- brewer.pal(n=length(car.density), name='Set1')
+  plot(car.density[[1]], col= colors[1], xlim = c(x.minimo, x.maximo),ylim=c(y.minimo, y.maximo), lwd=2,
+       yaxs = 'i', main = paste0('Cumulative Abnormal Return (CAR) Kernel relative to the disaster date. Event window: [1,',
+                                 event.window,']'), xlab = 'Cumulative Abnormal Return')
+  for(k in 2:length(car.density)){
+    lines(car.density[[k]],col = colors[k], lwd=2)
+  }
+  
+  # Generar la H0, en x = 0, no efecto en car
+  abline(v=0, col='black',lty=2)
+  
+  # Ahora graficamos las medianas y colocamos el area sombreada dependiendo de <series.type>
+  shading.alpha = 0.15 #<<<--- parametro para hacer mas transparente las areas de IC
+  if(series.type == 'cds'){
+    for(m in seq_along(medianas)){
+      polygon(x = c(car.density[[m]]$x[car.density[[m]]$x >= medianas[[m]]],medianas[[m]]),
+              y = c(car.density[[m]]$y[car.density[[m]]$x >= medianas[[m]]], 0),
+              col = adjustcolor(colors[[m]],alpha.f = shading.alpha), border= colors[[m]],lty=3, lwd=2)
+    }
+  }
+  if(series.type == 'indices'){
+    for(m in seq_along(medianas)){
+      polygon(x = c(car.density[[m]]$x[car.density[[m]]$x <= medianas[[m]]],medianas[[m]]),
+              y = c(car.density[[m]]$y[car.density[[m]]$x <= medianas[[m]]], 0),
+              col = adjustcolor(colors[[m]],alpha.f = shading.alpha), border= colors[[m]],lty=3, lwd=2)
+    }
+  }
+  
+  # Se genera el nombre de las lineas para la leyenda, lo unico importante es que 'Todos' va a ser reemplazado por 'All'
+  names.legend <- ifelse(names(medianas) == 'Todos', 'All', names(medianas))
+  
+  legend("topleft", 
+         legend    = c("Under Null Hypothesis (No Effect on Volatility)", paste0("Kernel CAR: ", names.legend)),
+         col       = c("black",colors), 
+         lty       = c(2,rep(1,length(car.list))),
+         bty = 'n')
+  texto <- 'Dotted lines correspond to the median of the respective kernel'
+  mtext(texto,side = 1, line = 2, cex = 0.9)
+  # TRaduccion variable <market.variable>
+  market.variable.english <- ifelse(market.variable == 'Promedio Movil', 'Moving Average',market.variable)
+  market.variable.title   <- ifelse(series.type == 'cds', '', paste0(' with ', market.variable.english))
+  series.type = ifelse(series.type == 'cds', 'CDS', series.type)
+  title(paste0('Estimation window: ',estimation.window,' days. Overlap window: ',overlap.window,' days. For ',series.type, market.variable.title),line=0.75)
+}
+

@@ -20,3 +20,22 @@ cd.graficos = paste0(getwd(),'/Graficos_Paper/') # Directorio para las imagenes
 
 # Cargar funciones --------------------------------------------------------
 source(paste0(getwd(),'/Codigos/00_Functions_Climate_Change.R')) # Source de las funciones
+
+# Creacion de clases ------------------------------------------------------
+
+# Generar la clase ESVolatility, para poder manejar los resultados de la estimacion para la varianza
+setClass("ESVolatility",slots=list(coefficients = "numeric",goodness_of_fit = "numeric",res_estandar_estimacion="xts",
+                                   res_no_estandar_estimacion="xts",variance_forecast="xts",residuales_evento="xts",
+                                   info.evento = 'data.frame'))
+# Crear clase de objetos
+setClass("ESmean",slots=list(retornos = "xts",error_estandar = "numeric",res_estandar_estimacion="xts",
+                             res_no_estandar_estimacion="xts",variance_forecast="xts",
+                             evento='data.frame',fit='list'))
+
+# Creacion objeto tabla.media ---------------------------------------------
+# Se crea un tipo de objeto S4 para guardar la tabla de la media, y aparte el numero de eventos para cada pais
+setClass('Tabla.media', slots = list(dataframe = 'data.frame', no.eventos = 'numeric'))
+
+
+# Se crea un tipo de objeto S4 para guardar la tabla de la media, y aparte el numero de eventos para cada pais
+setClass('Tabla.varianza', slots = list(dataframe = 'data.frame', no.eventos = 'numeric'))

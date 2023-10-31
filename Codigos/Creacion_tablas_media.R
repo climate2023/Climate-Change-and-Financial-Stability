@@ -1,8 +1,7 @@
-
-# Generar la clase ESVolatility, para poder manejar los resultados de la estimacion para la varianza
-setClass("ESVolatility",slots=list(coefficients = "numeric",goodness_of_fit = "numeric",res_estandar_estimacion="xts",
-                                   res_no_estandar_estimacion="xts",variance_forecast="xts",residuales_evento="xts",
-                                   info.evento = 'data.frame'))
+##########################################################
+# Codigo para generar las tablas de los tests de la media
+# Autores: Juan Pablo Bermudez. 
+##########################################################
 
 # Cargar librerias y directorios ------------------------------------------
 # Dentro de <01_Librerias_Directorios.R> se encuentra el source a las funciones
@@ -10,15 +9,6 @@ source(paste0(getwd(),'/Codigos/01_Librerias_Directorios.R'))
 
 countries   <- c('Brazil','Chile','China','Colombia','Indonesia','Korea','Malaysia','Mexico','Peru',
                  'SouthAfrica','Turkey') #<<<--- Lista de los paises de cada CDS/indice
-
-
-# Creacion objeto tabla.media ---------------------------------------------
-# Se crea un tipo de objeto S4 para guardar la tabla de la media, y aparte el numero de eventos para cada pais
-setClass('Tabla.media', slots = list(dataframe = 'data.frame', no.eventos = 'numeric'))
-# Crear clase de objetos
-setClass("ESmean",slots=list(retornos = "xts",error_estandar = "numeric",res_estandar_estimacion="xts",
-                             res_no_estandar_estimacion="xts",variance_forecast="xts",
-                             evento='data.frame',fit='list'))
 
 # Prueba de filtro  -------------------------------------------------------
 directorio.saved        <- paste0(getwd(),'/Resultados_regresion/')

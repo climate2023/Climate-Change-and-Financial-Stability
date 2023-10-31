@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.25 (MiKTeX 23.9 NEXT) (preloaded format=pdflatex 2023.9.20)  29 OCT 2023 23:13
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (MiKTeX 23.9 NEXT) (preloaded format=pdflatex 2023.9.20)  30 OCT 2023 10:16
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -856,14 +856,14 @@ Package pdftex.def Info: ../Graficos_Paper/CAV/Ag/indices_benchmark_CAV_Est_750_
 ] [35
 
 ]
-<../Graficos_Paper/Tablas/Desastre_Media.png, id=1041, 980.91469pt x 254.45062pt>
-File: ../Graficos_Paper/Tablas/Desastre_Media.png Graphic file (type png)
-<use ../Graficos_Paper/Tablas/Desastre_Media.png>
-Package pdftex.def Info: ../Graficos_Paper/Tablas/Desastre_Media.png  used on input line 393.
-(pdftex.def)             Requested size: 342.2953pt x 88.79114pt.
+<../Graficos_Paper/Tablas/Media.png, id=1041, 982.42032pt x 256.70906pt>
+File: ../Graficos_Paper/Tablas/Media.png Graphic file (type png)
+<use ../Graficos_Paper/Tablas/Media.png>
+Package pdftex.def Info: ../Graficos_Paper/Tablas/Media.png  used on input line 393.
+(pdftex.def)             Requested size: 342.2953pt x 89.44214pt.
  [36
 
- <../Graficos_Paper/Tablas/Desastre_Media.png>]
+ <../Graficos_Paper/Tablas/Media.png>]
 <../Graficos_Paper/Tablas/Media_CDS.png, id=1070, 1277.52281pt x 571.38469pt>
 File: ../Graficos_Paper/Tablas/Media_CDS.png Graphic file (type png)
 <use ../Graficos_Paper/Tablas/Media_CDS.png>
@@ -927,14 +927,14 @@ Package rerunfilecheck Info: File `Presentacion.out' has not changed.
  ) 
 Here is how much of TeX's memory you used:
  23977 strings out of 476331
- 479100 string characters out of 5787765
+ 479037 string characters out of 5787765
  1869660 words of memory out of 5000000
  43807 multiletter control sequences out of 15000+600000
  526651 words of font info for 86 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
  128i,16n,122p,836b,692s stack positions out of 10000i,1000n,20000p,200000b,200000s
 <C:/Users/jpber/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmex10.pfb><C:/Users/jpber/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cmextra/cmex9.pfb><C:/Users/jpber/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmmi10.pfb><C:/Users/jpber/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmmi6.pfb><C:/Users/jpber/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmmi8.pfb><C:/Users/jpber/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmmi9.pfb><C:/Users/jpber/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmss10.pfb><C:/Users/jpber/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmss12.pfb><C:/Users/jpber/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmss8.pfb><C:/Users/jpber/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmss9.pfb><C:/Users/jpber/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmssi10.pfb><C:/Users/jpber/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmssi8.pfb><C:/Users/jpber/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmssi9.pfb><C:/Users/jpber/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmsy10.pfb><C:/Users/jpber/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmsy6.pfb><C:/Users/jpber/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmsy8.pfb><C:/Users/jpber/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmsy9.pfb>
-Output written on Presentacion.pdf (41 pages, 817334 bytes).
+Output written on Presentacion.pdf (41 pages, 817303 bytes).
 PDF statistics:
  1311 PDF objects out of 1440 (max. 8388607)
  97 named destinations out of 1000 (max. 500000)
