@@ -1,89 +1,25 @@
-if(1){
-  # Generar la clase ESVolatility, para poder manejar los resultados de la estimacion para la varianza
-  setClass("ESVolatility",slots=list(coefficients = "numeric",goodness_of_fit = "numeric",res_estandar_estimacion="xts",
-                                     res_no_estandar_estimacion="xts",variance_forecast="xts",residuales_evento="xts",
-                                     info.evento = 'data.frame'))
-  
-  if(Sys.info()["sysname"]=='Windows') Sys.setlocale("LC_TIME","English")
-  
-  rm(list = ls())
-  if (Sys.info()["sysname"]=='Windows')  setwd('C:/Users/jpber/OneDrive/Documents/Codigo_compartido_Melo/Climate_Change_and_Financial_Stability/Climate-Change-and-Financial-Stability')
-  if (Sys.info()["sysname"]!='Windows')  setwd('/Users/lumelo/archivos/Climate-Change-and-Financial-Stability/Github/Climate-Change-and-Financial-Stability')
-  
-  cat("\014")
-  
-  # Cargar librerias --------------------------------------------------------
-  
-  library(tidyverse)
-  library(xts)
-  library(timeDate)
-  library(zoo)
-  library(tempdisagg)
-  library(tsbox)
-  library(quantmod)
-  library(timeSeries)
-  library(forecast)
-  library(nlme)
-  library(seasonal)   
-  library(openxlsx)
-  library(urca)
-  library(fable)
-  library(lmtest)
-  library(moments)
-  library(stargazer)
-  library(Hmisc)
-  library(scales)
-  library(vars)
-  library(smoots)
-  library(dynlm)
-  library(systemfit)
-  library(ks)
-  library(knitr)
-  library(gridExtra)
-  library(stringr)
-  library(maps)
-  library(mapproj)
-  library(ggthemes)
-  library(tmap)
-  library(sf)
-  library(ggsci)
-  library(classInt)
-  library(gnFit)
-  library(rugarch)
-  library(knitr)
-  library(kableExtra)
-  library(janitor) # Para manejo de tablas descriptivas
-  library(xtable)  # Para exportar tablas a latex 
-  library(RColorBrewer)
-  library(tools)
-  library(writexl)  # Para crear excel
-  library(readxl)
-  
-  # Cargar funciones --------------------------------------------------------
-  source(paste0(getwd(),'/Codigos/Functions_Climate_Change.r')) # Source de las funciones
-  
-  countries   <- c('Brazil','Chile','China','Colombia','Indonesia','Korea','Malaysia','Mexico','Peru',
-                   'SouthAfrica','Turkey') #<<<--- Lista de los paises de cada CDS/indice
-}
+##########################################################
+# Creacion de tablas de varianza
+# Autores: Juan Pablo Bermudez.
+##########################################################
 
-# Se crea un tipo de objeto S4 para guardar la tabla de la media, y aparte el numero de eventos para cada pais
-setClass('Tabla.varianza', slots = list(dataframe = 'data.frame', no.eventos = 'numeric'))
+rm(list = ls())
+# Cargar librerias y directorios ------------------------------------------
+# Dentro de <01_Librerias_Directorios.R> se encuentra el source a las funciones
+source(paste0(getwd(),'/Codigos/01_Librerias_Directorios.R'))
+  
+countries <- c('Brazil','Chile','China','Colombia','Indonesia','Korea','Malaysia','Mexico','Peru',
+                   'SouthAfrica','Turkey') #<<<--- Lista de los paises de cada CDS/indice
 
 # Prueba de filtro  -------------------------------------------------------
-directorio.saved        <- paste0(getwd(),'/Resultados_regresion/')
-# directorio.guardar      <- paste0(directorio.saved,'Tablas/') # con cambio de bootstrap las tablas se guardan en otra carpeta
-directorio.guardar      <- paste0(directorio.saved,'Tablas/') 
-
-# Parametros --------------------------------------------------------------
 tipo.serie              <- 'Indices'   #<<<--- Puede ser 'CDS' o 'Indices'  
-tipo.estudio            <- 'varianza' #<<<--- Puede ser de 'media' o 'varianza'
 regresor.mercado        <- 'PM'    #<<<--- Retornos de mercado 'PM' es promedio movil y 'MSCI' es el retorno MSCI Emerging Markets
 paises.resultados       <- countries # Seleccionar los paises sobre los cuales se quiere hacer el analisis de resultados. <countries> si se desea
 # de todos los paises de los que se tiene informacion
 columna.agrupar         <- 'Country'  #<<<--- Columna del evento por la cual se quiere separar la lista de regresiones para las tablas/graficas
 # 'Country' la separa por pais donde sucedio el desastre y 'Disaster.Subgroup' por el tipo de desastre
 # 'Ambas' implica que se va a analizar por ambas columbas, por ejemplo: brazil - hidrologico, brazil - geofisico, ...
-vol_ev_window           <- 15  #<<<--- Tamaño de la ventana de evento
+vol_ev_window           <- 15  #<<<--- Tamano de la ventana de evento
 
 ventanas.estimacion <- c(500, 750, 1000)
 ventanas.traslape   <- c('50', '100', '150')   #<<<--- Puede ser 50, 100 o 150   (Importante que sea string)
@@ -91,7 +27,7 @@ for(ventana.estimacion in ventanas.estimacion){
   for(ventana.traslape in ventanas.traslape){
     # Volatility event study --------------------------------------------------
     # load de los objetos de la varianza
-    load(paste0(directorio.saved,tipo.serie,'_tra',ventana.traslape,'_est',ventana.estimacion,'_',tipo.estudio,'_',regresor.mercado,'.RData'))
+    load(paste0(directorio.saved,tipo.serie,'_tra',ventana.traslape,'_est',ventana.estimacion,'_varianza_',regresor.mercado,'.RData'))
     # Eliminar objetos NA
     volatility_results <- suppressWarnings(purrr::discard(volatility_results,is.na))
     
@@ -134,31 +70,41 @@ for(ventana.estimacion in ventanas.estimacion){
     
     # Dataframe con muchas ventanas
     matrix.volatilidad <- matrix(nrow=(vol_ev_window),ncol=(length(v.lista.separada)+1))
-    iteraciones.bool  <- 5000
+    # Creamos una matriz con las mismas dimensiones de <matrix.volatilidad>, pero que en cada celda va a contener toda la informacion, ya
+    # que <matrix.volatilidad> solo tendra el CAV y su significancia, mientras que <matrix.volatilidad.completa> tendra adicionalmente el pvalue
+    # y el error estandar
+    matrix.volatilidad.completa <- matrix.volatilidad
+    iteraciones.bool  <- 10000
     for(i in seq_along(v.lista.separada)){
       for(j in (1:(vol_ev_window))){
-        prueba <- bootstrap.volatility2(v.lista.separada[[i]],as.numeric(ventana.estimacion),j,bootstrap_vol_iterations = iteraciones.bool)
+        prueba <- bootstrap.volatility2(volatility.list = v.lista.separada[[i]],es.window.length = as.numeric(ventana.estimacion)
+                                        ,ev.window.length = j,bootstrap_vol_iterations = iteraciones.bool)
         matrix.volatilidad[j,i] <- paste(prueba$CAV,prueba$Significancia)
+        matrix.volatilidad.completa[j,i] <- paste(prueba[1,], collapse = '/ ')
       }
     }
     
     k <- length(v.lista.separada)+1
     for(j in (1:(vol_ev_window))){ 
       prueba.cav <- bootstrap.volatility2(volatility_results,as.numeric(ventana.estimacion),j,bootstrap_vol_iterations = iteraciones.bool)
-      matrix.volatilidad[j,k] <- paste(prueba.cav$CAV,prueba.cav$Significancia)
+      matrix.volatilidad[j,k]          <- paste(prueba.cav$CAV,prueba.cav$Significancia)
+      matrix.volatilidad.completa[j,k] <- paste(prueba.cav[1,], collapse = '/ ')
     }
     colnames(matrix.volatilidad) <- c(names(v.lista.separada),'Todos')
+    colnames(matrix.volatilidad.completa) <- c(names(v.lista.separada), 'Todos')
     Ventana                      <- 1:(vol_ev_window)
     matrix.volatilidad           <- cbind(Ventana,matrix.volatilidad)
+    matrix.volatilidad.completa  <- cbind(Ventana, matrix.volatilidad.completa)
     
     # Creacion objeto para guardar
     tabla.volatilidad <- new('Tabla.varianza', dataframe = data.frame(matrix.volatilidad),no.eventos = eventos.separados)
+    tabla.volatilidad.completa <- new('Tabla.varianza', dataframe = data.frame(matrix.volatilidad.completa), no.eventos = eventos.separados)    
     
     # Guardar las tablas de significancia. No es necesario agregar el tipo de test ya que podemos guardar ambas tablas
     if(columna.agrupar=='Disaster.Subgroup') agrupacion <- 'tipodesastre'
     if(columna.agrupar=='Country') agrupacion <- 'pais'
     if(columna.agrupar=='Ambas')   agrupacion <- 'paistipodesastre'
-    save(tabla.volatilidad,
-         file=paste0(directorio.guardar,'Tablas_',tipo.serie,'_tra',ventana.traslape,'_est',ventana.estimacion,'_',tipo.estudio,'_',regresor.mercado,'_',agrupacion,'.RData'))
+    save(tabla.volatilidad, tabla.volatilidad.completa,
+         file=paste0(directorio.guardar,'Tablas_',tipo.serie,'_tra',ventana.traslape,'_est',ventana.estimacion,'_varianza_',regresor.mercado,'_',agrupacion,'.RData'))
   }
 }

@@ -1923,8 +1923,10 @@ wilcoxon.jp.test <- function(data.list,es.window.length,ev.window.length,ev.wind
     car     <- sum(element@retornos$Abnormal[(es.window.length+1+ev.window.begin):(es.window.length+ev.window.length+ev.window.begin)])
     all_car <- c(all_car,car)
   }
-  # <if(0)> porque la signficancia puede ser encontrada de una mejor manera con <wilcox.test> 
-  if(0){
+   
+  # El siguiente codigo tiene <if(1)> porque no es necesario correrlo, solo para obtener el error
+  # estandar. La significancia se halla con una funcion abajo del if
+  if(1){
     # Se genera un dataframe para poder realizar el ordenamiento de los car
     df_car <- data.frame("car"=all_car,"magnitude"=abs(all_car),"sign"=sign(all_car))
     df_car <- df_car %>% 
@@ -1939,42 +1941,49 @@ wilcoxon.jp.test <- function(data.list,es.window.length,ev.window.length,ev.wind
       dplyr::summarize(sum = sum(rank))
     positive_rank_sum <- rank_sum$sum[rank_sum$sign=="1"]
     
-    # Calculo de la significancia del estadistico de Wilcoxon
-    # La funcion para hallar los cuantiles de la distribucion del estadistico de Wilcoxon es <stats::qsignrank()>. 
-    # A partir de 1000 observaciones, la funcion no se comporta adecuadamente, pero debido a que es muestra grande, la distribucion
-    # converge a una normal con media N(N+1)/4 y varianza N(N+1)(2N+1)/24 por lo que usamos <stats::qnorm()>>
-    significance <- ""
-    ## Calculo para cada nivel de significancia si el valor de <positive_rank_sum> es lo suficientemente extremo para rechazar H_0
-    #  La prueba se hace a dos colas, por lo que la primera condicion para cada prueba de significancia compara <positive_rank_sum> con el 
-    #  valor critico de la cola derecha.
-    #  La segunda condicion es la comparacion de <positive_rank_sum> con el valor critico de la cola izquierda.
     N <- length(data.list)
     
-    # Uso de <qsignrank> o <qnorm> dependiendo del tamaño de la muestra
-    if(N<=1000){
-      # Si se evalua la significancia al 10%, con un test a dos colas, debemos buscar los percentiles 5 y 95, y comparar con estadistico
-      significance[positive_rank_sum >= stats::qsignrank(1 - 0.1/2,n=N)|
-                     positive_rank_sum <= stats::qsignrank(0.1/2, n=N)] <- "*"
-      # Para evaluar al 5%:
-      significance[positive_rank_sum >= stats::qsignrank(1 - 0.05/2, n=N)|
-                     positive_rank_sum <= stats::qsignrank(0.05/2, n=N)] <- "**"
-      # Al 1%:
-      significance[positive_rank_sum >= stats::qsignrank(1 - 0.01/2, n=N)|
-                     positive_rank_sum <= stats::qsignrank(0.01/2, n=N)] <- "***"
-      resultado <- data.frame("Wilcoxon_statistic" = positive_rank_sum,"Significancia" = significance)
-    }else{
-      mu = N*(N+1)/4
-      sigma = sqrt(N*(N+1)*(2*N+1)/24)
-      # Si se evalua la significancia al 10%, con un test a dos colas, debemos buscar los percentiles 5 y 95, y comparar con estadistico
-      significance[positive_rank_sum >= stats::qnorm(1 - 0.1/2,mean = mu,sd = sigma)|
-                     positive_rank_sum <= stats::qnorm(0.1/2, mean = mu,sd = sigma)] <- "*"
-      # Para evaluar al 5%:
-      significance[positive_rank_sum >= stats::qnorm(1 - 0.05/2, mean = mu,sd = sigma)|
-                     positive_rank_sum <= stats::qnorm(0.05/2, mean = mu,sd = sigma)] <- "**"
-      # Al 1%:
-      significance[positive_rank_sum >= stats::qnorm(1 - 0.01/2, mean = mu,sd = sigma)|
-                     positive_rank_sum <= stats::qnorm(0.01/2, mean = mu,sd = sigma)] <- "***"
-      resultado <- data.frame("Wilcoxon_statistic" = positive_rank_sum,"Significancia" = round(significance,3))
+    # de acuerdo con <SignRank::psignrank> la varianza del estadistico es N(N+1)(2N+1)
+    std.error <- sqrt(N*(N+1)*(2*N+1)/24)
+    
+    # <if(0)> porque la signficancia puede ser encontrada de una mejor manera con <wilcox.test>
+    if(0){
+      # Calculo de la significancia del estadistico de Wilcoxon
+      # La funcion para hallar los cuantiles de la distribucion del estadistico de Wilcoxon es <stats::qsignrank()>. 
+      # A partir de 1000 observaciones, la funcion no se comporta adecuadamente, pero debido a que es muestra grande, la distribucion
+      # converge a una normal con media N(N+1)/4 y varianza N(N+1)(2N+1)/24 por lo que usamos <stats::qnorm()>>
+      significance <- ""
+      ## Calculo para cada nivel de significancia si el valor de <positive_rank_sum> es lo suficientemente extremo para rechazar H_0
+      #  La prueba se hace a dos colas, por lo que la primera condicion para cada prueba de significancia compara <positive_rank_sum> con el 
+      #  valor critico de la cola derecha.
+      #  La segunda condicion es la comparacion de <positive_rank_sum> con el valor critico de la cola izquierda.
+      
+      # Uso de <qsignrank> o <qnorm> dependiendo del tamaño de la muestra
+      if(N<=1000){
+        # Si se evalua la significancia al 10%, con un test a dos colas, debemos buscar los percentiles 5 y 95, y comparar con estadistico
+        significance[positive_rank_sum >= stats::qsignrank(1 - 0.1/2,n=N)|
+                       positive_rank_sum <= stats::qsignrank(0.1/2, n=N)] <- "*"
+        # Para evaluar al 5%:
+        significance[positive_rank_sum >= stats::qsignrank(1 - 0.05/2, n=N)|
+                       positive_rank_sum <= stats::qsignrank(0.05/2, n=N)] <- "**"
+        # Al 1%:
+        significance[positive_rank_sum >= stats::qsignrank(1 - 0.01/2, n=N)|
+                       positive_rank_sum <= stats::qsignrank(0.01/2, n=N)] <- "***"
+        resultado <- data.frame("Wilcoxon_statistic" = positive_rank_sum,"Significancia" = significance)
+      }else{
+        mu = N*(N+1)/4
+        sigma = sqrt(N*(N+1)*(2*N+1)/24)
+        # Si se evalua la significancia al 10%, con un test a dos colas, debemos buscar los percentiles 5 y 95, y comparar con estadistico
+        significance[positive_rank_sum >= stats::qnorm(1 - 0.1/2,mean = mu,sd = sigma)|
+                       positive_rank_sum <= stats::qnorm(0.1/2, mean = mu,sd = sigma)] <- "*"
+        # Para evaluar al 5%:
+        significance[positive_rank_sum >= stats::qnorm(1 - 0.05/2, mean = mu,sd = sigma)|
+                       positive_rank_sum <= stats::qnorm(0.05/2, mean = mu,sd = sigma)] <- "**"
+        # Al 1%:
+        significance[positive_rank_sum >= stats::qnorm(1 - 0.01/2, mean = mu,sd = sigma)|
+                       positive_rank_sum <= stats::qnorm(0.01/2, mean = mu,sd = sigma)] <- "***"
+        resultado <- data.frame("Wilcoxon_statistic" = positive_rank_sum,"Significancia" = round(significance,3))
+      }
     }
   }
   # Por ultimo, usando la funcion <wilcox.test> obtenemos el pvalor dependiendo de la cola, si tenemos que <tail> es 2, eso significa que la alternativa debe
@@ -1990,7 +1999,8 @@ wilcoxon.jp.test <- function(data.list,es.window.length,ev.window.length,ev.wind
   if(p_value<=0.10) significancia <- '*'
   if(p_value<=0.05) significancia <- '**'
   if(p_value<=0.01) significancia <- '***'
-  resultado <- data.frame('Estadistico'=statistic,'Significancia'=significancia, "p_value" = round(p_value,3))
+  resultado <- data.frame('Estadistico'=statistic,'Significancia'=significancia, "p_value" = round(p_value,5),
+                          'Error_estandar' = round(std.error,5))
   return(resultado)
 }
 #---------------------------------------------------------------------------------------#
@@ -3753,9 +3763,9 @@ bootstrap.volatility2 <- function(volatility.list,es.window.length,ev.window.len
   
   # La volatilidad anormal acumulada (CAV) esta definida como
   cav <- sum(Mt) - length(Mt)
-  estadistico.bialkowski <- sum(Mt)*(length(volatility.list)-1)
-  pvalue.bialkowski      <- pchisq(estadistico.bialkowski,
-                                   df = ((length(volatility.list)-1)*(ev.window.length+1)),lower.tail = F)
+  # estadistico.bialkowski <- sum(Mt)*(length(volatility.list)-1)
+  # pvalue.bialkowski      <- pchisq(estadistico.bialkowski,
+                                  # df = ((length(volatility.list)-1)*(ev.window.length+1)),lower.tail = F)
   
   # Bootstrap Volatility ----------------------------------------------------
   
@@ -3798,6 +3808,9 @@ bootstrap.volatility2 <- function(volatility.list,es.window.length,ev.window.len
     cav_empiric_vector <- c(cav_empiric_vector,cav_boot)
   }
   
+  # Obtenemos el erro estandar como la raiz cuadrada de la varianza del vector de cav <cav_empiric_vector>
+  standard.error <- sd(cav_empiric_vector)
+  
   # El p-value esta definido por Bourdeau (2017), quien dice que es la proporcion de valores que son mayores al
   # cav calculado originalmente
   
@@ -3812,8 +3825,8 @@ bootstrap.volatility2 <- function(volatility.list,es.window.length,ev.window.len
   if(pvalue.bialkowski<=0.05) significancia.bialkowski <- '/ **'
   if(pvalue.bialkowski<=0.01) significancia.bialkowski <- '/ ***'
   
-  resultado        <- data.frame('CAV'=round(cav,3),'Significancia' = significancia,'p_value'=pvalue_bootstrap,
-                                 'Significanciabialkowski' = significancia.bialkowski)
+  resultado        <- data.frame('CAV'=round(cav,3),'Significancia' = significancia,'p_value'= round(pvalue_bootstrap,5),
+                                 'Error estandar' = round(standard.error,5))
   return(resultado)
 }
 

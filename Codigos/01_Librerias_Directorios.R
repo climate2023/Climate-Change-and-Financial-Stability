@@ -16,6 +16,9 @@ p_load(tidyverse, xts, timeDate, zoo, tempdisagg, tsbox, quantmod, timeSeries, f
 # Directorios -------------------------------------------------------------
 Dir         = paste0(getwd(),'/Bases/') #Directorio de datos, se supone que el subdirectorio <Bases> existe
 cd.graficos = paste0(getwd(),'/Graficos_Paper/') # Directorio para las imagenes
+# Directorios para las tablas latex
+directorio.saved        <- paste0(getwd(),'/Resultados_regresion/')
+directorio.guardar      <- paste0(directorio.saved,'Tablas/')
 
 # Cargar funciones --------------------------------------------------------
 source(paste0(getwd(),'/Codigos/00_Functions_Climate_Change.R')) # Source de las funciones
