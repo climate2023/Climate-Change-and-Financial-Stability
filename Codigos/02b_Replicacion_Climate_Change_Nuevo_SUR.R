@@ -250,13 +250,6 @@ if(1){
     if(!bool_cds){
       # Por el momento la idea es  reducir tanto <base_precios> como <base_retornos> y <mercado.retornos> para que terminen en el tercer trimestre del 2022, 
       # ya que hasta ese punto hay datos de GDP. 
-      if(0){
-        #Reducir tambien la base <gdp_countries> para que comienze en el tercer trimestre del 
-        # 2006, ya que desde ese trimestre se tienen datos de stocks
-        trimestres.remover <- c('2004Q4','2005Q1','2005Q2','2005Q3','2005Q4','2006Q1')
-        gdp_countries <- gdp_countries %>% 
-          dplyr::filter(!(Time %in% trimestres.remover))
-      } # <if(0)> porque ya no es necesario eliminar los primeros trimestres ya que ya hay datos para indices de bolsa
       trimestre.final    <- as.Date(as.yearqtr(tail(gdp_countries$Time,1)),frac=1) # Final del tercer trimestre del 2022
       # La razon de transformar <base_precios> es porque la desagregacion temporal se hace en base al indice que tenga <base_precios>.
       # La razon de transformar <base_retornos> es porque es la base que se va a utilizar para el SUR.
@@ -606,3 +599,7 @@ if(!load.SUR){
   estimated.sur <- systemfit(eqsystem, data = base_datos, method = 'SUR')
   save(estimated.sur, file = paste0(getwd(), '/Resultados_SUR/Nuevo_SUR/Resultado_SUR_',tipo.serie,'_',market,'.RData'))
 }
+
+# Guardar base de datos necesaria para el analisis de Tommaso (2023) --------
+base_Tommaso <- merge(base_retornos,market.returns,gdp_growth_base,fdi_growth_base)
+save(base_Tommaso, file = paste0(getwd(),'/Bases/Procesado/Base_Tommaso_',tipo.serie,'_rm_',market,'.RData'))
