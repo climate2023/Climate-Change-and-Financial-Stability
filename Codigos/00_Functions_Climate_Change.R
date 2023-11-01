@@ -4213,12 +4213,11 @@ kernel.car <- function(car.list, series.type, market.variable, estimation.window
   names.legend <- ifelse(names(medianas) == 'Todos', 'All', names(medianas))
   
   legend("topleft", 
-         legend    = c("Under Null Hypothesis (No Effect on Volatility)", paste0("Kernel CAR: ", names.legend)),
-         col       = c("black",colors), 
-         lty       = c(2,rep(1,length(car.list))),
+         legend    = c("Under Null Hypothesis (No Effect on the mean)", paste0("Kernel CAR: ", names.legend), 
+                       paste0("Kernel's Median: ", names.legend)),
+         col       = c("black",colors, colors), 
+         lty       = c(2,rep(1,length(car.list)), rep(3, length(car.list))),
          bty = 'n')
-  texto <- 'Dotted lines correspond to the median of the respective kernel'
-  mtext(texto,side = 1, line = 2, cex = 0.9)
   # TRaduccion variable <market.variable>
   market.variable.english <- ifelse(market.variable == 'Promedio Movil', 'Moving Average',market.variable)
   market.variable.title   <- ifelse(series.type == 'cds', '', paste0(' with ', market.variable.english))
