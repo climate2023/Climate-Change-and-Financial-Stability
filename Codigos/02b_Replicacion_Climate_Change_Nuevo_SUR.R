@@ -13,7 +13,8 @@ source(paste0(getwd(),'/Codigos/01_Librerias_Directorios.R'))
 # Se genera un vector con el nombre de los paises de los cuales se tiene datos de indice bursatil
 bool_paper <- T #<<<--- Parametro que indica si se carga la base de datos que utilizaremos o los retornos de Pagnottoni (2022). 
 # <T> si se desea la base de datos para el paper. <F> si los retornos de Pagnottoni
-bool_cds   <- T  #<<<--- Parametro que indice si se hara el analisis sobre los CDS (<TRUE>) y <F> si se realizara sobre los stocks
+var.series <- 'CDS'  #<<<--- Parametro que indica si el analisis se hara sobre cds, en cuyo caso <var.series> sera 'CDS', sobre stocks, en cuyo caso <var.series> sera 'stocks'
+                 #       o BEI, en cuyo caso <var.series> sera 'BEI'
 promedio.movil <- T #<<<-- parametro (booleano) para que el usuario decida cual sera el retorno de mercado, <T> si es el promedio movil de 
 # de los retornos de los indices, <F> si es otra variable
 
@@ -74,17 +75,15 @@ if(!bool_paper){
   colnames(base_test) <- indexes
   xts.mercado <- NA # Para base de Pagnottoni no hay retorno de mercado "exogeno", ya que es el promedio movil
 }else{
+  # Parametros compartidos para las bases de CDS, stocks y BEI
   date_column <- "Date"  #<<<--- Parametro que le indica al usuario el nombre de la columna de las fechas
-  countries   <- c('Brazil','Chile','China','Colombia','Indonesia','Korea','Malaysia','Mexico','Peru',
-                   'SouthAfrica','Turkey') #<<<--- Lista de los paises de cada CDS/indice
-  
   no.rezagos.de.desastres <- 15  #<<<--- Numero de rezagos de los desastres <w> (i.e. t0, t1, ..., tw)
   
   # Establecemos el directorio de los datos
   Dir  = paste0(getwd(),'/Bases/') #Directorio de datos, se supone que el subdirectorio <Bases> existe
   
   # Leer la base de datos
-  if(bool_cds){
+  if(var.series == 'CDS'){
     indexes  <- c('CDS_Brazil','CDS_Chile','CDS_China','CDS_Colombia','CDS_Indonesia','CDS_Korea',
                   'CDS_Malaysia','CDS_Mexico','CDS_Peru','CDS_SouthAfrica','CDS_Turkey') #<<<--- Lista de los indices analizados. 
     # Corresponde a los nombres en <base_cds>
@@ -102,10 +101,24 @@ if(!bool_paper){
     indexes <- gsub("[^[:alnum:]]", "", indexes)
     colnames(base_test) <- gsub("[^[:alnum:]]", "", colnames(base_test))
     xts.mercado <- NA # Para los cDS no se tiene un retorno de mercado exogeno, ya que es el promedio movil
-  }else{
+  }
+  
+  if(var.series == 'stocks'){
     indexes         <- c('BIST100','Bovespa','ChinaA50','JSX','KOSPI','S.PBMVIPC','S.PCLXIPSA','SouthAfricaTop40',
                          'IGBVL','KLCI','COLCAP') # Nombre indices para el paper. JSX es el de Jakarta
     columna.mercado <- c('MSCI')
+    base.stocks     <- readxl::read_excel(path = paste0(Dir, 'Stocks_Paper_Completos.xlsx')) 
+    # <Stocks_Paper.xlsx> tiene la base desde el 5 de junio del 2006, <Stocks_Paper_Completos> desde el 7 de octubre del 2004
+    # Volver objeto xts
+    base_test <- as.xts(base.stocks[, !colnames(base.stocks) %in% c(date_column,columna.mercado)],order.by = as.Date(base.stocks[[date_column]]))  
+    # Cambiar nombres de las columnas por los nombres de los <indexes>
+    colnames(base_test) <- indexes
+    xts.mercado <- as.xts(base.stocks[,colnames(base.stocks)%in%columna.mercado],order.by=as.Date(base.stocks[[date_column]]))
+  }
+  
+  if(var.series == 'BEI'){
+    indexes         <- c('BEI_1Y','BEI_2Y','BEI_5Y','BEI_10Y') # Nombre indices para el paper. JSX es el de Jakarta
+    columna.mercado <- c('') # Todavia falta un retorno de mercado
     base.stocks     <- readxl::read_excel(path = paste0(Dir, 'Stocks_Paper_Completos.xlsx')) 
     # <Stocks_Paper.xlsx> tiene la base desde el 5 de junio del 2006, <Stocks_Paper_Completos> desde el 7 de octubre del 2004
     # Volver objeto xts
