@@ -123,12 +123,24 @@ if(!bool_paper){
   if(var.series == 'BEI'){
     indexes         <- c('BEI_1Y','BEI_2Y','BEI_5Y','BEI_10Y') # Nombre indices para el paper. JSX es el de Jakarta
     columna.mercado <- c('') # Todavia falta un retorno de mercado
-    base.bei     <- readxl::read_excel(path = paste0(Dir, 'BEI_LFM.xlsx')) 
+    # Leer la base de BEI, teniendo en cuenta que el excel original cuenta con dos hojas
+    hojas.bei <- excel_sheets(paste0(Dir, 'BEI_LFM.xlsx'))
+    bases.bei  <- lapply(hojas.bei, function(hoja){
+      df.temp <- read_excel(paste0(Dir, 'BEI_LFM.xlsx'), sheet = hoja)
+      colnames(df.temp) <- paste0(colnames(df.temp), '_',hoja)
+      # El nombre que corresponde al dia no se le debe agregar <hoja>
+      colnames(df.temp)[grepl(date_column,colnames(df.temp))] <- date_column
+      # Convertirlo en formato fecha
+      df.temp[[date_column]] <- as.Date(df.temp[[date_column]])
+      return(df.temp)
+    })
+    # Ahora necesitamos juntar las bases que estan en <bases.bei> 
+    base.bei <- do.call(inner_join, bases.bei)
     # <Stocks_Paper.xlsx> tiene la base desde el 5 de junio del 2006, <Stocks_Paper_Completos> desde el 7 de octubre del 2004
     # Volver objeto xts
     base_test <- as.xts(base.bei[, !colnames(base.bei) %in% c(date_column,columna.mercado)],order.by = as.Date(base.bei[[date_column]]))  
-    # Cambiar nombres de las columnas por los nombres de los <indexes>
-    colnames(base_test) <- indexes
+    # En este caso, indexes cambia un poco, ya que toca tener en cuenta los BEI originales y los BEI sin prima
+    indexes <- colnames(base_test)
     xts.mercado <- as.xts(base.bei[,colnames(base.bei)%in%columna.mercado],order.by=as.Date(base.bei[[date_column]]))
   }
 }
@@ -178,8 +190,12 @@ if(var.series == 'stocks'){
   #       filas   : una fila menos que <base_precios>
   base_retornos    <- 100*diff(log(base_precios))[2:nrow(base_precios),]
   mercado.retornos <- na.omit(100*diff(log(xts.mercado)))
-}else{
+}else if(var.series == 'CDS'){
   base_retornos    <- na.omit(diff(base_precios))
+}else if(var.series == 'BEI'){
+  base_retornos    <- na.omit(diff(base_precios))
+  # mercado.retornos <- na.omit(diff(xts.mercado)) # La variable explicativa tambien se expresa en primera diferencia
+  mercado.retornos <- xts.mercado # Por el momento es mejor dejarlo igual a <xts.mercado>
 }
 
 if(promedio.movil){
@@ -267,7 +283,7 @@ if(1){
     gdp_countries <- readxl::read_xlsx(paste0(Dir,"GDP_countries_corregida.xlsx"), sheet="GDP") #<<<--- Base de datos con GDPs
   }else{
     gdp_countries <- readxl::read_xlsx(paste0(Dir,"GDP_countries_cds.xlsx")) #<<<--- Base de datos con GDPs
-    if(!bool_cds){
+    if(var.series == 'stocks'){
       # Por el momento la idea es  reducir tanto <base_precios> como <base_retornos> y <mercado.retornos> para que terminen en el tercer trimestre del 2022, 
       # ya que hasta ese punto hay datos de GDP. 
       trimestre.final    <- as.Date(as.yearqtr(tail(gdp_countries$Time,1)),frac=1) # Final del tercer trimestre del 2022
