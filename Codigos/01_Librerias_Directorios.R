@@ -11,7 +11,7 @@ p_load(tidyverse, xts, timeDate, zoo, tempdisagg, tsbox, quantmod, timeSeries, f
        openxlsx, urca, fable, lmtest, moments, stargazer, Hmisc, scales, vars, smoots, dynlm, systemfit,
        ks, knitr, gridExtra, stringr, maps, mapproj, ggthemes, tmap, sf, ggsci, classInt, gnFit, rugarch,
        kableExtra, janitor, xtable, RColorBrewer, tools, writexl, readxl, readxl, bizdays, RQuantLib, gplots,
-       datawizard)
+       datawizard, ggbreak)
 
 # Directorios -------------------------------------------------------------
 Dir         = paste0(getwd(),'/Bases/') #Directorio de datos, se supone que el subdirectorio <Bases> existe
