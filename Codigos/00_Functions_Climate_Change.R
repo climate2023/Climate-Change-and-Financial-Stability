@@ -4224,3 +4224,19 @@ kernel.car <- function(car.list, series.type, market.variable, estimation.window
   series.type = ifelse(series.type == 'cds', 'CDS', series.type)
   title(paste0('Estimation window: ',estimation.window,' days. Overlap window: ',overlap.window,' days. For ',series.type, market.variable.title),line=0.75)
 }
+
+
+train_sec <- function(primary, secondary, na.rm = TRUE) {
+  # Thanks Henry Holm for including the na.rm argument!
+  from <- range(secondary, na.rm = na.rm)
+  to   <- range(primary, na.rm = na.rm)
+  # Forward transform for the data
+  forward <- function(x) {
+    rescale(x, from = from, to = to)
+  }
+  # Reverse transform for the secondary axis
+  reverse <- function(x) {
+    rescale(x, from = to, to = from)
+  }
+  list(fwd = forward, rev = reverse)
+}
