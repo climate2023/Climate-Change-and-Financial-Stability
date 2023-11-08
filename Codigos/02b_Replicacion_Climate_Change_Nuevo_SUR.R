@@ -13,7 +13,7 @@ source(paste0(getwd(),'/Codigos/01_Librerias_Directorios.R'))
 # Se genera un vector con el nombre de los paises de los cuales se tiene datos de indice bursatil
 bool_paper <- T #<<<--- Parametro que indica si se carga la base de datos que utilizaremos o los retornos de Pagnottoni (2022). 
 # <T> si se desea la base de datos para el paper. <F> si los retornos de Pagnottoni
-var.series <- 'BEI'  #<<<--- Parametro que indica si el analisis se hara sobre cds, en cuyo caso <var.series> sera 'CDS', sobre stocks, en cuyo caso <var.series> sera 'stocks'
+var.series <- 'stocks'  #<<<--- Parametro que indica si el analisis se hara sobre cds, en cuyo caso <var.series> sera 'CDS', sobre stocks, en cuyo caso <var.series> sera 'stocks'
                  #       o BEI, en cuyo caso <var.series> sera 'BEI'
 promedio.movil <- T #<<<-- parametro (booleano) para que el usuario decida cual sera el retorno de mercado, <T> si es el promedio movil de 
 # de los retornos de los indices, <F> si es otra variable
@@ -90,6 +90,8 @@ if(!bool_paper){
   if(var.series == 'CDS'){
     indexes  <- c('CDS_Brazil','CDS_Chile','CDS_China','CDS_Colombia','CDS_Indonesia','CDS_Korea',
                   'CDS_Malaysia','CDS_Mexico','CDS_Peru','CDS_SouthAfrica','CDS_Turkey') #<<<--- Lista de los indices analizados. 
+    countries <- c('Brazil','Chile','China','Colombia','Indonesia','Korea','Malaysia','Mexico',
+                   'Peru','SouthAfrica','Turkey')
     # Corresponde a los nombres en <base_cds>
     base_cds <- readxl::read_excel(path = paste0(Dir,"CDS_Data_VIX_EMBI.xlsx"))
     # Seleccionar las columnas de interes (<indexes>)
@@ -110,6 +112,8 @@ if(!bool_paper){
   if(var.series == 'stocks'){
     indexes         <- c('BIST100','Bovespa','ChinaA50','JSX','KOSPI','S.PBMVIPC','S.PCLXIPSA','SouthAfricaTop40',
                          'IGBVL','KLCI','COLCAP') # Nombre indices para el paper. JSX es el de Jakarta
+    countries <- c('Brazil','Chile','China','Colombia','Indonesia','Korea','Malaysia','Mexico',
+                   'Peru','SouthAfrica','Turkey')
     columna.mercado <- c('MSCI')
     base.stocks     <- readxl::read_excel(path = paste0(Dir, 'Stocks_Paper_Completos.xlsx')) 
     # <Stocks_Paper.xlsx> tiene la base desde el 5 de junio del 2006, <Stocks_Paper_Completos> desde el 7 de octubre del 2004
@@ -122,6 +126,7 @@ if(!bool_paper){
   
   if(var.series == 'BEI'){
     indexes         <- c('BEI_1Y','BEI_2Y','BEI_5Y','BEI_10Y') # Nombre indices para el paper. JSX es el de Jakarta
+    countries       <- c('Colombia')
     columna.mercado <- c('') # Todavia falta un retorno de mercado
     # Leer la base de BEI, teniendo en cuenta que el excel original cuenta con dos hojas
     hojas.bei <- excel_sheets(paste0(Dir, 'BEI_LFM.xlsx'))
