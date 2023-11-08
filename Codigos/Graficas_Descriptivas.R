@@ -546,3 +546,34 @@ ggsave(filename = paste0(cd.graficos, 'Descriptive/deaths_by_country.png'), plot
 ggsave(filename = paste0(cd.graficos, 'Descriptive/injured_by_country.png'), plot = plot.injured.country, 
        scale = 2, height = 3.5, width = 6)
   
+# Grafica de promedio eventos por desastre por continente -------- --------
+# Grafica 1 de Cavallo y Becerra
+emdat_base <- emdat_base %>% 
+  mutate(Continent = case_when(
+    Country %in% c('Indonesia', 'China', 'Malaysia', 'Turkey','South Korea') ~ 'Asia',
+    Country %in% c('Colombia','Brazil','Chile','Mexico','Peru') ~ 'America',
+    Country %in% c('SouthAfrica') ~ 'Africa',
+    .default ='NA'
+  )) %>% 
+  mutate(Period = case_when(
+    Start.Year %in% c(2004,2005,2006,2007,2008) ~ '2004-2008',
+    Start.Year %in% c(2009,2010,2011,2012,2013) ~ '2010-2013',
+    Start.Year %in% c(2014,2015,2016,2017,2018) ~ '2014-2018',
+    Start.Year %in% c(2019,2020,2021,2022) ~ '2019-2022',
+    .default = 'NA'
+  ))
+  
+plot.average.disasters <- emdat_base %>% 
+  group_by(Period, Continent) %>% 
+  summarise(count = n()) %>% 
+  ggplot(aes(x = Period, y = count, fill = Continent)) + 
+  geom_bar(stat='identity', position = position_dodge()) +
+  theme_bw() + 
+  scale_fill_manual(values = adjustcolor(cols, alpha.f = 0.7))+
+  labs(x = NULL, y = 'Frequency', title = 'Number of Natural Disasters in each Continent') +
+  theme(plot.title = element_text(size = 18, hjust = 0.5),
+        legend.title = element_text(size = 16),
+        legend.text = element_text(size = 14))
+
+ggsave(filename = paste0(cd.graficos, 'Descriptive/disasters_continent.png'), plot = plot.average.disasters, 
+       scale = 2, height = 3.5, width = 6)
