@@ -1,166 +1,168 @@
-############# FALTA ARREGLAR EL CODIGO PARA QUE GRAFIQUE CDS / INDICES MSCI /INDICES PM
-##########################################################
-# Codigo de las graficas de resultados de SUR y de los tests. Tambien hay graficos de mapamundis
-# Autores: Juan Pablo Bermudez. 
-##########################################################
-
-rm(list=ls())
-# Cargar librerias y directorios ------------------------------------------
-source(paste0(getwd(),'/Codigos/01_Librerias_Directorios.R'))
-
-Tipos.Desastres  <- c("Geophysical","Hydrological","Meteorological")  #<<<--- Tipos de desastres considerados
-paises   <- c('Brazil','Chile','China','Colombia','Indonesia','Korea','Malaysia','Mexico','Peru',
-              'SouthAfrica','Turkey') 
-
-# Parametros --------------------------------------------------------------
-bool_paper <- T # booleano que toma el valor de T si se quiere revisar el paper que vamos a escribir, F para Pagnottoni
-
-## ---- Graficas 1, A.1, A.6 y A.7 de Pagnottoni(2022) --- ##
-
-# Lectura de la base de datos <EMDAT>,  en excel, se dejaron los desastres entre el 8-feb-2001 y 31-dic-2019 (fechas usadas en el paper).
-if(!bool_paper){
-  emdat_completa <- openxlsx::read.xlsx(paste0(Dir,"EMDAT_Mapamundi.xlsx"),sheet = "Mapamundi") #<<<--- base de datos
-  # Se transforma en <tibble> para poder manejar con las funciones de <dplyr> 
-  emdat_tbl_completa <- tibble::as_tibble(emdat_completa) 
-  # las columnas que nos interesan son <Country>, pais del desastre, <Continent>, continente del desastre, <Disaster.subgroup>, tipo de desastre
-  # <Start.Year>, anho en que inicio el desastre, <Start.Month>, mes en que inicio el desastre, <Start.Day>, dia en que inicio el desastre
-  # <End.Year>, anho en que termino el desastre, <End.Month>, mes en que termino el desastre, <End.Day> dia en que termino el desastre
+if(1){
+  ############# FALTA ARREGLAR EL CODIGO PARA QUE GRAFIQUE CDS / INDICES MSCI /INDICES PM
+  ##########################################################
+  # Codigo de las graficas de resultados de SUR y de los tests. Tambien hay graficos de mapamundis
+  # Autores: Juan Pablo Bermudez. 
+  ##########################################################
   
-  # Se  seleccionan  las variables que interesan y se renombra <Country> como region, para adjuntarla con otra base 
-  # de coordenadas para graficar.
-  emdat_interest_variables <- emdat_tbl_completa %>% 
-    dplyr::select(Disaster.Subgroup, region=Country, Continent, Start.Year, Start.Month, Start.Day, End.Year, End.Month, End.Day)
-}else{
-  # Cargamos la base de datos que salio del codigo <emdat_base>
-  load(paste0(getwd(),'/Bases/EMDAT_PAPER.RData'))
-  # Cambiar el nombre de <Korea> a <South Korea>
-  emdat_base[which(emdat_base$Country == 'Korea'),]$Country <- 'South Korea'
-}
-
-# Este procedimiento solo se realiza con la base de datos que utiliza Pagnottoni, ya que la del paper ya fue tratada para corregir los eventos
-# en los que no se tiene datos de inicio del mes o del dia
-if(!bool_paper){
-  #Se eliminan las filas (desastres) que contengan <NA> en el mes de inicio, ya que no se puede suponer el mes en que empezo el desastre.
-  emdat_final <- emdat_interest_variables %>% 
-    dplyr::filter(!is.na(Start.Month)) %>% 
-    # Tambien se van a eliminar los desastres sin dia de inicio exacto
-    dplyr::filter(!is.na(Start.Day))
-}else{
-  emdat_final <- emdat_base %>% dplyr::rename('region' = 'Country')
-}
-
-# Cargo los datos del mapamundi del paquete <ggplot2>
-world <- map_data("world")
-
-# Los datos en <world> tienen un inconveniente: Hong Kong y Macao aparecen como regiones de China, no como "pais" propio.
-# Es por tanto que tenemos que volverlos una region en la base <world>
-hong_kong = which(world$subregion=="Hong Kong") # <x$subregion> equivale a una region de un pais de <x> y <x$region> a un pais de <x>
-world[hong_kong,"region"] <- "Hong Kong"
-macao = which(world$subregion == "Macao")
-world[macao, "region"] <- "Macao"
-
-# En la base de desastres consideraron a Antigua y Barbuda como un solo pais, mientras que en <world> los separan,
-# por lo cual tenemos que unificar esas dos regiones en la base <world>.
-antigua = which(world$region=="Antigua")
-barbuda = which(world$region=="Barbuda")
-world[c(antigua,barbuda),"region"] <- "Antigua and Barbuda"
-
-# Lo mismo con Trinidad y Tobago
-trinidad = which(world$region=="Trinidad")
-tobago   = which(world$region=="Tobago")
-world[c(trinidad,tobago),"region"] <- "Trinidad and Tobago"
-
-# Con las islas virgenes tenemos dos nombres distintos en <emdata_final> mientras que en <world> solo uno, por lo 
-# que se coloca el mismo nombre para ambos en <emdata_final>
-virgin_british = which(emdat_final$region=="Virgin Island (British)" )
-virgin_us      = which(emdat_final$region=="Virgin Island (U.S.)"  )
-emdat_final[c(virgin_british,virgin_us),"region"] <- "Virgin Islands"
-
-# En la base de datos <world> no existe Tokelau, territorio dependiente de Nueva Zelanda, por lo cual
-# se le cambiara el nombre a nueva zelanda en la base <emdat_final>
-tokelau = which(emdat_final$region == "Tokelau")
-emdat_final[tokelau,"region"] <- "New Zealand"
-
-# Tuvalu no existe en <world>, por lo que se quita.
-tuvalu = which(emdat_final$region == "Tuvalu")
-if(length(tuvalu)>0) emdat_final <- emdat_final %>% slice(-tuvalu)
-
-## Por ultimo, En la base <emdat_final> hay datos para Montenegro, Serbia y aparte Serbia Montenegro, 
-#  mientras que para <world> solamente hay datos para Serbia y Montenegro.
-#  Por lo tanto, se agregan las regiones Serbia y Montenegro como Serbia Montenegro
-serbia     = which(emdat_final$region=="Serbia" )
-montenegro = which(emdat_final$region=="Montenegro"  )
-emdat_final[c(serbia,montenegro),"region"] <- "Serbia Montenegro"
-
-serbia2     = which(world$region == "Serbia")
-montenegro2 = which(world$region == "Montenegro")
-world[c(serbia2,montenegro2),"region"] <- "Serbia Montenegro"
-
-## Se verifica si hay diferencias en los paises que estan en la columna region para ambas bases
-diff <- sort(setdiff(emdat_final$region, world$region))
-
-## Se cambian los nombres de <emdat_final> para que coincidan con los de <world>.
-if(!bool_paper){
-  diff.world <- c("Bahamas","Bolivia", "Cape Verde", "Canary Islands","Cayman Islands", "Comoros", 
-                "Democratic Republic of the Congo","Republic of Congo", "Cook Islands", "Ivory Coast", "Czech Republic",
-                "Dominican Republic","Swaziland", "Gambia", "Iran", "North Korea" ,"South Korea", "Laos", "North Macedonia",
-                "Marshall Islands", "Micronesia", "Moldova","Netherlands", "Niger" , "Northern Mariana Islands" ,"Palestine",
-                "Philippines","Reunion","Russia" ,"Saint Barthelemy","Saint Helena", "Saint Kitts","Saint Martin" ,"Saint Vincent",
-                "Sint Maarten","Sudan","Syria", "Taiwan","Tanzania", "Turks and Caicos Islands","United Arab Emirates",
-                "UK","USA","Venezuela","Vietnam")
-}else{diff.world <- c('South Africa')}
-
-for (i in 1:length(diff)){
-  indexes2 <- which(emdat_final$region == diff[i])
-  emdat_final[indexes2,"region"] <- diff.world[i]
-}
-
-# En el primer grafico (Fig.1) los desastres se agrupan por pais para contar (<tally()>) cuantos hubo (<emdat_country$n>)
-emdat_country <- emdat_final %>% 
-  dplyr::group_by(region) %>% 
-  tally()
-
-emdat_country$decil <- ntile(emdat_country$n,n=10)
-
-# Se juntan las dos bases, <world> y <emdat_country> por pais, i.e. <region>
-merged_data <- inner_join(world, emdat_country) #<inner_join> es intereseccion y <outer_join> es union
-merged_data$decil <- factor(merged_data$decil) ## Dejar claro que es variable discreta, no continua
-
-# Para realizar el resto de mapamundis primero es necesario ordenar la columna <Disaster.subgroup> alfabeticamente
-emdat_final_sorted <- emdat_final %>% arrange(Disaster.Subgroup)
-
-# El siguiente codigo generara una lista de objetos tipo dataframe. <group_split> divide el dataframe <emdat_final_sorted> en dataframes
-# dependiendo del valor de la columna <Disaster.subgroup>, por lo que la longitud de la lista sera igual a los elementos unicos en 
-# <Disaster.subgroup>. Cada dataframe de la lista contiene todos los desastres que pertenezcan a un valor de <Disaster.Subgroup>.
-subgroup_splits <- emdat_final_sorted %>% 
-  group_split(Disaster.Subgroup)
-# Por otro lado, como anteriormente organizamos <emdat_final> alfabeticamente, los nombres de la lista <subgroup_splits> corresponde
-# a <Tipos.Desastres>, que tambien esta organizado alfabeticamente.
-names(subgroup_splits) <- Tipos.Desastres
-
-# Por otro lado, por cada elemento de <subgroup_splits>, vamos a generar un dataframe que de cuenta del numero de desastres ocurridos por
-# <region>. <results> es una lista que guarda dichos dataframes. Por tanto, cada elemento de <results> contiene un dataframe que indica 
-# cuantos desastres de cierto tipo de desastre ocurrieron en cada pais.
-results <- lapply(subgroup_splits, function(df) {
-  df %>%
-    group_by(region) %>% 
+  rm(list=ls())
+  # Cargar librerias y directorios ------------------------------------------
+  source(paste0(getwd(),'/Codigos/01_Librerias_Directorios.R'))
+  
+  Tipos.Desastres  <- c("Geophysical","Hydrological","Meteorological")  #<<<--- Tipos de desastres considerados
+  paises   <- c('Brazil','Chile','China','Colombia','Indonesia','Korea','Malaysia','Mexico','Peru',
+                'SouthAfrica','Turkey') 
+  
+  # Parametros --------------------------------------------------------------
+  bool_paper <- T # booleano que toma el valor de T si se quiere revisar el paper que vamos a escribir, F para Pagnottoni
+  
+  ## ---- Graficas 1, A.1, A.6 y A.7 de Pagnottoni(2022) --- ##
+  
+  # Lectura de la base de datos <EMDAT>,  en excel, se dejaron los desastres entre el 8-feb-2001 y 31-dic-2019 (fechas usadas en el paper).
+  if(!bool_paper){
+    emdat_completa <- openxlsx::read.xlsx(paste0(Dir,"EMDAT_Mapamundi.xlsx"),sheet = "Mapamundi") #<<<--- base de datos
+    # Se transforma en <tibble> para poder manejar con las funciones de <dplyr> 
+    emdat_tbl_completa <- tibble::as_tibble(emdat_completa) 
+    # las columnas que nos interesan son <Country>, pais del desastre, <Continent>, continente del desastre, <Disaster.subgroup>, tipo de desastre
+    # <Start.Year>, anho en que inicio el desastre, <Start.Month>, mes en que inicio el desastre, <Start.Day>, dia en que inicio el desastre
+    # <End.Year>, anho en que termino el desastre, <End.Month>, mes en que termino el desastre, <End.Day> dia en que termino el desastre
+    
+    # Se  seleccionan  las variables que interesan y se renombra <Country> como region, para adjuntarla con otra base 
+    # de coordenadas para graficar.
+    emdat_interest_variables <- emdat_tbl_completa %>% 
+      dplyr::select(Disaster.Subgroup, region=Country, Continent, Start.Year, Start.Month, Start.Day, End.Year, End.Month, End.Day)
+  }else{
+    # Cargamos la base de datos que salio del codigo <emdat_base>
+    load(paste0(getwd(),'/Bases/EMDAT_PAPER.RData'))
+    # Cambiar el nombre de <Korea> a <South Korea>
+    emdat_base[which(emdat_base$Country == 'Korea'),]$Country <- 'South Korea'
+  }
+  
+  # Este procedimiento solo se realiza con la base de datos que utiliza Pagnottoni, ya que la del paper ya fue tratada para corregir los eventos
+  # en los que no se tiene datos de inicio del mes o del dia
+  if(!bool_paper){
+    #Se eliminan las filas (desastres) que contengan <NA> en el mes de inicio, ya que no se puede suponer el mes en que empezo el desastre.
+    emdat_final <- emdat_interest_variables %>% 
+      dplyr::filter(!is.na(Start.Month)) %>% 
+      # Tambien se van a eliminar los desastres sin dia de inicio exacto
+      dplyr::filter(!is.na(Start.Day))
+  }else{
+    emdat_final <- emdat_base %>% dplyr::rename('region' = 'Country')
+  }
+  
+  # Cargo los datos del mapamundi del paquete <ggplot2>
+  world <- map_data("world")
+  
+  # Los datos en <world> tienen un inconveniente: Hong Kong y Macao aparecen como regiones de China, no como "pais" propio.
+  # Es por tanto que tenemos que volverlos una region en la base <world>
+  hong_kong = which(world$subregion=="Hong Kong") # <x$subregion> equivale a una region de un pais de <x> y <x$region> a un pais de <x>
+  world[hong_kong,"region"] <- "Hong Kong"
+  macao = which(world$subregion == "Macao")
+  world[macao, "region"] <- "Macao"
+  
+  # En la base de desastres consideraron a Antigua y Barbuda como un solo pais, mientras que en <world> los separan,
+  # por lo cual tenemos que unificar esas dos regiones en la base <world>.
+  antigua = which(world$region=="Antigua")
+  barbuda = which(world$region=="Barbuda")
+  world[c(antigua,barbuda),"region"] <- "Antigua and Barbuda"
+  
+  # Lo mismo con Trinidad y Tobago
+  trinidad = which(world$region=="Trinidad")
+  tobago   = which(world$region=="Tobago")
+  world[c(trinidad,tobago),"region"] <- "Trinidad and Tobago"
+  
+  # Con las islas virgenes tenemos dos nombres distintos en <emdata_final> mientras que en <world> solo uno, por lo 
+  # que se coloca el mismo nombre para ambos en <emdata_final>
+  virgin_british = which(emdat_final$region=="Virgin Island (British)" )
+  virgin_us      = which(emdat_final$region=="Virgin Island (U.S.)"  )
+  emdat_final[c(virgin_british,virgin_us),"region"] <- "Virgin Islands"
+  
+  # En la base de datos <world> no existe Tokelau, territorio dependiente de Nueva Zelanda, por lo cual
+  # se le cambiara el nombre a nueva zelanda en la base <emdat_final>
+  tokelau = which(emdat_final$region == "Tokelau")
+  emdat_final[tokelau,"region"] <- "New Zealand"
+  
+  # Tuvalu no existe en <world>, por lo que se quita.
+  tuvalu = which(emdat_final$region == "Tuvalu")
+  if(length(tuvalu)>0) emdat_final <- emdat_final %>% slice(-tuvalu)
+  
+  ## Por ultimo, En la base <emdat_final> hay datos para Montenegro, Serbia y aparte Serbia Montenegro, 
+  #  mientras que para <world> solamente hay datos para Serbia y Montenegro.
+  #  Por lo tanto, se agregan las regiones Serbia y Montenegro como Serbia Montenegro
+  serbia     = which(emdat_final$region=="Serbia" )
+  montenegro = which(emdat_final$region=="Montenegro"  )
+  emdat_final[c(serbia,montenegro),"region"] <- "Serbia Montenegro"
+  
+  serbia2     = which(world$region == "Serbia")
+  montenegro2 = which(world$region == "Montenegro")
+  world[c(serbia2,montenegro2),"region"] <- "Serbia Montenegro"
+  
+  ## Se verifica si hay diferencias en los paises que estan en la columna region para ambas bases
+  diff <- sort(setdiff(emdat_final$region, world$region))
+  
+  ## Se cambian los nombres de <emdat_final> para que coincidan con los de <world>.
+  if(!bool_paper){
+    diff.world <- c("Bahamas","Bolivia", "Cape Verde", "Canary Islands","Cayman Islands", "Comoros", 
+                  "Democratic Republic of the Congo","Republic of Congo", "Cook Islands", "Ivory Coast", "Czech Republic",
+                  "Dominican Republic","Swaziland", "Gambia", "Iran", "North Korea" ,"South Korea", "Laos", "North Macedonia",
+                  "Marshall Islands", "Micronesia", "Moldova","Netherlands", "Niger" , "Northern Mariana Islands" ,"Palestine",
+                  "Philippines","Reunion","Russia" ,"Saint Barthelemy","Saint Helena", "Saint Kitts","Saint Martin" ,"Saint Vincent",
+                  "Sint Maarten","Sudan","Syria", "Taiwan","Tanzania", "Turks and Caicos Islands","United Arab Emirates",
+                  "UK","USA","Venezuela","Vietnam")
+  }else{diff.world <- c('South Africa')}
+  
+  for (i in 1:length(diff)){
+    indexes2 <- which(emdat_final$region == diff[i])
+    emdat_final[indexes2,"region"] <- diff.world[i]
+  }
+  
+  # En el primer grafico (Fig.1) los desastres se agrupan por pais para contar (<tally()>) cuantos hubo (<emdat_country$n>)
+  emdat_country <- emdat_final %>% 
+    dplyr::group_by(region) %>% 
     tally()
-})
-
-# Generar los deciles
-results_final <- lapply(1:length(results), function(i) {
-  mutate(results[[i]], 
-         decile = ntile(n, 10)) %>% 
-    mutate(decile = factor(decile))
-})
-
-# Colocarle nombres a la lista <results_final>
-names(results_final) <- names(results)
-
-# Cada elemento de la lista <results> se junta con los datos de <world> para poder graficarla
-merged_data_disasters <- lapply(results_final, function(x) {
-  inner_join(world, x ,by = "region")
-})
+  
+  emdat_country$decil <- ntile(emdat_country$n,n=10)
+  
+  # Se juntan las dos bases, <world> y <emdat_country> por pais, i.e. <region>
+  merged_data <- inner_join(world, emdat_country) #<inner_join> es intereseccion y <outer_join> es union
+  merged_data$decil <- factor(merged_data$decil) ## Dejar claro que es variable discreta, no continua
+  
+  # Para realizar el resto de mapamundis primero es necesario ordenar la columna <Disaster.subgroup> alfabeticamente
+  emdat_final_sorted <- emdat_final %>% arrange(Disaster.Subgroup)
+  
+  # El siguiente codigo generara una lista de objetos tipo dataframe. <group_split> divide el dataframe <emdat_final_sorted> en dataframes
+  # dependiendo del valor de la columna <Disaster.subgroup>, por lo que la longitud de la lista sera igual a los elementos unicos en 
+  # <Disaster.subgroup>. Cada dataframe de la lista contiene todos los desastres que pertenezcan a un valor de <Disaster.Subgroup>.
+  subgroup_splits <- emdat_final_sorted %>% 
+    group_split(Disaster.Subgroup)
+  # Por otro lado, como anteriormente organizamos <emdat_final> alfabeticamente, los nombres de la lista <subgroup_splits> corresponde
+  # a <Tipos.Desastres>, que tambien esta organizado alfabeticamente.
+  names(subgroup_splits) <- Tipos.Desastres
+  
+  # Por otro lado, por cada elemento de <subgroup_splits>, vamos a generar un dataframe que de cuenta del numero de desastres ocurridos por
+  # <region>. <results> es una lista que guarda dichos dataframes. Por tanto, cada elemento de <results> contiene un dataframe que indica 
+  # cuantos desastres de cierto tipo de desastre ocurrieron en cada pais.
+  results <- lapply(subgroup_splits, function(df) {
+    df %>%
+      group_by(region) %>% 
+      tally()
+  })
+  
+  # Generar los deciles
+  results_final <- lapply(1:length(results), function(i) {
+    mutate(results[[i]], 
+           decile = ntile(n, 10)) %>% 
+      mutate(decile = factor(decile))
+  })
+  
+  # Colocarle nombres a la lista <results_final>
+  names(results_final) <- names(results)
+  
+  # Cada elemento de la lista <results> se junta con los datos de <world> para poder graficarla
+  merged_data_disasters <- lapply(results_final, function(x) {
+    inner_join(world, x ,by = "region")
+  })
+}
 
 #### Graficas 1, A.1, A.6 y A.7 (mapamundi) ============================
 
@@ -359,7 +361,8 @@ ggsave(filename = paste0(cd.graficos, 'Descriptive/naturaldisasters_evolution_ty
 # Grafico evolucion muertos, heridos y numero total de afectados ----------------------
 year.affected <- emdat_base %>% 
   group_by(Start.Year) %>% 
-  summarise(Deaths = sum(Total.Deaths, na.rm = T),Injured = sum(No.Injured,na.rm=T), Affected = sum(Total.Affected, na.rm=T))
+  summarise(Deaths = sum(Total.Deaths, na.rm = T),Injured = sum(No.Injured,na.rm=T), Affected = sum(Total.Affected, na.rm=T)) %>% 
+  mutate(Start.Year = as.numeric(Start.Year))
 
 colors <- brewer.pal(3,'Set1')
 
@@ -376,6 +379,10 @@ disaster.death.injured <- ggplot(data = year.affected, mapping = aes(x = Start.Y
     legend.title = element_text(size = 16),
     legend.text = element_text(size = 14)
   )
+
+# Haciendo zoom a partir del 2009
+disaster.death.injured.zoom <- disaster.death.injured +
+  facet_zoom(xy = Start.Year > 2009 & Start.Year < 2023, horizontal = F)
 
 # Ahora con el eje y partido
 disaster.death.injured.break <- disaster.death.injured +
