@@ -31,7 +31,7 @@ geo_col_name         <- "Country"        #<<<--- Parametro que indica el nombre 
 umbrales.evento      <- c(50,100,150)    #<<<--- Umbrales evento para el estudio sobre la media
 columna.filtrar      <- 'Total.Affected' #<<<--- Columna para filtrar la base de eventos 'Total.Affected' o 'Damages'
 plazos.bei           <- c(1,2,3,4,5)     #<<<--- Parametro que indica cuales seran las series de BEI analizadas, por ejemplo a 1, 2 3 4 o 5 anos. 
-bei.sinprima         <- F                #<<<--- Parametro que indica cuales son los BEI de los que se obtendran resultados, T significa que seran los BEI sin prima,
+bei.sinprima         <- T                #<<<--- Parametro que indica cuales son los BEI de los que se obtendran resultados, T significa que seran los BEI sin prima,
                                          #       F seran los BEI originales
 
 # Como se tienen 5 elementos en <plazos.bei> se puede correr usando un for loop
