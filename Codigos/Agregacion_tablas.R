@@ -11,7 +11,6 @@ source(paste0(getwd(),'/Codigos/01_Librerias_Directorios.R'))
 countries   <- c('Brazil','Chile','China','Colombia','Indonesia','Korea','Malaysia','Mexico','Peru',
                  'SouthAfrica','Turkey') #<<<--- Lista de los paises de cada CDS/indice
 
-
 # Creacion objeto tabla.media ---------------------------------------------
 # Se crea un tipo de objeto S4 para guardar la tabla de la media, y aparte el numero de eventos para cada pais
 setClass('Tabla.media', slots = list(dataframe = 'data.frame', no.eventos = 'numeric'))

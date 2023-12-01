@@ -20,8 +20,8 @@ regresor.mercado        <- 'PM'    #<<<--- Retornos de mercado 'PM' es promedio 
 if(tipo.serie == 'BEI'){
   regresor.mercado <- NULL
   countries        <- c('Colombia')
-  tipo.bei         <- 'originales'  #<<<--- parametro que indica cuales BEI se analizan, los originales o sin prima
-  plazo.bei        <- 1             #<<<--- que plazo de BEI se analiza, 1 2 3 4 o 5
+  tipo.bei         <- 'sinprima'  #<<<--- parametro que indica cuales BEI se analizan, los 'originales' o 'sinprima'
+  plazo.bei        <- 5             #<<<--- que plazo de BEI se analiza, 1 2 3 4 o 5
 }
 tipos.desastre.eliminar <- c('Biological','Climatological') #<<<--- NULL si no se desea eliminar ningun tipo de desastre 
 paises.resultados       <- countries # Seleccionar los paises sobre los cuales se quiere hacer el analisis de resultados. <countries> si se desea

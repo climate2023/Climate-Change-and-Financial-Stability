@@ -31,7 +31,7 @@ geo_col_name         <- "Country"        #<<<--- Parametro que indica el nombre 
 umbrales.evento      <- c(50,100,150)    #<<<--- Umbrales evento para el estudio sobre la media
 columna.filtrar      <- 'Total.Affected' #<<<--- Columna para filtrar la base de eventos 'Total.Affected' o 'Damages'
 plazos.bei           <- c(1,2,3,4,5)     #<<<--- Parametro que indica cuales seran las series de BEI analizadas, por ejemplo a 1, 2 3 4 o 5 anos. 
-bei.sinprima         <- T                #<<<--- Parametro que indica cuales son los BEI de los que se obtendran resultados, T significa que seran los BEI sin prima,
+bei.sinprima         <- F                #<<<--- Parametro que indica cuales son los BEI de los que se obtendran resultados, T significa que seran los BEI sin prima,
                                          #       F seran los BEI originales
 
 # Como se tienen 5 elementos en <plazos.bei> se puede correr usando un for loop
@@ -49,6 +49,10 @@ for(plazo.bei in plazos.bei){
   # Filtrar exclusivamente las series que correspondan al plazo de interes, establecido por <plazo.bei>
   base.bei.originales.final <- base_bei_originales_final[, grep(plazo.bei, colnames(base_bei_originales_final), value = TRUE)]
   base.bei.sin.prima.final  <- base_bei_sin_prima_final[, grep(plazo.bei, colnames(base_bei_sin_prima_final), value = TRUE)]
+  
+  # Como todas las variables son I(1), es necesario diferenciarlas para asi poder hacer la regresion entre series I(0)
+  base.bei.originales.final <- diff(base.bei.originales.final)[2:nrow(base.bei.originales.final)]
+  base.bei.sin.prima.final  <- diff(base.bei.sin.prima.final)[2:nrow(base.bei.sin.prima.final)]
   
   # Como todos los modelos van a contar con un componente autoregresivo de las variables dependientes, es necesario generar
   # una base con las series rezagadas
