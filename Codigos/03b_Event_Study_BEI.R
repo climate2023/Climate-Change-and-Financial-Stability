@@ -22,8 +22,8 @@ load(paste0(getwd(),'/Bases/EMDAT_PAPER.RData'))
 # Parametros --------------------------------------------------------------
 numero.lags          <- NULL             # Parametro con el cual se elige el numero de rezagos para la serie de BEI
 est.windows.mean     <- c(250,375,500)   #<<<--- No. de dias antes del evento para comenzar la estimacion (media)
-estimation_end       <- 1                #<<<--- No. dias antes del evento para finalizar la estimacion (mean)
-max_abnormal_returns <- 15               #<<<--- No. dias maximos despues del evento para calcular retorno anormal (mean)
+estimation_end       <- 1                #<<<--- No. dias antes del evento para finalizar la estimacion (media)
+max_abnormal_returns <- 15               #<<<--- No. dias maximos despues del evento para calcular retorno anormal (media)
 length_car_window    <- 15               #<<<--- Ventana para calcular el CAR (por ejemplo 5 significa [0,+5], donde 0 es el dia del evento) (mean)
 date_col_name        <- "Start.Date"     #<<<--- Parametro que indica el nombre de la columna clase <Date>, la cual contiene la fecha de eventos
 geo_col_name         <- "Country"        #<<<--- Parametro que indica el nombre de la columna que contiene los paises, o puede ser cualquier otra variable 
@@ -31,21 +31,26 @@ geo_col_name         <- "Country"        #<<<--- Parametro que indica el nombre 
 umbrales.evento      <- c(50,100,150)    #<<<--- Umbrales evento para el estudio sobre la media
 columna.filtrar      <- 'Total.Affected' #<<<--- Columna para filtrar la base de eventos 'Total.Affected' o 'Damages'
 plazos.bei           <- c(1,2,3,4,5)     #<<<--- Parametro que indica cuales seran las series de BEI analizadas, por ejemplo a 1, 2 3 4 o 5 anos. 
+est.windows.vol      <- c(500,750,1000)  #<<<--- No. de dias antes del evento para comenzar la estimacion (media)
+vol_ev_window        <- 15               #<<<--- Tamaño de la ventana de evento (varianza)
+umbrales.volatilidad <- c(50,100,200)    #<<<--- Umbrales evento para estudio de volatilidad
 bei.sinprima         <- F                #<<<--- Parametro que indica cuales son los BEI de los que se obtendran resultados, T significa que seran los BEI sin prima,
                                          #       F seran los BEI originales
+bool.media           <- F                #<<<--- bool para estudio en media
+bool.varianza        <- T                #<<<--- bool para estudio en varianza
+
+# Tratamiento de datos ----------------------------------------------------
+# En primer lugar, es relevante mencionar que solamente tenemos datos del BEI de Colombia, por lo cual solamente
+# necesitamos los desastres de Colombia. Actualmente estamos utilizando los desastres que salen de la base de datos 
+# EMDAT, pero ya que contamos con solamente un pais, se podria utilizar una fuente nacional, anteriormente se comento
+# que se podrian ver anuncios de los desastres 
+
+# Debido a lo anterior se filtra la base <emdat_base> para solo los desastres de Colombia
+emdat.base.Colombia <- emdat_base %>% 
+  dplyr::filter(Country == 'Colombia')
 
 # Como se tienen 5 elementos en <plazos.bei> se puede correr usando un for loop
 for(plazo.bei in plazos.bei){
-  # Tratamiento de datos ----------------------------------------------------
-  # En primer lugar, es relevante mencionar que solamente tenemos datos del BEI de Colombia, por lo cual solamente
-  # necesitamos los desastres de Colombia. Actualmente estamos utilizando los desastres que salen de la base de datos 
-  # EMDAT, pero ya que contamos con solamente un pais, se podria utilizar una fuente nacional, anteriormente se comento
-  # que se podrian ver anuncios de los desastres 
-  
-  # Debido a lo anterior se filtra la base <emdat_base> para solo los desastres de Colombia
-  emdat.base.Colombia <- emdat_base %>% 
-    dplyr::filter(Country == 'Colombia')
-  
   # Filtrar exclusivamente las series que correspondan al plazo de interes, establecido por <plazo.bei>
   base.bei.originales.final <- base_bei_originales_final[, grep(plazo.bei, colnames(base_bei_originales_final), value = TRUE)]
   base.bei.sin.prima.final  <- base_bei_sin_prima_final[, grep(plazo.bei, colnames(base_bei_sin_prima_final), value = TRUE)]
@@ -68,7 +73,8 @@ for(plazo.bei in plazos.bei){
   }
     
   # Event Study Media -------------------------------------------------------
-  for(estimation_start in est.windows.mean){
+  if(bool.media) {
+    for(estimation_start in est.windows.mean){
     length_estimation_window <- estimation_start - estimation_end + 1 # Tamaño de la ventana de estimacion
     length_event_window      <- length_car_window + 1 # Longitud ventana de evento es 1 mas <length_car_window>
     # <length_car_window> no puede ser mayor a <max_abnormal_returns>, ya que implica una ventana de evento mayor al numero de retornos
@@ -77,7 +83,7 @@ for(plazo.bei in plazos.bei){
     if(length_car_window > max_abnormal_returns) length_car_window <- max_abnormal_returns
     
     # Se eliminan los eventos que no cuentan con la ventana minima de estimacion ni con la ventana minima de evento usando la funcion <drop.events>
-    eventos_filtrado <- drop.events(data.events = emdat.base.Colombia, base = base.bei.original.lag, estimation.start = estimation_start, max.ar=max_abnormal_returns, 
+    eventos_filtrado <- drop.events(data.events = emdat.base.Colombia, base = base.interes, estimation.start = estimation_start, max.ar=max_abnormal_returns, 
                                     date_col_name, geo_col_name)
     
     # Filtrar la base de datos para solamente dejar los eventos mas significativos, y tambien asegurar que dentro de la 
@@ -117,5 +123,54 @@ for(plazo.bei in plazos.bei){
       save(all_events_list, all_events_list_desanclaje, all_events_list_expectativas, 
            file=paste0(getwd(),'/Resultados_regresion/BEI','_tra',umbral.evento,'_est',estimation_start,'_',tipo.bei,'_',plazo.bei,'_year','.RData'))
     }
+    }
+  }
+  
+  # Volatility event study --------------------------------------------------
+  if(bool.varianza) {
+    for(estimation_vol_start in est.windows.vol){
+    # Filtrar los eventos para que solo queden aquellos que cumplan con una ventana minima de estimacion y una ventana minima de 
+    # evento
+    eventos.filtrado.volatilidad <- drop.events(data.events = emdat.base.Colombia, base = base.interes, estimation.start = estimation_vol_start, max.ar=vol_ev_window, 
+                                                date_col_name, geo_col_name)
+    for(umbral.evento.vol in umbrales.volatilidad){
+      # Filtrar la base de datos para solamente dejar los eventos mas significativos, y tambien asegurar que dentro de la 
+      # ventana de estimacion no hayan otros eventos.
+      eventos.volatilidad <- reducir.eventos(umbral.evento.vol,base.interes,eventos.filtrado.volatilidad,
+                                             col.fecha=date_col_name,col.grupo = geo_col_name,col.filtro = columna.filtrar)
+      
+      # Se corren tres modelos distintos para probar distintas especificaciones
+      # Primer modelo: autorregresivo
+      volatility_results <- volatility_event_study_bei(base = base.interes, data.events = eventos.volatilidad, max.ar = vol_ev_window, 
+                                                       es.start = estimation_vol_start, es.end = estimation_end, 
+                                                       var.endogena = paste0('BEI_',plazo.bei,'Y'), vars.exo = NULL, GARCH = 'sGARCH', 
+                                                       overlap.events = eventos.filtrado.volatilidad, overlap.max = umbral.evento.vol, 
+                                                       date.col.name = date_col_name, var.col.name = geo_col_name)
+      
+      # Segundo modelo: autorregresivo + grado desanclaje
+      var.exo1 <- colnames(base.interes)[grep('grado', colnames(base.interes))]
+      volatility_results_desanclaje <- volatility_event_study_bei(base = base.interes, data.events = eventos.volatilidad, max.ar = vol_ev_window, 
+                                                       es.start = estimation_vol_start, es.end = estimation_end, 
+                                                       var.endogena = paste0('BEI_',plazo.bei,'Y'), vars.exo = var.exo1, GARCH = 'sGARCH', 
+                                                       overlap.events = eventos.filtrado.volatilidad, overlap.max = umbral.evento.vol, 
+                                                       date.col.name = date_col_name, var.col.name = geo_col_name)
+      # Tercer modelo: autorregresivo + grado desanclaje + expectativas PIB
+      var.exo2 <- colnames(base.interes)[vgrep(c('grado','Forecast'), colnames(base.interes))]
+      volatility_results_expectativas <- volatility_event_study_bei(base = base.interes, data.events = eventos.volatilidad, max.ar = vol_ev_window, 
+                                                                  es.start = estimation_vol_start, es.end = estimation_end, 
+                                                                  var.endogena = paste0('BEI_',plazo.bei,'Y'), vars.exo = var.exo2, GARCH = 'sGARCH', 
+                                                                  overlap.events = eventos.filtrado.volatilidad, overlap.max = umbral.evento.vol, 
+                                                                  date.col.name = date_col_name, var.col.name = geo_col_name)
+      
+      # Guardar los resultados de las regresiones
+      tipo.bei <- ifelse(bei.sinprima, 'sinprima','originales')
+      save(volatility_results, volatility_results_desanclaje, volatility_results_expectativas, 
+           file=paste0(getwd(),'/Resultados_regresion/BEI','_tra',umbral.evento.vol,'_est',estimation_vol_start,'_',tipo.bei,'_',plazo.bei,'_year_Varianza','.RData'))
+        
+    }
+    }
   }
 }
+
+
+
