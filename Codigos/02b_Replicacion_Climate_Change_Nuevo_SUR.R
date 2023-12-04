@@ -563,11 +563,6 @@ base_datos <- merge(Retornos, market.returns, dummies.final, do.call(cbind, lags
 ### Realizar for loop a lo largo de todos los paises para obtener las ecuaciones a estimar. 
 # Tambien a lo largo de los 5 tipos de desastres
 
-# El siguiente for genera una estimacion para cada uno de los 5 tipos de desastres, los cuales tomaran
-# los nombres de <fitdes_bio>, <fitdes_cli>, <fitdes_hyd>, <fitdes_geo>, <fitdes_met>.
-# Por otro lado, en la lista <fitted_models> generamos el nombre de los modelos estimados, que necesitaremos 
-# mas adelante.
-
 # if(0) dado que se utilizo el comando <save> para guardar los modelos. Los elementos guardados seran <models_disasters_list> y 
 # <resid_disasters_list>, que incluyen por un lado los modelos estimados y por el otro los residuales.
 # ----COLOCAR <if(1)> SI SE DESEA ESTIMAR EL MODELO ----#

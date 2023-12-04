@@ -4611,10 +4611,10 @@ bootstrap.volatility2 <- function(volatility.list,es.window.length,ev.window.len
   if(pvalue_bootstrap<=0.05) significancia <- '**'
   if(pvalue_bootstrap<=0.01) significancia <- '***'
   
-  significancia.bialkowski <- '/ '
-  if(pvalue.bialkowski<=0.1) significancia.bialkowski <- '/ *'
-  if(pvalue.bialkowski<=0.05) significancia.bialkowski <- '/ **'
-  if(pvalue.bialkowski<=0.01) significancia.bialkowski <- '/ ***'
+  #significancia.bialkowski <- '/ '
+  #if(pvalue.bialkowski<=0.1) significancia.bialkowski <- '/ *'
+  #if(pvalue.bialkowski<=0.05) significancia.bialkowski <- '/ **'
+  #if(pvalue.bialkowski<=0.01) significancia.bialkowski <- '/ ***'
   
   resultado        <- data.frame('CAV'=round(cav,3),'Significancia' = significancia,'p_value'= round(pvalue_bootstrap,5),
                                  'Error estandar' = round(standard.error,5))

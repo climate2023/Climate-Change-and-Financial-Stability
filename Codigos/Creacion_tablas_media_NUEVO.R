@@ -13,7 +13,6 @@ countries   <- c('Brazil','Chile','China','Colombia','Indonesia','Korea','Malays
                  'SouthAfrica','Turkey') #<<<--- Lista de los paises de cada CDS/indice
 
 # Prueba de filtro  -------------------------------------------------------
-
 tipo.serie              <- 'BEI'   #<<<--- Puede ser 'CDS' o 'Indices' , o 'BEI' 
 regresor.mercado        <- 'PM'    #<<<--- Retornos de mercado 'PM' es promedio movil y 'benchmark' es el retorno MSCI Emerging Markets
 # Actualizar informacion si <tipo.serie> == BEI 
