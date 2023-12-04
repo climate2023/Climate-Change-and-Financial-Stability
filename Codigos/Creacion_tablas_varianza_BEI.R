@@ -139,7 +139,7 @@ for(tipo.bei in tipos.bei){
         if(!flag.bei) {save(tabla.volatilidad, tabla.volatilidad.completa,
              file=paste0(directorio.guardar,'Tablas_',tipo.serie,'_tra',ventana.traslape,'_est',ventana.estimacion,'_varianza_',regresor.mercado,'_',agrupacion,'.RData'))
         } else {save(tabla.volatilidad, tabla.volatilidad.completa,
-                     file=paste0(directorio.guardar,'BEI/Tablas_',tipo.serie,'_tra',ventana.traslape,'_est',ventana.estimacion,'_varianza_',tipo.bei,'_',
+                     file=paste0(directorio.guardar,'BEI/Tablas_',tipo.serie,'_tra',ventana.traslape,'_est',ventana.estimacion,'_varianza_',tipo.bei,'_',plazo.bei,'_',
                                  str_to_lower(names(lista.resultados.regresion)[ind]),'_',agrupacion,'.RData'))}
       }
     }
