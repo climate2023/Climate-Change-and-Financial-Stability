@@ -642,23 +642,6 @@ if(!load.SURpaises){
   # Solo puede correrlo JP, ya que los residuos estsn en su PC y  pesan demasiado para mandarlos por github
 }
 
-if(0){
-  # Test de Wilcoxon --------------------------------------------------------
-  
-  steps <- paste('t',(0:no.rezagos.de.desastres),sep='')  # vector con los días adelante del evento, hace referencia a como termina el nombre de las dummies
-  
-  Por_tipo_desastre <- FALSE #<<<--- Variable bool. <FALSE> indica que se quiere revisar los CAR por pais donde sucedio el desastre. 
-  #      <TRUE> indica que se quiere ver por tipo de desastre
-  
-  if(Por_tipo_desastre){ 
-    name_column <- "Type_of_disaster"
-    resultado <- wilcoxon_Pagnottoni(coefficients_disasters_list,name_column,steps,indexes,Tipos.Desastres);resultado
-  }else{
-    name_column <- "Country"
-    resultado <- wilcoxon_Pagnottoni(coefficients_countries_list,name_column,steps,indexes,paises);resultado
-  }
-}
-
 # Guardar base de datos necesaria para el analisis de Tommaso (2023) --------
 base_Tommaso <- merge(base_retornos,market.returns,gdp_growth_base,fdi_growth_base)
 save(base_Tommaso, file = paste0(getwd(),'/Bases/Procesado/Base_Tommaso_',tipo.serie,'_rm_',market,'.RData'))

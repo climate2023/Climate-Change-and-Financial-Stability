@@ -33,8 +33,8 @@ columna.filtrar      <- 'Total.Affected' #<<<--- Columna para filtrar la base de
 plazos.bei           <- c(1,2,3,4,5)     #<<<--- Parametro que indica cuales seran las series de BEI analizadas, por ejemplo a 1, 2 3 4 o 5 anos. 
 est.windows.vol      <- c(500,750,1000)  #<<<--- No. de dias antes del evento para comenzar la estimacion (media)
 vol_ev_window        <- 15               #<<<--- Tamaño de la ventana de evento (varianza)
-umbrales.volatilidad <- c(50,100,200)    #<<<--- Umbrales evento para estudio de volatilidad
-bei.sinprima         <- F                #<<<--- Parametro que indica cuales son los BEI de los que se obtendran resultados, T significa que seran los BEI sin prima,
+umbrales.volatilidad <- c(150)    #<<<--- Umbrales evento para estudio de volatilidad
+bei.sinprima         <- T                #<<<--- Parametro que indica cuales son los BEI de los que se obtendran resultados, T significa que seran los BEI sin prima,
                                          #       F seran los BEI originales
 bool.media           <- F                #<<<--- bool para estudio en media
 bool.varianza        <- T                #<<<--- bool para estudio en varianza
