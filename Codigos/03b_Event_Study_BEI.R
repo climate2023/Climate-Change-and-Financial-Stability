@@ -36,7 +36,7 @@ vol_ev_window        <- 15               #<<<--- Tamaño de la ventana de evento
 umbrales.volatilidad <- c(150)    #<<<--- Umbrales evento para estudio de volatilidad
 bei.sinprima         <- T                #<<<--- Parametro que indica cuales son los BEI de los que se obtendran resultados, T significa que seran los BEI sin prima,
                                          #       F seran los BEI originales
-bool.media           <- F                #<<<--- bool para estudio en media
+bool.media           <- T                #<<<--- bool para estudio en media
 bool.varianza        <- T                #<<<--- bool para estudio en varianza
 
 # Tratamiento de datos ----------------------------------------------------
