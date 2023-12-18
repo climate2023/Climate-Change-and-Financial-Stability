@@ -124,3 +124,16 @@ base_bei_sin_prima_final  <- base_bei_sin_prima[index(dataframes$BEI_sin_prima)]
 
 # Guardar los datos en .RData ---------------------------------------------
 save(base_bei_originales_final, base_bei_sin_prima_final, file = paste0(Dir,'Procesado/Base_BEI.RData'))
+
+# Graficos ISE y desanclaje -----------------------------------------------
+
+# Graficos en primeras diferencias
+for(colname in colnames(base_bei_originales_final)){
+  if(grepl('BEI', colname)) next
+  pl <- autoplot(na.omit(diff(na.omit(base_bei_originales_final[,colname])))) +
+    theme_bw() + 
+    geom_line(col='red') +
+    labs(x = 'Date', y = colname, title= paste0('Primera diferencia: ', colname))
+  ggsave(paste0(getwd(), '/Graficos_BEI/', colname, '.png'), 
+         plot = pl, width = 800, height = 600, units = 'px', scale = 2) 
+}
