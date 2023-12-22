@@ -164,6 +164,15 @@ if(1){
   })
 }
 
+# Theme comun para las graficas descriptivas -------------------------------------------
+my_theme <- theme(plot.title   = element_text(size = 20, hjust = 0.5, face='bold'),
+                  legend.title = element_text(size = 18, face ='bold'),
+                  legend.text  = element_text(size = 18),
+                  axis.text.x  = element_text(size = 16, colour = 'black'),
+                  axis.text.y  = element_text(size = 16, colour = 'black'),
+                  axis.title.x = element_text(size = 18),
+                  axis.title.y = element_text(size = 18))
+
 #### Graficas 1, A.1, A.6 y A.7 (mapamundi) ============================
 
 # Tabla explicativa de los desastres en la muestra
@@ -209,9 +218,9 @@ plain <- theme(
   panel.grid = element_blank(),
   axis.title = element_blank(),
   panel.background = element_rect(fill = "white"),
-  plot.title = element_text(size = 18, hjust = 0.5),  # Change the '16' to the desired font size for the title
-  legend.title = element_text(size = 16),  # Change the '14' to the desired font size for the legend title
-  legend.text = element_text(size = 14)  # Change the '12' to the desired font size for the legend labels
+  plot.title   = element_text(size = 20, hjust = 0.5, face='bold'),
+  legend.title = element_text(size = 18, face ='bold'),
+  legend.text  = element_text(size = 18)  # Change the '12' to the desired font size for the legend labels
 )
 
 # Paleta de colores
@@ -237,8 +246,8 @@ mapamundi.complete <- ggplot() +
             color = "black", linewidth = 0.5)
 
 # Se guarda el mapamundi en la carpeta  
-ggsave(filename = paste0(cd.graficos, 'Descriptive/mapamundi_completo.png'), plot = mapamundi.complete, scale = 2, height = 3.5, 
-       width = 6)
+ggsave(filename = paste0(cd.graficos, 'Descriptive/mapamundi_completo.png'), plot = mapamundi.complete, scale = 1, height = 6, 
+       width = 12)
 
 # Para diversos grupos tipos de desastre
 # Paleta de colores
@@ -273,16 +282,16 @@ plots <- Filter(Negate(is.null), plots) # Eliminar el objeto <NULL>
 
 # Guardar los objetos de <plots> en archivos separados
 lapply(names(plots), function(x){
-  ggsave(filename = paste0(cd.graficos, 'Descriptive/mapamundi_',x,'.png'), plot = plots[[x]], scale = 2, height = 3.5, 
-         width = 6)
+  ggsave(filename = paste0(cd.graficos, 'Descriptive/mapamundi_',x,'.png'), plot = plots[[x]], scale = 1, height = 6, 
+         width = 12)
 })
 
 # Crear una grilla de los mapamundis por tipo desastre --------------------
 # Combinar los mapamundis por tipo de desastre en un solo grafico
 grilla.mapamundis <-gridExtra::grid.arrange(grobs = plots, ncol = 2)
 # Guardar la grilla en formato png
-ggsave(filename = paste0(cd.graficos, 'Descriptive/grilla_mapamundis.png'), plot = grilla.mapamundis, scale = 2, height = 3.5, 
-       width = 7)
+ggsave(filename = paste0(cd.graficos, 'Descriptive/grilla_mapamundis.png'), plot = grilla.mapamundis, scale = 1, height = 6, 
+       width = 12)
 
 # Graficas para Pagnottoni, con <if(!bool_paper)> porque solo se corren para Pagnottoni.
 if(!bool_paper){
@@ -336,26 +345,22 @@ disaster.evolution <- year.disaster %>%
   geom_line(col = 'red', lwd = 1.3) +
   labs(x='Year', y = 'Frequency',title = 'Evolution of Natural Disasters on selected countries, 2004 - 2022') +
   theme_bw() +
-  theme(plot.title = element_text(size = 18, hjust = 0.5),
-  legend.title = element_text(size = 16),
-  legend.text = element_text(size = 14))  # Change the '12' to the desired font size for the legend labels
+  my_theme
 
 # Guardar la grafica
-ggsave(filename = paste0(cd.graficos, 'Descriptive/naturaldisasters_evolution.png'), plot = disaster.evolution, scale = 2,
-       height = 3.5, width = 6)
+ggsave(filename = paste0(cd.graficos, 'Descriptive/naturaldisasters_evolution.png'), plot = disaster.evolution, scale = 1,
+       height = 6, width = 10)
 
 # Ahora hacerlo por area
 disaster.evolution.area <- ggplot(year.disaster, aes(x=Start.Year, y=count, fill= Disaster.Subgroup)) +
   geom_area() +
   scale_fill_manual(values = adjustcolor(brewer.pal(length(unique(year.disaster$Disaster.Subgroup)), 'Set1'), alpha.f = 0.8)) +
   theme_bw() +
-  theme(plot.title = element_text(size = 18, hjust = 0.5), 
-        legend.title = element_text(size = 12),
-        legend.text = element_text(size = 11)) +
+  my_theme +
   labs(x='Year', y = 'Frequency',title = 'Evolution of Natural Disasters on selected countries, 2004 - 2022', fill = 'Disaster Type')
 
-ggsave(filename = paste0(cd.graficos, 'Descriptive/naturaldisasters_evolution_typedisaster.png'), plot = disaster.evolution.area, scale = 2,
-       height = 3.5, width = 6)
+ggsave(filename = paste0(cd.graficos, 'Descriptive/naturaldisasters_evolution_typedisaster.png'), plot = disaster.evolution.area, scale = 1,
+       height = 6, width = 12)
   
 
 # Grafico evolucion muertos, heridos y numero total de afectados ----------------------
@@ -371,14 +376,11 @@ disaster.death.injured <- ggplot(data = year.affected, mapping = aes(x = Start.Y
   geom_line(aes(y = Injured, color = "Injured"), lwd = 1.3) +
   labs(x = 'Year', y = 'Frequency', color=NULL) +
   scale_y_continuous(labels = comma, expand = expansion(add = c(0, max(year.affected$Injured)*0.1)))+
+  scale_x_continuous(breaks=seq(2004,2022,2)) +
   theme_bw() +
   ggtitle('Evolution of Deaths and Injured on selected countries, 2004 - 2022') +
   scale_color_manual(values = c(Deaths = colors[1], Injured = colors[2])) +  # Specify colors for the legend
-  theme(
-    plot.title = element_text(size = 18, hjust = 0.5),
-    legend.title = element_text(size = 16),
-    legend.text = element_text(size = 14)
-  )
+  my_theme
 
 # Haciendo zoom a partir del 2009
 disaster.death.injured.zoom <- disaster.death.injured +
@@ -386,7 +388,7 @@ disaster.death.injured.zoom <- disaster.death.injured +
 
 # Ahora con el eje y partido
 disaster.death.injured.break <- disaster.death.injured +
-  scale_y_break(c(170000,300000))
+  scale_y_break(c(170000,300000)) 
 
 # O tambien con dos ejes separados
 sec <- with(year.affected, train_sec(Deaths, Injured))
@@ -398,34 +400,30 @@ disaster.death.injured.separated <- ggplot(year.affected, aes(x = Start.Year)) +
   theme_bw() +
   ggtitle('Evolution of Deaths and Injured on selected countries, 2004 - 2022') +
   scale_color_manual(values = c(Deaths = colors[1], Injured = colors[2])) +  # Specify colors for the legend
-  theme(
-    plot.title = element_text(size = 18, hjust = 0.5),
-    legend.title = element_text(size = 16),
-    legend.text = element_text(size = 14)
-  )
+  my_theme
 
 # Para afectados
 disaster.affected <- ggplot(data = year.affected, mapping = aes(x=Start.Year))+
   geom_line(aes(y= Affected), col = colors[3], lwd = 1.3) +
-  labs(x='Year', y = 'Frequency') +
+  labs(x='Year', y = 'Frequency (Millions)') +
   theme_bw() +
   ggtitle('Evolution of Affected people on selected countries, 2004 - 2022')+
   scale_y_continuous(labels = unit_format(unit = "M", scale = 1e-6)) +
-  theme(plot.title = element_text(size = 18, hjust = 0.5),
-        legend.title = element_text(size = 16),
-        legend.text = element_text(size = 14))
+  my_theme
 
 # Guardar los graficos
 ggsave(filename = paste0(cd.graficos, 'Descriptive/evolucion_muertos_heridos.png'), plot = disaster.death.injured, 
-       scale = 2, height = 3.5, width = 6)
+       scale = 1, height = 6, width = 10)
 ggsave(filename = paste0(cd.graficos, 'Descriptive/evolucion_afectados.png'), plot = disaster.affected, 
-       scale = 2, height = 3.5, width = 6)
+       scale = 1, height = 6, width = 10)
 
-# Guardar las opciones (eje truncado y ejes separados)
+# Guardar las opciones (eje truncado, ejes separados y zoom)
 ggsave(filename = paste0(cd.graficos, 'Descriptive/evolucion_muertos_heridos_truncado.png'), plot = disaster.death.injured.break, 
-       scale = 2, height = 3.5, width = 6)
+       scale = 1, height = 6, width = 10)
 ggsave(filename = paste0(cd.graficos, 'Descriptive/evolucion_muertos_heridos_separado.png'), plot = disaster.death.injured.separated, 
-       scale = 2, height = 3.5, width = 6)
+       scale = 1, height = 6, width = 10)
+ggsave(filename = paste0(cd.graficos, 'Descriptive/evolucion_muertos_heridos_zoom.png'), plot = disaster.death.injured.zoom, 
+       scale = 1, height = 6, width = 10)
 
 # Grafico Desastres Naturales por tipo de evento --------------------------
 
@@ -440,7 +438,7 @@ plot.type.of.disaster <- ggplot(data = type.of.disaster,
 
 plot.type.of.disaster <- plot.type.of.disaster + coord_flip() + theme_bw() + 
   ggtitle('Natural Disasters by Type of Event, 2004 - 2022') + labs(y='Frequency',x='Type of Disaster') +
-  theme(plot.title = element_text(size = 18, hjust = 0.5))
+  my_theme
 
 ggsave(filename = paste0(cd.graficos, 'Descriptive/disasters_type_event.png'), plot = plot.type.of.disaster, 
        scale = 2, height = 3.5, width = 6)
@@ -461,9 +459,9 @@ cols <- brewer.pal(nrow(affected.type.disaster), 'Set1')
 
 piechart.affected <- ggplot(affected.type.disaster, aes(x='', y= Affected, fill = Disaster.Subgroup))+
   geom_col(col = 'white')+
-  geom_label(aes(x=1.6, label = Percentage.aff),
+  geom_label(aes(x=1.65, label = Percentage.aff),
              position = position_stack(vjust = 0.5),
-             show.legend = FALSE)+
+             show.legend = FALSE, size = 5, fontface = 'bold') +
   coord_polar(theta='y') +
   theme_void() + 
   labs(x=NULL, y=NULL, fill = 'Disaster Type') +
@@ -472,13 +470,15 @@ piechart.affected <- ggplot(affected.type.disaster, aes(x='', y= Affected, fill 
   scale_color_manual(values = adjustcolor(cols, alpha.f = 0.7)) +
   theme(panel.border =element_rect(colour='black', fill = NA, linewidth = 1),
         plot.background = element_rect(fill='white', colour = 'white'),
-        plot.title = element_text(size = 18, hjust = 0.5))
+        plot.title   = element_text(size = 20, hjust = 0.5, face='bold'),
+        legend.title = element_text(size = 18, face ='bold'),
+        legend.text  = element_text(size = 18))
 
 piechart.deaths <- ggplot(affected.type.disaster, aes(x='', y= Deaths, fill = Disaster.Subgroup))+
   geom_col(col = 'white')+
-  geom_label(aes(x=1.6, label = Percentage.dea),
-             position = position_stack(vjust = 0.5),
-             show.legend = FALSE)+
+  geom_label(aes(x=1.65, label = Percentage.dea),
+             position = position_stack(vjust = 0.8),
+             show.legend = FALSE,  size = 5, fontface = 'bold')+
   coord_polar(theta='y') +
   theme_void() + 
   labs(x=NULL, y=NULL, fill = 'Disaster Type') +
@@ -487,13 +487,15 @@ piechart.deaths <- ggplot(affected.type.disaster, aes(x='', y= Deaths, fill = Di
   scale_color_manual(values = adjustcolor(cols, alpha.f = 0.7)) +
   theme(panel.border =element_rect(colour='black', fill = NA, linewidth = 1),
         plot.background = element_rect(fill='white', colour = 'white'),
-        plot.title = element_text(size = 18, hjust = 0.5))
+        plot.title   = element_text(size = 20, hjust = 0.5, face='bold'),
+        legend.title = element_text(size = 18, face ='bold'),
+        legend.text  = element_text(size = 18))
 
 piechart.injured <- ggplot(affected.type.disaster, aes(x='', y= Injured, fill = Disaster.Subgroup))+
   geom_col(col = 'white')+
-  geom_label(aes(x=1.6, label = Percentage.inj),
-             position = position_stack(vjust = 0.5),
-             show.legend = FALSE)+
+  geom_label(aes(x=1.60, label = Percentage.inj),
+             position = position_stack(vjust = 0.975),
+             show.legend = FALSE, size = 4.5, fontface = 'bold')+
   coord_polar(theta='y') +
   theme_void() + 
   labs(x=NULL, y=NULL, fill = 'Disaster Type') +
@@ -502,15 +504,17 @@ piechart.injured <- ggplot(affected.type.disaster, aes(x='', y= Injured, fill = 
   scale_color_manual(values = adjustcolor(cols, alpha.f = 0.7)) +
   theme(panel.border =element_rect(colour='black', fill = NA, linewidth = 1),
         plot.background = element_rect(fill='white', colour = 'white'),
-        plot.title = element_text(size = 18, hjust = 0.5))
+        plot.title   = element_text(size = 20, hjust = 0.5, face='bold'),
+        legend.title = element_text(size = 18, face ='bold'),
+        legend.text  = element_text(size = 18))
 
 # Guardar los 3 graficos
 ggsave(filename = paste0(cd.graficos, 'Descriptive/affected_disaster_type.png'), plot = piechart.affected, 
-       scale = 2, height = 3.5, width = 6)
+       scale = 1, height = 6, width = 10)
 ggsave(filename = paste0(cd.graficos, 'Descriptive/deaths_disaster_type.png'), plot = piechart.deaths, 
-       scale = 2, height = 3.5, width = 6)
+       scale = 1, height = 6, width = 10)
 ggsave(filename = paste0(cd.graficos, 'Descriptive/injured_disaster_type.png'), plot = piechart.injured, 
-       scale = 2, height = 3.5, width = 6)
+       scale = 1, height = 6, width = 10)
 
 # Grafico, afectados por pais ---------------------------------------------
 
@@ -525,7 +529,9 @@ plot.affected.country <- ggplot(affected.by.country, aes(x=reorder(Country, -Aff
   theme_bw() +
   theme(plot.title = element_text(size = 18, hjust = 0.5))+
   scale_y_break(c(21000000,1005000000))+
-  scale_y_continuous(labels = unit_format(unit = "", scale = 1e-6))
+  scale_y_continuous(labels = unit_format(unit = "", scale = 1e-6)) +
+  my_theme + 
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.6))
 
 plot.deaths.country <- ggplot(affected.by.country, aes(x=reorder(Country, -Deaths), y = Deaths)) +
   geom_bar(stat= 'identity', col = 'black', fill='darkblue', alpha = 0.7) +
@@ -534,7 +540,9 @@ plot.deaths.country <- ggplot(affected.by.country, aes(x=reorder(Country, -Death
   theme_bw() +
   theme(plot.title = element_text(size = 18, hjust = 0.5))+
   scale_y_break(c(2400,105000))+
-  scale_y_break(c(109000,180000))
+  scale_y_break(c(109000,180000)) +
+  my_theme +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.6))
 
 plot.injured.country <- ggplot(affected.by.country, aes(x=reorder(Country, -Injured), y = Injured)) +
   geom_bar(stat= 'identity', col = 'black', fill='darkgreen', alpha = 0.7) +
@@ -543,7 +551,9 @@ plot.injured.country <- ggplot(affected.by.country, aes(x=reorder(Country, -Inju
   theme_bw() +
   theme(plot.title = element_text(size = 18, hjust = 0.5))+
   scale_y_break(c(11000,176000))+
-  scale_y_break(c(182000,486000))
+  scale_y_break(c(182000,486000)) +
+  my_theme +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.6))
   
 # Guardar los 3 graficos
 ggsave(filename = paste0(cd.graficos, 'Descriptive/affected_by_country.png'), plot = plot.affected.country, 
@@ -580,7 +590,8 @@ plot.average.disasters <- emdat_base %>%
   labs(x = NULL, y = 'Frequency', title = 'Number of Natural Disasters in each Continent') +
   theme(plot.title = element_text(size = 18, hjust = 0.5),
         legend.title = element_text(size = 16),
-        legend.text = element_text(size = 14))
+        legend.text = element_text(size = 14)) +
+  my_theme
 
 ggsave(filename = paste0(cd.graficos, 'Descriptive/disasters_continent.png'), plot = plot.average.disasters, 
        scale = 2, height = 3.5, width = 6)
