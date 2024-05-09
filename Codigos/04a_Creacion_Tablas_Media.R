@@ -21,7 +21,7 @@ paises.resultados       <- countries # Seleccionar los paises sobre los cuales s
 eventos.fecha.exac      <- T  #<<<--- booleano para indicar si se quieren usar solamente los eventos que tengan una fecha exacta
 # <T> en caso de querer solo los que tienen fecha exacta.<F>si se quieren usar tambien aquellos eventos de
 # los que se asumio el dia
-columna.agrupar          <- 'Disaster.Subgroup'  #<<<--- Columna del evento por la cual se quiere separar la lista de regresiones para las tablas/graficas
+columna.agrupar          <- 'Ambas'  #<<<--- Columna del evento por la cual se quiere separar la lista de regresiones para las tablas/graficas
 # 'Country' la separa por pais donde sucedio el desastre y 'Disaster.Subgroup' por el tipo de desastre
 # 'Ambas' implica que se va a analizar por ambas columbas, por ejemplo: brazil - hidrologico, brazil - geofisico, ...
 max_abnormal_returns     <- 15   #<<<--- No. dias maximos despues del evento para calcular retorno anormal
@@ -125,8 +125,8 @@ for(ventana.estimacion in ventanas.estimacion){
         if(table.caar){
           prueba <- wilcoxon.jp.test(data.list = lista.separada[[i]],es.window.length = length_estimation_window,
                                      ev.window.length = j,ev.window.begin = inicio.ventana.evento,tail = cola)
-          matrix.wilcoxon[j,i]          <- paste(round(abnormal[j],2),prueba$Significancia)
-          matrix.wilcoxon.completa[j,i] <- paste0(prueba[1,], collapse = '/ ') # Cada celda tendra el estadistico, significancia, pvalue y error estandar
+          matrix.wilcoxon[j,i]          <- paste(round(abnormal[j],4),prueba$Significancia)
+          matrix.wilcoxon.completa[j,i] <- paste0(c(round(abnormal[j],4), prueba[1,2:4]),collapse = '/ ') # Cada celda tendra el estadistico, significancia, pvalue y error estandar
         }
         # El siguiente codigo genera las tablas de Wilcoxon, presentando el estadistico de Wilcoxon y el pvalue asociado
         if(!table.caar){
@@ -145,8 +145,8 @@ for(ventana.estimacion in ventanas.estimacion){
       # El siguiente codigo genera las tablas de Wilcoxon, presentando el CAAR y el pvalue asociado. if(0) para presentar 
       if(table.caar){
         prueba <- wilcoxon.jp.test(all.events.list,length_estimation_window,j,inicio.ventana.evento,tail = cola)
-        matrix.wilcoxon[j,k]          <- paste(round(abnormal[j],2), prueba$Significancia)
-        matrix.wilcoxon.completa[j,k] <- paste0(prueba[1,], collapse = '/ ')
+        matrix.wilcoxon[j,k]          <- paste(round(abnormal[j],4), prueba$Significancia)
+        matrix.wilcoxon.completa[j,k] <- paste0(c(round(abnormal[j],4), prueba[1,2:4]),collapse = '/ ')
       }
       # El siguiente codigo genera las tablas de Wilcoxon, presentando el estadistico de Wilcoxon y el pvalue asociado
       if(!table.caar){
@@ -175,14 +175,15 @@ for(ventana.estimacion in ventanas.estimacion){
         # Se realiza el mismo procedimiento que con Wilcoxon
         if(table.caar) {
           prueba          <- bmp_savickas(lista.separada[[i]],length_estimation_window,j,inicio.ventana.evento,tail = cola) 
-          matrix.bmp[j,i] <- paste(round(mean(colSums(data.frame(purrr::map(lista.separada[[i]],~coredata(.x@retornos$Abnormal[(length_estimation_window+1+inicio.ventana.evento):(length_estimation_window+j+inicio.ventana.evento)]))))),2),
+          matrix.bmp[j,i] <- paste(round(mean(colSums(data.frame(purrr::map(lista.separada[[i]],~coredata(.x@retornos$Abnormal[(length_estimation_window+1+inicio.ventana.evento):(length_estimation_window+j+inicio.ventana.evento)]))))),4),
                                    prueba$Significancia)
-          matrix.bmp.completa[j,i] <- paste0(prueba[1,],collapse = '/ ') # Guardar el estadistico, la significancia y el pvalue
+          matrix.bmp.completa[j,i] <- paste0(c(round(mean(colSums(data.frame(purrr::map(lista.separada[[i]],~coredata(.x@retornos$Abnormal[(length_estimation_window+1+inicio.ventana.evento):(length_estimation_window+j+inicio.ventana.evento)]))))),4), 
+                                               prueba[1,2:3]),collapse = '/ ') # Guardar el estadistico, la significancia y el pvalue
         }
         if(!table.caar) {
           prueba.bmp <- bmp_savickas(data.list = lista.separada[[i]],es.window.length = length_estimation_window,
                                      ev.window.length = j,ev.window.begin = inicio.ventana.evento,tail = cola)
-          matrix.bmp[j,i] <- paste(round(prueba.bmp$Estadistico,2), prueba.bmp$Significancia)
+          matrix.bmp[j,i] <- paste(round(prueba.bmp$Estadistico,4), prueba.bmp$Significancia)
           matrix.bmp.completa[j,i] <- paste0(prueba.bmp[1,], collapse='/ ') # Guardar el estadistico, la significancia y el pvalue
         }
       } 
@@ -192,13 +193,14 @@ for(ventana.estimacion in ventanas.estimacion){
     for(j in (1:(max_abnormal_returns+1-inicio.ventana.evento))){
       if(table.caar) {
         prueba <- bmp_savickas(all.events.list,length_estimation_window,j,inicio.ventana.evento, tail=cola)
-        matrix.bmp[j,k] <- paste(round(mean(colSums(data.frame(purrr::map(all.events.list,~coredata(.x@retornos$Abnormal[(length_estimation_window+1+inicio.ventana.evento):(length_estimation_window+j+inicio.ventana.evento)]))))),2),
+        matrix.bmp[j,k] <- paste(round(mean(colSums(data.frame(purrr::map(all.events.list,~coredata(.x@retornos$Abnormal[(length_estimation_window+1+inicio.ventana.evento):(length_estimation_window+j+inicio.ventana.evento)]))))),4),
                                  prueba$Significancia)
-        matrix.bmp.completa[j,k] <- paste0(prueba[1,], collapse = '/ ')
+        matrix.bmp.completa[j,k] <-  paste0(c(round(mean(colSums(data.frame(purrr::map(all.events.list,~coredata(.x@retornos$Abnormal[(length_estimation_window+1+inicio.ventana.evento):(length_estimation_window+j+inicio.ventana.evento)]))))),4), 
+                                              prueba[1,2:3]),collapse = '/ ')
       }
       if(!table.caar) {
         prueba.bmp <- bmp_savickas(all.events.list,length_estimation_window,j,inicio.ventana.evento, tail=cola)
-        matrix.bmp[j,k] <- paste(round(prueba.bmp$Estadistico,2), prueba.bmp$Significancia)
+        matrix.bmp[j,k] <- paste(round(prueba.bmp$Estadistico,4), prueba.bmp$Significancia)
         matrix.bmp.completa[j,k] <- paste0(prueba.bmp[1,], collapse = '/ ')
       }
     } 
