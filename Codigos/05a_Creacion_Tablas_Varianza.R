@@ -13,7 +13,7 @@ countries <- c('Brazil','Chile','China','Colombia','Indonesia','Korea','Malaysia
 
 # Prueba de filtro  -------------------------------------------------------
 tipo.serie              <- 'Indices'   #<<<--- Puede ser 'CDS' o 'Indices'  
-regresor.mercado        <- 'PM'    #<<<--- Retornos de mercado 'PM' es promedio movil y 'MSCI' es el retorno MSCI Emerging Markets
+regresor.mercado        <- 'PM'    #<<<--- Retornos de mercado 'PM' es promedio movil y 'benchmark' es el retorno MSCI Emerging Markets
 paises.resultados       <- countries # Seleccionar los paises sobre los cuales se quiere hacer el analisis de resultados. <countries> si se desea
 # de todos los paises de los que se tiene informacion
 columna.agrupar         <- 'Country'  #<<<--- Columna del evento por la cual se quiere separar la lista de regresiones para las tablas/graficas
