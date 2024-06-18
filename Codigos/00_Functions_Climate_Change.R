@@ -5031,3 +5031,18 @@ train_sec <- function(primary, secondary, na.rm = TRUE) {
   }
   list(fwd = forward, rev = reverse)
 }
+
+#---------------------------------- 33. est_contient  ------------------------------------#
+# Para cada pais retorna un continente
+#---------------------------------------------------------------------------------------#
+# ----Argumentos de entrada ----#
+#-- country = pais de interes
+# ----Argumentos de salida ----#
+#-- continent = continente de interes
+#---------------------------------------------------------------------------------------#
+est_continent <- function(country){
+  continent <- case_when(country == 'Brazil' | country == "Chile" | country == "Colombia"| country == "Mexico" | country == "Peru" ~ 'America',
+                         country == "China" | country == "Indonesia" | country == "Korea" | country == "Malaysia" | country == "Turkey" ~ "Asia",
+                         .default = NA)
+  return(continent)
+}
