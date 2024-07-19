@@ -6,3 +6,7 @@ Resultados_obsoletos
 .RDataTmp
 .RDataTmp1
 Climate-Change-and-Financial-Stability.Rproj
+Resultados_regresion_contagio/CDS_tra50_est500_media_PM.RData
+Resultados_regresion_contagio/Indices_tra50_est500_media_benchmark.RData
+Resultados_regresion_contagio/datos_incompletos/CDS_tra50_est500_media_PM.RData
+Resultados_regresion_contagio/datos_incompletos/Indices_tra50_est500_media_benchmark.RData
