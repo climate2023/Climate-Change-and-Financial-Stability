@@ -4477,6 +4477,12 @@ grafico_cav_agregado <- function(aggregated.events.list, disagg.events.list, es.
   serie.cap  <- ifelse(serie == 'Cds', 'CDS', serie) 
   serie.cap  <- ifelse(serie.cap == 'Indices', 'Stock Indexes', serie.cap) 
   
+  # Define layout with two panels
+  #layout(matrix(c(1, 2), nrow = 1), widths = c(3, 1))  # Main plot area and legend area
+  
+  # Main plot
+  #par(mar = c(5, 4, 4, 1) + 0.1)  # Adjust margins for the main plot
+  
   if(cumulative) plot(x=names(cavs.relativos[[1]]),y=cavs.relativos[[1]],type='l',col=colors[1],lwd=3,
        main=paste0('Cumulative Abnormal Volatility (CAV) relative to the disaster date. \nFor ',
                    serie.cap, rm.english,'. \n',extra.title),
@@ -4518,17 +4524,9 @@ grafico_cav_agregado <- function(aggregated.events.list, disagg.events.list, es.
   # Cambiar el idioma de la leyenda, 'Todos' por 'All'
   names(cavs.relativos) <- ifelse(names(cavs.relativos)== 'Todos', 'All', names(cavs.relativos))
   
-  # legend("topleft", 
-  #        legend    = c("Under Null Hypothesis (No Volatility Effect)", paste0("Observed Volatility: ",names(cavs.relativos)),
-  #                      paste0((1 - significancia)*100,'% Percentile: ', names(cavs.relativos)),
-  #                      paste0((1 - significancia)*100,'% C.I: ', names(cavs.relativos))),
-  #        col       = c("black", colors, colors, rep(NA,length(cavs.relativos))), 
-  #        lty       = c(3,rep(1,length(cavs.relativos)),rep(2,length(cavs.relativos)),rep(NA,length(cavs.relativos))),
-  #        fill      = c(rep(NA,(1+length(cavs.relativos))),rep(NA,(length(cavs.relativos))),adjustcolor(colors, alpha.f = shading.alpha)), 
-  #        border    = c(rep(NA,(1+length(cavs.relativos))),rep(NA,(length(cavs.relativos))),colors),
-  #        pch       = c(rep(NA,(1+length(cavs.relativos))),rep(NA,(length(cavs.relativos))),rep(15,length(cavs.relativos))),
-  #        bty       ='n', 
-  #        y.intersp = 1)
+  # Legend plot
+  #par(mar = c(5, 0, 4, 2) + 0.1)  # Adjust margins for the legend area
+  #plot.new()  # Create a new plot for the legend
   
   legend("topleft", 
          legend    = c("Under Null Hypothesis (No Volatility Effect)", paste0("Observed Volatility: ",names(cavs.relativos)),
@@ -4540,9 +4538,147 @@ grafico_cav_agregado <- function(aggregated.events.list, disagg.events.list, es.
          border    = c(rep(NA,(1+length(cavs.relativos))),colors),
          pch       = c(rep(NA,(1+length(cavs.relativos))),rep(NA,length(cavs.relativos))),
          bty       ='n', 
-         y.intersp = 1)
+         y.intersp = 1
+         )
   
+}
+
+grafico_cav_agregado_bei <- function(aggregated.events.list, disagg.events.list, es.window.length,ev.window.length,serie,rm, significancia = 0.05, 
+                                 extra.title, cumulative=T){
+  # Detener la funcion si hay algun elemento que no tenga la clase 'ESVolatility' en <aggregated.events.list>
+  if (any(!sapply(aggregated.events.list, inherits, "ESVolatility"))) stop('La lista contiene elementos que no fueron creados con la funcion estimation.event.study.')
+  # Detener la funcion si dentro de cualquier elemento de <disagg.events.list> hay algun elemento que no sea "ESVolatility"
+  stop_flag <- lapply(disagg.events.list, function(x) {
+    any(!sapply(x, inherits, "ESVolatility"))
+  })
+  if (any(unlist(stop_flag))) {
+    stop('La lista contiene elementos que no fueron creados con la funcion estimation.event.study.')
   }
+  
+  # Generar una sola lista, que incluira las listas separadas por tipo de desastre y la lista que contiene todos los desastres
+  full.list                        <- disagg.events.list 
+  full.list[[length(full.list)+1]] <- aggregated.events.list
+  names(full.list)                 <- c(names(disagg.events.list),'Todos')
+  
+  # Calculo CAV para cada elemento de <full.list> junto a intervalo de confianza de la distribucion
+  cavs.relativos           <- list()
+  sup.intervalos.confianza <- list()
+  for(k in seq_along(full.list)) {
+    epsilon      <- data.frame(purrr::map(full.list[[k]], ~ coredata(.x@residuales_evento)))[1:ev.window.length,]
+    sigma_cuad   <- data.frame(purrr::map(full.list[[k]], ~ coredata(.x@variance_forecast)))[1:ev.window.length,]
+    Mt           <- mt_function(epsilon,sigma_cuad)
+    cav.relativo <- cumsum(Mt) #- (1:length(Mt))
+    names(cav.relativo) <- 0:(length(Mt)-1)
+    
+    # Para comprender mejor la distribucion ver Mnasri y Nechi (2016), quienes expresan que \sum_{t=n_1}^{n_2} Mt(N-1) sigue una chi
+    # cuadrado con (N-1)(n_2-n_1+1) grados de libertad
+    # Primero es necesario obtener N, que es el numero de desastres
+    N               <- length(full.list[[k]])
+    degrees.freedom <- (N-1)*(1:length(cav.relativo)) # Grados de libertad para cada ventana de evento segun Mnasri y Nechi
+    # Generamos el pvalue a un nivel de significancia <significancia>, recordando que el test es de cola derecha
+    sup.intervalo.confianza        <- (qchisq((1- significancia), degrees.freedom))/(N-1)
+    names(sup.intervalo.confianza) <- names(cav.relativo)
+    
+    sup.intervalos.confianza[[k]] <- sup.intervalo.confianza
+    cavs.relativos[[k]]           <- cav.relativo
+  }
+  names(cavs.relativos)           <- names(full.list)
+  names(sup.intervalos.confianza) <- names(full.list)
+  
+  # Sin embargo, para las graficas queremos que la lista tenga de primer lugar a 'Todos' y luego si el resto, para poder graficar
+  # <Todos> con mas grosor
+  ordered.names            <- c('Todos',names(disagg.events.list))
+  cavs.relativos           <- cavs.relativos[ordered.names]
+  sup.intervalos.confianza <- sup.intervalos.confianza[ordered.names]
+  
+  # Graficar el CAAV relativo al dia de evento
+  # Por tema de escala, lo mejor es buscar el maximo de los maximos de <cavs.relativos>
+  if(cumulative) maximo.escalay <- max(unlist(lapply(cavs.relativos, max)))
+  
+  if(!cumulative){
+    # Colocar los intervalos y los CAV en escala y = 0
+    sup.intervalos.confianza <- lapply(sup.intervalos.confianza, function(x) x - 0:(vol_ev_window-1))
+    cavs.relativos           <- lapply(cavs.relativos, function(x) x - 0:(vol_ev_window-1))
+    
+    # Graficar el CAAV relativo al dia de evento
+    # Por tema de escala, lo mejor es buscar el maximo de los maximos de <cavs.relativos>
+    maximo.escalay <- max(unlist(lapply(cavs.relativos, max))) + 0.5
+    minimo.escalay <- 0
+  }
+  
+  # Definir los colores
+  colors <- c('#000000',brewer.pal(n=(length(cavs.relativos)-1), name='Set1'))
+  # Cambiar el idioma de <rm>
+  rm.english <- ifelse(rm == 'Promedio Movil', 'Moving Average', rm)
+  rm.english <- ifelse(serie == 'Cds', '', paste0('', rm.english))
+  serie.cap  <- ifelse(serie == 'Cds', 'CDS', serie) 
+  serie.cap  <- ifelse(serie.cap == 'Indices', 'Stock Indexes', serie.cap) 
+  
+  # Define layout with two panels
+  layout(matrix(c(1, 2), nrow = 1), widths = c(3, 1))  # Main plot area and legend area
+  
+  # Main plot
+  par(mar = c(5, 5, 5, 5) + 0.1) 
+  
+  if(cumulative) plot(x=names(cavs.relativos[[1]]),y=cavs.relativos[[1]],type='l',col=colors[1],lwd=3,
+                      main=paste0('Cumulative Abnormal Volatility (CAV) relative to the disaster date. \nFor ',
+                                  serie.cap, rm.english,'. \n',extra.title),
+                      ylab='Cumulative Abnormal Volatility (CAV)',xlab='Day relative to the disaster date',
+                      ylim = c(0,maximo.escalay), xaxs='i', yaxs='i',
+                      cex.main = 1.8,  cex.lab = 1.6)
+  
+  if(!cumulative) plot(x=names(cavs.relativos[[1]]),y=cavs.relativos[[1]],type='l',col=colors[1],lwd=3,
+                       main=paste0('Abnormal Volatility relative to the disaster date. \nFor ',
+                                   serie.cap, rm.english,'. \n',extra.title),
+                       ylab='Abnormal Volatility',xlab='Day relative to the disaster date',
+                       ylim = c(minimo.escalay,maximo.escalay), xaxs='i', yaxs='i',
+                       cex.main = 1.8,  cex.lab = 1.6)
+  
+  if(length(cavs.relativos)>1) for(p in 2:length(cavs.relativos)){
+    lines(x = names(cavs.relativos[[1]]), cavs.relativos[[p]],type='l',col=colors[[p]],lwd=2)
+  }
+  
+  # Rellenar la zona de los intervalos de confianza
+  shading.alpha = 0.15 #<<<--- parametro para hacer mas transparente las areas de IC
+  for(m in seq_along(sup.intervalos.confianza)){
+    # polygon(x = c(names(cavs.relativos[[1]]), rev(names(cavs.relativos[[1]]))),
+    #         y = c(sup.intervalos.confianza[[m]], rev((0:(length(cavs.relativos[[1]])-1)))),
+    #         col = adjustcolor(colors[m], alpha.f = shading.alpha), border = F)
+    polygon(x = c(names(cavs.relativos[[1]]), rev(names(cavs.relativos[[1]]))),
+            y = c(sup.intervalos.confianza[[m]], rep(0, length(cavs.relativos[[1]]))),
+            col = adjustcolor(colors[m], alpha.f = shading.alpha), border = F)
+  }
+  
+  # anadir rectas del intervalo de confianza con un nivel de <significancia>
+  for(l in seq_along(sup.intervalos.confianza)){
+    lines(x = names(cavs.relativos[[1]]), sup.intervalos.confianza[[l]],type='l',lty = 2,col=colors[[l]],lwd=1)
+  }
+  
+  # Anadir la recta de la hipotesis nula
+  if(cumulative) abline(a = 1, b = 1, col = "black",lty=3,lwd=1.5)
+  if(!cumulative) abline(a = 1, b = 0, col = "black",lty=3,lwd=1.5)
+  names(cavs.relativos) <- ifelse(names(cavs.relativos)== 'Todos', 'All', names(cavs.relativos))
+  
+  # Legend plot
+  par(mar = c(0, 0, 4, 2) + 0.01)  # Adjust margins for the legend area
+  plot.new()  # Create a new plot for the legend
+  
+  legend("topleft", 
+         legend    = c("Under Null Hypothesis (No Volatility Effect)", paste0("Observed Volatility: ",names(cavs.relativos)),
+                       paste0((1 - significancia)*100,'% C.I (Under H0): ', names(cavs.relativos))),
+         col       = c("black", colors, colors), 
+         lty       = c(3,rep(1,length(cavs.relativos)),rep(2,length(cavs.relativos))),
+         fill      = c(rep(NA,(1+length(cavs.relativos))),adjustcolor(colors, alpha.f = shading.alpha)),
+         lwd       = c(1.5, rep(2, length(cavs.relativos)), rep(1, length(cavs.relativos))),
+         border    = c(rep(NA,(1+length(cavs.relativos))),colors),
+         pch       = c(rep(NA,(1+length(cavs.relativos))),rep(NA,length(cavs.relativos))),
+         bty       ='n', 
+         y.intersp = 1,
+         cex       = 1.5,
+         inset     = c(0, 0)
+  )
+  
+}
 
 # Revision de la funcion bootstrap.volatility ------------------------------
 bootstrap.volatility2 <- function(volatility.list,es.window.length,ev.window.length,bootstrap_vol_iterations){ 
